@@ -270,6 +270,8 @@ namespace Ouroboros.Types
         public bool IsAbstract { get; set; }
         public bool IsSealed { get; set; }
         public bool IsPartial { get; set; }
+        public List<string> GenericParameters { get; set; }
+        public List<Variance> GenericParameterVariances { get; set; }
         
         public ClassType(string name, string namespaceName = null)
         {
@@ -282,6 +284,8 @@ namespace Ouroboros.Types
             Methods = new List<MethodInfo>();
             Properties = new List<PropertyInfo>();
             Events = new List<EventInfo>();
+            GenericParameters = new List<string>();
+            GenericParameterVariances = new List<Variance>();
         }
         
         public override bool IsSubtypeOf(Type other)
@@ -323,6 +327,8 @@ namespace Ouroboros.Types
         public List<MethodInfo> Methods { get; }
         public List<PropertyInfo> Properties { get; }
         public List<EventInfo> Events { get; }
+        public List<string> GenericParameters { get; set; }
+        public List<Variance> GenericParameterVariances { get; set; }
         
         public InterfaceType(string name, string namespaceName = null)
         {
@@ -333,6 +339,8 @@ namespace Ouroboros.Types
             Methods = new List<MethodInfo>();
             Properties = new List<PropertyInfo>();
             Events = new List<EventInfo>();
+            GenericParameters = new List<string>();
+            GenericParameterVariances = new List<Variance>();
         }
         
         public override bool IsSubtypeOf(Type other)
@@ -570,9 +578,51 @@ namespace Ouroboros.Types
         
         private bool CheckVariance(Type arg1, Type arg2, int position)
         {
-            // Simplified variance checking
-            // Would need to check actual variance annotations (in/out)
-            return arg1.IsSubtypeOf(arg2);
+            // Check variance based on generic parameter variance annotations
+            var varianceInfo = GetVarianceInfo(position);
+            
+            switch (varianceInfo)
+            {
+                case Variance.Covariant: // out T
+                    // For output positions, arg1 must be subtype of arg2
+                    return arg1.IsSubtypeOf(arg2);
+                    
+                case Variance.Contravariant: // in T
+                    // For input positions, arg2 must be subtype of arg1
+                    return arg2.IsSubtypeOf(arg1);
+                    
+                case Variance.Invariant: // T
+                    // For invariant positions, types must match exactly
+                    return arg1.Equals(arg2) || (arg1.FullName == arg2.FullName);
+                    
+                default:
+                    // Default to covariant behavior for unknown variance
+                    return arg1.IsSubtypeOf(arg2);
+            }
+        }
+        
+        private Variance GetVarianceInfo(int position)
+        {
+            // Extract variance information from the generic type definition
+            // This would normally come from metadata or attributes on the type parameters
+            
+            if (Definition is ClassType classType && classType.GenericParameterVariances != null)
+            {
+                if (position < classType.GenericParameterVariances.Count)
+                {
+                    return classType.GenericParameterVariances[position];
+                }
+            }
+            else if (Definition is InterfaceType interfaceType && interfaceType.GenericParameterVariances != null)
+            {
+                if (position < interfaceType.GenericParameterVariances.Count)
+                {
+                    return interfaceType.GenericParameterVariances[position];
+                }
+            }
+            
+            // Default to invariant for safety
+            return Variance.Invariant;
         }
     }
     
@@ -808,6 +858,16 @@ namespace Ouroboros.Types
         Protected,
         Internal,
         Public
+    }
+    
+    /// <summary>
+    /// Generic type parameter variance
+    /// </summary>
+    public enum Variance
+    {
+        Invariant,      // T - no variance
+        Covariant,      // out T - can vary in the same direction
+        Contravariant   // in T - can vary in the opposite direction
     }
     
     /// <summary>

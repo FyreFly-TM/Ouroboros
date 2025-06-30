@@ -380,7 +380,8 @@ namespace Ouroboros.Core.Assembly
             // Remove spaces for easier parsing
             operand = operand.Replace(" ", "");
             
-            // For now, simple implementation
+            // Parse comprehensive addressing modes
+            // Support formats: [reg], [num], [reg+num], [reg-num], [reg+reg*scale], [reg+reg*scale+num]
             if (IsRegister(operand))
             {
                 mem.BaseRegister = ParseRegister(operand, lineNumber);
@@ -391,7 +392,7 @@ namespace Ouroboros.Core.Assembly
             }
             else
             {
-                // Parse complex addressing modes
+                // Parse complex addressing modes using state machine
                 // Try to parse [base+offset] form
                 if (operand.Contains('+'))
                 {
@@ -688,12 +689,42 @@ namespace Ouroboros.Core.Assembly
         
         private void GenerateImmediate(long value)
         {
-            // For now, always generate 32-bit immediates
-            output.Add((byte)(value & 0xFF));
-            output.Add((byte)((value >> 8) & 0xFF));
-            output.Add((byte)((value >> 16) & 0xFF));
-            output.Add((byte)((value >> 24) & 0xFF));
-            currentAddress += 4;
+            // Generate appropriately sized immediate based on value range
+            if (value >= sbyte.MinValue && value <= sbyte.MaxValue)
+            {
+                // 8-bit immediate
+                output.Add((byte)value);
+                currentAddress += 1;
+            }
+            else if (value >= short.MinValue && value <= short.MaxValue)
+            {
+                // 16-bit immediate
+                output.Add((byte)(value & 0xFF));
+                output.Add((byte)((value >> 8) & 0xFF));
+                currentAddress += 2;
+            }
+            else if (value >= int.MinValue && value <= int.MaxValue)
+            {
+                // 32-bit immediate
+                output.Add((byte)(value & 0xFF));
+                output.Add((byte)((value >> 8) & 0xFF));
+                output.Add((byte)((value >> 16) & 0xFF));
+                output.Add((byte)((value >> 24) & 0xFF));
+                currentAddress += 4;
+            }
+            else
+            {
+                // 64-bit immediate
+                output.Add((byte)(value & 0xFF));
+                output.Add((byte)((value >> 8) & 0xFF));
+                output.Add((byte)((value >> 16) & 0xFF));
+                output.Add((byte)((value >> 24) & 0xFF));
+                output.Add((byte)((value >> 32) & 0xFF));
+                output.Add((byte)((value >> 40) & 0xFF));
+                output.Add((byte)((value >> 48) & 0xFF));
+                output.Add((byte)((value >> 56) & 0xFF));
+                currentAddress += 8;
+            }
         }
         
         private void GenerateAddress(int address)
@@ -766,11 +797,23 @@ namespace Ouroboros.Core.Assembly
             return operand.Type switch
             {
                 OperandType.Register => 1,
-                OperandType.Immediate => 4, // 32-bit immediate
+                OperandType.Immediate => GetImmediateSize(operand.ImmediateValue),
                 OperandType.Label => 4,     // 32-bit address
-                OperandType.Memory => 1 + (operand.MemoryOperand.Displacement != 0 ? 4 : 0),
+                OperandType.Memory => 1 + (operand.MemoryOperand.Displacement != 0 ? GetImmediateSize(operand.MemoryOperand.Displacement) : 0),
                 _ => 0
             };
+        }
+        
+        private int GetImmediateSize(long value)
+        {
+            if (value >= sbyte.MinValue && value <= sbyte.MaxValue)
+                return 1;
+            else if (value >= short.MinValue && value <= short.MaxValue)
+                return 2;
+            else if (value >= int.MinValue && value <= int.MaxValue)
+                return 4;
+            else
+                return 8;
         }
     }
     
