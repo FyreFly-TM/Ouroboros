@@ -2183,36 +2183,98 @@ namespace Ouroboros.Core.VM
                 case Opcode.SetParallelism:
                     {
                         var parallelism = Convert.ToInt32(operandStack.Pop());
-                        // Set thread pool size or parallel options
-                        Console.WriteLine($"[VM] Setting parallelism to {parallelism}");
+                        
+                        // Configure thread pool for desired parallelism
+                        if (parallelism > 0)
+                        {
+                            System.Threading.ThreadPool.SetMinThreads(parallelism, parallelism);
+                            System.Threading.ThreadPool.SetMaxThreads(parallelism * 2, parallelism * 2);
+                            
+                            // Store for parallel operations
+                            environment.Globals["__parallelism"] = parallelism;
+                            
+                            Console.WriteLine($"[VM] Set parallelism to {parallelism} threads");
+                        }
+                        else
+                        {
+                            // Reset to defaults
+                            System.Threading.ThreadPool.GetMinThreads(out int workerThreads, out int completionPortThreads);
+                            environment.Globals["__parallelism"] = workerThreads;
+                        }
                     }
                     break;
                     
                 case Opcode.BeginAsync:
                     {
-                        // Mark beginning of async operation
-                        Console.WriteLine("[VM] Beginning async operation");
+                        // Mark beginning of async operation - push async context
+                        var asyncContext = new Dictionary<string, object>
+                        {
+                            ["StartTime"] = DateTime.UtcNow,
+                            ["ThreadId"] = System.Threading.Thread.CurrentThread.ManagedThreadId,
+                            ["IsAsync"] = true
+                        };
+                        
+                        // Store async context
+                        environment.Globals["__async_context"] = asyncContext;
+                        
+                        // Fire event for profiler/debugger
+                        OnFunctionEnter?.Invoke("__async_block", instructionPointer);
                     }
                     break;
                     
                 case Opcode.EndAsync:
                     {
-                        // Mark end of async operation
-                        Console.WriteLine("[VM] Ending async operation");
+                        // Mark end of async operation - restore context
+                        if (environment.Globals.TryGetValue("__async_context", out var contextObj) && 
+                            contextObj is Dictionary<string, object> asyncContext)
+                        {
+                            var duration = DateTime.UtcNow - (DateTime)asyncContext["StartTime"];
+                            Console.WriteLine($"[VM] Async operation completed in {duration.TotalMilliseconds}ms");
+                            
+                            // Clean up async context
+                            environment.Globals.Remove("__async_context");
+                        }
+                        
+                        // Fire event for profiler/debugger
+                        OnFunctionExit?.Invoke("__async_block");
                     }
                     break;
                     
                 case Opcode.BeginParallel:
                     {
                         // Mark beginning of parallel block
-                        Console.WriteLine("[VM] Beginning parallel block");
+                        var parallelContext = new Dictionary<string, object>
+                        {
+                            ["StartTime"] = DateTime.UtcNow,
+                            ["ThreadCount"] = environment.Globals.ContainsKey("__parallelism") 
+                                ? (int)environment.Globals["__parallelism"] 
+                                : Environment.ProcessorCount,
+                            ["IsParallel"] = true
+                        };
+                        
+                        // Store parallel context
+                        environment.Globals["__parallel_context"] = parallelContext;
+                        
+                        // Fire event for profiler/debugger
+                        OnFunctionEnter?.Invoke("__parallel_block", instructionPointer);
                     }
                     break;
                     
                 case Opcode.EndParallel:
                     {
                         // Mark end of parallel block
-                        Console.WriteLine("[VM] Ending parallel block");
+                        if (environment.Globals.TryGetValue("__parallel_context", out var contextObj) && 
+                            contextObj is Dictionary<string, object> parallelContext)
+                        {
+                            var duration = DateTime.UtcNow - (DateTime)parallelContext["StartTime"];
+                            Console.WriteLine($"[VM] Parallel block completed in {duration.TotalMilliseconds}ms using {parallelContext["ThreadCount"]} threads");
+                            
+                            // Clean up parallel context
+                            environment.Globals.Remove("__parallel_context");
+                        }
+                        
+                        // Fire event for profiler/debugger
+                        OnFunctionExit?.Invoke("__parallel_block");
                     }
                     break;
                     
