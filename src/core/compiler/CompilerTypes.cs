@@ -112,6 +112,34 @@ namespace Ouroboros.Core.Compiler
             
             return allSymbols;
         }
+
+        /// <summary>
+        /// Get the index of a global variable by name
+        /// </summary>
+        public int GetGlobalIndex(string name)
+        {
+            if (symbols.TryGetValue(name, out var symbol))
+            {
+                return symbol.Index;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Get names of all local variables in the current scope
+        /// </summary>
+        public List<string> GetLocalNames()
+        {
+            var localNames = new List<string>();
+            
+            // Get local variables from all scope levels
+            foreach (var scope in scopeStack)
+            {
+                localNames.AddRange(scope.Keys);
+            }
+            
+            return localNames;
+        }
     }
     
     public class Symbol

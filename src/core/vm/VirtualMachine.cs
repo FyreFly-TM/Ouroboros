@@ -17,6 +17,9 @@ namespace Ouroboros.Core.VM
         public event Action<int> OnMemoryAllocate;
         public event Action<int> OnMemoryFree;
         public event Action<Exception> OnException;
+        public event Action<string, int> OnFunctionEnter;
+        public event Action<string> OnFunctionExit;
+        public event Action<int, Opcode> OnInstructionExecute;
         private Stack<object> operandStack;
         private List<object> locals;
         private List<object> globals;
@@ -31,6 +34,15 @@ namespace Ouroboros.Core.VM
         private CompiledProgram compiledProgram;
         private SymbolTable symbolTable;
         private Dictionary<int, GeneratorState> generatorStates = new Dictionary<int, GeneratorState>();
+        
+        // Debugger support properties
+        public int ProgramCounter => instructionPointer;
+        public int StackPointer => operandStack?.Count ?? 0;
+        public int FramePointer => callStack?.Count > 0 ? callStack.Peek().LocalsBase : 0;
+        public object Accumulator => operandStack?.Count > 0 ? operandStack.Peek() : null;
+        
+        // Memory array for debugger
+        private byte[] memory = new byte[65536]; // 64KB of memory
         
         public VirtualMachine()
         {
@@ -3065,6 +3077,94 @@ namespace Ouroboros.Core.VM
             public Stack<object> Values { get; set; } = new Stack<object>();
             public bool IsFinished { get; set; }
         }
+        
+        #region Debugger Support Methods
+        
+        /// <summary>
+        /// Execute a single instruction (for debugger stepping)
+        /// </summary>
+        public void Step()
+        {
+            if (instructionPointer < instructions.Length)
+            {
+                ExecuteInstruction();
+            }
+        }
+        
+        /// <summary>
+        /// Read a byte from memory (for debugger memory inspection)
+        /// </summary>
+        public byte ReadMemory(int address)
+        {
+            if (address >= 0 && address < memory.Length)
+            {
+                return memory[address];
+            }
+            return 0;
+        }
+        
+        /// <summary>
+        /// Write a byte to memory
+        /// </summary>
+        public void WriteMemory(int address, byte value)
+        {
+            if (address >= 0 && address < memory.Length)
+            {
+                memory[address] = value;
+            }
+        }
+        
+        /// <summary>
+        /// Try to get a global variable by name (for debugger variable inspection)
+        /// </summary>
+        public bool TryGetGlobalVariable(string name, out object value)
+        {
+            value = null;
+            
+            if (symbolTable != null)
+            {
+                var globalIndex = symbolTable.GetGlobalIndex(name);
+                if (globalIndex >= 0 && globalIndex < globals.Count)
+                {
+                    value = globals[globalIndex];
+                    return true;
+                }
+            }
+            
+            // Also check the runtime environment
+            if (environment?.Globals.TryGetValue(name, out value) == true)
+            {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        /// <summary>
+        /// Get local variables for the current frame (for debugger inspection)
+        /// </summary>
+        public Dictionary<string, object> GetLocalVariables()
+        {
+            var result = new Dictionary<string, object>();
+            
+            if (callStack.Count > 0 && symbolTable != null)
+            {
+                var frame = callStack.Peek();
+                var localBase = frame.LocalsBase;
+                
+                // Get local variable names from symbol table
+                var localNames = symbolTable.GetLocalNames();
+                
+                for (int i = 0; i < localNames.Count && localBase + i < locals.Count; i++)
+                {
+                    result[localNames[i]] = locals[localBase + i];
+                }
+            }
+            
+            return result;
+        }
+        
+        #endregion
     }
     
     /// <summary>
