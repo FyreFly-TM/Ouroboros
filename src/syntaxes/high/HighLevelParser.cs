@@ -361,9 +361,47 @@ namespace Ouroboros.Syntaxes.High
         
         private Statement ParseEndMarker()
         {
-            // This is a placeholder - in a full implementation,
-            // we'd validate that the end marker matches the expected construct
-            return new ExpressionStatement(new LiteralExpression(CreateToken(TokenType.NullLiteral, "null", null)));
+            // Validate that the end marker matches the expected construct
+            if (!Match(TokenType.End))
+            {
+                throw Error(Current(), "Expected 'end' keyword");
+            }
+            
+            // Check what follows the 'end' keyword
+            if (Check(TokenType.If))
+            {
+                Advance(); // consume 'if'
+                // This is the end of an if statement
+                Console.WriteLine($"DEBUG: Parsed 'end if'");
+                return new ExpressionStatement(new LiteralExpression(CreateToken(TokenType.NullLiteral, "null", null)));
+            }
+            else if (Check(TokenType.While))
+            {
+                Advance(); // consume 'while'
+                // This is the end of a while statement
+                Console.WriteLine($"DEBUG: Parsed 'end while'");
+                return new ExpressionStatement(new LiteralExpression(CreateToken(TokenType.NullLiteral, "null", null)));
+            }
+            else if (Check(TokenType.For))
+            {
+                Advance(); // consume 'for'
+                // This is the end of a for statement
+                Console.WriteLine($"DEBUG: Parsed 'end for'");
+                return new ExpressionStatement(new LiteralExpression(CreateToken(TokenType.NullLiteral, "null", null)));
+            }
+            else if (Check(TokenType.Function))
+            {
+                // Don't consume here - let ParseFunctionDefinition handle it
+                // This end marker will be consumed by the function parser
+                Console.WriteLine($"DEBUG: Found 'end function' marker");
+                return new ExpressionStatement(new LiteralExpression(CreateToken(TokenType.NullLiteral, "null", null)));
+            }
+            else
+            {
+                // Generic end marker
+                Console.WriteLine($"DEBUG: Parsed generic 'end' marker");
+                return new ExpressionStatement(new LiteralExpression(CreateToken(TokenType.NullLiteral, "null", null)));
+            }
         }
         
         private Expression ParseNaturalLanguageLinq()
