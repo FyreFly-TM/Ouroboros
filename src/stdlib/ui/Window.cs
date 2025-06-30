@@ -115,25 +115,58 @@ namespace Ouroboros.StdLib.UI
         private void PlatformHide() 
         {
             // Platform-specific hide logic
-            // In a full implementation, this would hide the native window
-            // For now, just mark as not visible
-            IsVisible = false;
+            if (IsVisible)
+            {
+                IsVisible = false;
+                
+                // Notify the UI backend to hide the window
+                UIBackend.SetWindowVisible(this, false);
+                
+                // Suspend render updates while hidden
+                UIBackend.SuspendRendering(this);
+            }
         }
         
         private void PlatformClose() 
         {
             // Platform-specific close logic
-            IsVisible = false;
+            if (IsVisible)
+            {
+                IsVisible = false;
+                UIBackend.SetWindowVisible(this, false);
+            }
+            
+            // Invoke close handler
             OnClosed?.Invoke();
-            // In a full implementation, this would close the native window
+            
+            // Clean up window resources
+            UIBackend.DestroyWindow(this);
+            
+            // Remove from window manager
+            UIBackend.UnregisterWindow(this);
+            
+            // Clear event handlers to prevent memory leaks
+            Resized = null;
+            MouseMoved = null;
+            MouseClicked = null;
+            KeyPressed = null;
+            Closed = null;
         }
         
         private void PlatformInvalidate() 
         {
             // Platform-specific invalidation logic
-            // In a full implementation, this would request a redraw of the native window
-            // For now, we'll process pending messages to ensure UI updates
-            UIBackend.ProcessMessages();
+            if (IsVisible && isInitialized)
+            {
+                // Mark the window as needing redraw
+                UIBackend.InvalidateWindow(this);
+                
+                // Request a redraw in the next frame
+                UIBackend.RequestRedraw(this);
+                
+                // Process any pending UI messages
+                UIBackend.ProcessMessages();
+            }
         }
         
         public override void ApplyTheme(Theme theme)

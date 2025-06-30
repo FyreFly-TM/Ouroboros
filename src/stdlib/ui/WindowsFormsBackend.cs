@@ -270,5 +270,96 @@ namespace Ouroboros.StdLib.UI
                 }
             }
         }
+        
+        public static void SetWindowVisible(Window window, bool visible)
+        {
+            if (widgetToControl.TryGetValue(window, out var control) && control is Form form)
+            {
+                if (visible)
+                {
+                    form.Show();
+                    form.BringToFront();
+                }
+                else
+                {
+                    form.Hide();
+                }
+            }
+        }
+        
+        public static void SuspendRendering(Window window)
+        {
+            if (widgetToControl.TryGetValue(window, out var control))
+            {
+                control.SuspendLayout();
+            }
+        }
+        
+        public static void ResumeRendering(Window window)
+        {
+            if (widgetToControl.TryGetValue(window, out var control))
+            {
+                control.ResumeLayout(true);
+            }
+        }
+        
+        public static void DestroyWindow(Window window)
+        {
+            if (widgetToControl.TryGetValue(window, out var control))
+            {
+                // Dispose the control and all its children
+                control.Dispose();
+                
+                // Remove from tracking dictionaries
+                widgetToControl.Remove(window);
+                controlToWidget.Remove(control);
+                
+                // If this was the main form, clear the reference
+                if (control == mainForm)
+                {
+                    mainForm = null;
+                }
+            }
+        }
+        
+        public static void UnregisterWindow(Window window)
+        {
+            // Remove window from any global registries
+            // This is called after DestroyWindow to ensure complete cleanup
+            
+            // Clean up any child widgets
+            foreach (var child in window.Children)
+            {
+                if (widgetToControl.ContainsKey(child))
+                {
+                    var childControl = widgetToControl[child];
+                    widgetToControl.Remove(child);
+                    controlToWidget.Remove(childControl);
+                }
+            }
+        }
+        
+        public static void InvalidateWindow(Window window)
+        {
+            if (widgetToControl.TryGetValue(window, out var control))
+            {
+                control.Invalidate();
+            }
+        }
+        
+        public static void RequestRedraw(Window window)
+        {
+            if (widgetToControl.TryGetValue(window, out var control))
+            {
+                // Force immediate redraw
+                control.Update();
+                
+                // For forms, also refresh
+                if (control is Form form)
+                {
+                    form.Refresh();
+                }
+            }
+        }
     }
 } 
