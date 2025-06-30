@@ -473,11 +473,28 @@ namespace Ouroboros.Core.Compiler
             };
         }
         
+        private Dictionary<string, int> labelAddresses = new Dictionary<string, int>();
+        
+        /// <summary>
+        /// Register a label at the current position
+        /// </summary>
+        public void DefineLabel(string label)
+        {
+            labelAddresses[label] = CurrentPosition;
+        }
+        
         private int ResolveLabel(string label)
         {
-            // In a real implementation, this would resolve label addresses
-            // For now, return a placeholder
-            return 0;
+            // Try to resolve the label to its address
+            if (labelAddresses.TryGetValue(label, out int address))
+            {
+                return address - CurrentPosition - 4; // Return relative offset
+            }
+            
+            // If label not found, this might be a forward reference
+            // Add it to pending jumps to be resolved later
+            Console.WriteLine($"Warning: Unresolved label '{label}', treating as forward reference");
+            return EmitJump(Opcode.Jump); // Emit placeholder jump
         }
         
         private int ResolveFunctionIndex(string functionName)
@@ -496,14 +513,70 @@ namespace Ouroboros.Core.Compiler
             // For native instructions, emit a special opcode followed by raw bytes
             Emit(Opcode.NativeInstruction);
             
-            // In a real implementation, this would assemble the instruction
-            // For now, emit a placeholder
-            var instructionBytes = new byte[] { 0x90 }; // NOP
+            // Assemble the instruction based on mnemonic and operands
+            var instructionBytes = AssembleInstruction(mnemonic, operands);
+            
             Emit(Opcode.RawBytes, instructionBytes.Length);
             foreach (var b in instructionBytes)
             {
                 bytecode.Add(b);
             }
+        }
+        
+        private byte[] AssembleInstruction(string mnemonic, string[] operands)
+        {
+            // Basic x86-64 instruction assembly
+            // This is a simplified implementation - a full assembler would be much more complex
+            
+            switch (mnemonic.ToUpper())
+            {
+                case "NOP":
+                    return new byte[] { 0x90 };
+                    
+                case "INT":
+                    if (operands.Length > 0 && byte.TryParse(operands[0], out byte intNum))
+                        return new byte[] { 0xCD, intNum };
+                    break;
+                    
+                case "HLT":
+                    return new byte[] { 0xF4 };
+                    
+                case "CLC":
+                    return new byte[] { 0xF8 };
+                    
+                case "STC":
+                    return new byte[] { 0xF9 };
+                    
+                case "CLI":
+                    return new byte[] { 0xFA };
+                    
+                case "STI":
+                    return new byte[] { 0xFB };
+                    
+                case "CLD":
+                    return new byte[] { 0xFC };
+                    
+                case "STD":
+                    return new byte[] { 0xFD };
+                    
+                case "PUSHFD":
+                    return new byte[] { 0x9C };
+                    
+                case "POPFD":
+                    return new byte[] { 0x9D };
+                    
+                case "CPUID":
+                    return new byte[] { 0x0F, 0xA2 };
+                    
+                case "RDTSC":
+                    return new byte[] { 0x0F, 0x31 };
+                    
+                // TODO: Add more x86-64 instructions as needed
+            }
+            
+            // For unrecognized instructions, emit a NOP and log a warning
+            Console.WriteLine($"Warning: Unrecognized instruction '{mnemonic}', emitting NOP");
+            return new byte[] { 0x90 };
         }
         
         private Stack<int> jumpsToResolve = new Stack<int>();
@@ -935,17 +1008,6 @@ namespace Ouroboros.Core.Compiler
             interfaceInfo.BaseInterfaces.Add(baseInterface);
         }
         
-        public void AddMethod(string name, TypeNode returnType, List<ParameterNode> parameters)
-        {
-            interfaceInfo.Methods.Add(new InterfaceMethodInfo
-            {
-                Name = name,
-                ReturnType = returnType?.Name,
-                Parameters = parameters.Select(p => new ParameterInfo { Name = p.Name, Type = p.Type?.Name }).ToList()
-            });
-        }
-        
-        // Overload for AST types
         public void AddMethod(string name, AST.TypeNode returnType, List<AST.Parameter> parameters)
         {
             interfaceInfo.Methods.Add(new InterfaceMethodInfo
@@ -956,18 +1018,6 @@ namespace Ouroboros.Core.Compiler
             });
         }
         
-        public void AddProperty(string name, TypeNode type, bool hasGetter, bool hasSetter)
-        {
-            interfaceInfo.Properties.Add(new InterfacePropertyInfo
-            {
-                Name = name,
-                Type = type?.Name,
-                HasGetter = hasGetter,
-                HasSetter = hasSetter
-            });
-        }
-        
-        // Overload for AST types
         public void AddProperty(string name, AST.TypeNode type, bool hasGetter, bool hasSetter)
         {
             interfaceInfo.Properties.Add(new InterfacePropertyInfo

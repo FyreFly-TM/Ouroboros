@@ -1804,7 +1804,7 @@ namespace Ouroboros.Core.Compiler
             {
                 StartLabel = loopStart,
                 ContinueLabel = loopStart,
-                BreakLabel = builder.CurrentPosition + 1000  // Temporary, will be patched
+                BreakLabel = -1  // Will be patched after loop body is compiled
             };
             context.PushLoop(loopInfo);
             
