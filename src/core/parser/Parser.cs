@@ -1001,8 +1001,8 @@ namespace Ouroboros.Core.Parser
             Consume(TokenType.Semicolon, "Expected ';' after constant declaration.");
             
             // Create a field declaration with const modifier
-            // Use a dummy type node since constants infer their type
-            var constType = new TypeNode("const");
+            // Infer type from the initializer expression
+            var constType = InferTypeFromExpression(initializer);
             var modifiers = new List<Modifier> { Modifier.Const };
             return new FieldDeclaration(name, constType, initializer, modifiers);
         }
@@ -6719,6 +6719,102 @@ namespace Ouroboros.Core.Parser
             Consume(TokenType.RightBrace, "Expected '}' after struct literal");
             
             return new StructLiteral(structName, fields);
+        }
+        
+        private TypeNode InferTypeFromExpression(Expression expr)
+        {
+            // Infer type from the initializer expression
+            switch (expr)
+            {
+                case LiteralExpression literal:
+                    if (literal.Token.Type == TokenType.IntegerLiteral)
+                        return new TypeNode("int");
+                    if (literal.Token.Type == TokenType.FloatLiteral)
+                        return new TypeNode("float");
+                    if (literal.Token.Type == TokenType.DoubleLiteral)
+                        return new TypeNode("double");
+                    if (literal.Token.Type == TokenType.StringLiteral || literal.Token.Type == TokenType.InterpolatedString)
+                        return new TypeNode("string");
+                    if (literal.Token.Type == TokenType.BooleanLiteral)
+                        return new TypeNode("bool");
+                    if (literal.Token.Type == TokenType.NullLiteral)
+                        return new TypeNode("object");
+                    if (literal.Token.Type == TokenType.UnitLiteral)
+                        return new TypeNode("Unit");
+                    break;
+                    
+                case ArrayExpression array:
+                    if (array.Elements.Count > 0)
+                    {
+                        var elementType = InferTypeFromExpression(array.Elements[0]);
+                        return new TypeNode(elementType.Name + "[]", null, true, 1);
+                    }
+                    return new TypeNode("object[]", null, true, 1);
+                    
+                case NewExpression newExpr:
+                    return newExpr.Type;
+                    
+                case CallExpression call:
+                    // For now, assume function calls return 'var'
+                    return new TypeNode("var");
+                    
+                case BinaryExpression binary:
+                    // For arithmetic operations, infer from operands
+                    if (IsArithmeticOperator(binary.Operator))
+                    {
+                        var leftType = InferTypeFromExpression(binary.Left);
+                        var rightType = InferTypeFromExpression(binary.Right);
+                        return GetWidestNumericType(leftType, rightType);
+                    }
+                    // Comparison operations return bool
+                    if (IsComparisonOperator(binary.Operator))
+                    {
+                        return new TypeNode("bool");
+                    }
+                    break;
+                    
+                case VectorExpression:
+                    return new TypeNode("Vector");
+                    
+                case MatrixExpression:
+                    return new TypeNode("Matrix");
+                    
+                case QuaternionExpression:
+                    return new TypeNode("Quaternion");
+            }
+            
+            // Default to 'var' for unknown types
+            return new TypeNode("var");
+        }
+        
+        private bool IsArithmeticOperator(Token op)
+        {
+            return op.Type == TokenType.Plus || op.Type == TokenType.Minus ||
+                   op.Type == TokenType.Multiply || op.Type == TokenType.Divide ||
+                   op.Type == TokenType.Modulo || op.Type == TokenType.Power;
+        }
+        
+        private bool IsComparisonOperator(Token op)
+        {
+            return op.Type == TokenType.Equal || op.Type == TokenType.NotEqual ||
+                   op.Type == TokenType.Less || op.Type == TokenType.Greater ||
+                   op.Type == TokenType.LessEqual || op.Type == TokenType.GreaterEqual;
+        }
+        
+        private TypeNode GetWidestNumericType(TypeNode left, TypeNode right)
+        {
+            // Numeric type promotion rules
+            if (left.Name == "double" || right.Name == "double")
+                return new TypeNode("double");
+            if (left.Name == "float" || right.Name == "float")
+                return new TypeNode("float");
+            if (left.Name == "long" || right.Name == "long")
+                return new TypeNode("long");
+            if (left.Name == "int" || right.Name == "int")
+                return new TypeNode("int");
+            
+            // Default to var if types are unknown
+            return new TypeNode("var");
         }
     }
 
