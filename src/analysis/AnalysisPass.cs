@@ -627,16 +627,153 @@ namespace Ouroboros.Analysis
         private void AnalyzeUnitDeclarations(SemanticModel model) 
         {
             // Analyze unit declarations like "meters", "kg", "seconds", etc.
-            // In a full implementation, this would scan for unit-typed variables and fields
             
-            // For now, add a basic unit to demonstrate the concept
-            model.Units.Add(new UnitDefinition 
-            { 
-                Name = "meter", 
-                Symbol = "m",
-                BaseUnit = "meter",
-                ConversionFactor = 1.0 
-            });
+            // Define SI base units
+            var siBaseUnits = new[]
+            {
+                new UnitDefinition { Name = "meter", Symbol = "m", BaseUnit = "meter", ConversionFactor = 1.0 },
+                new UnitDefinition { Name = "kilogram", Symbol = "kg", BaseUnit = "kilogram", ConversionFactor = 1.0 },
+                new UnitDefinition { Name = "second", Symbol = "s", BaseUnit = "second", ConversionFactor = 1.0 },
+                new UnitDefinition { Name = "ampere", Symbol = "A", BaseUnit = "ampere", ConversionFactor = 1.0 },
+                new UnitDefinition { Name = "kelvin", Symbol = "K", BaseUnit = "kelvin", ConversionFactor = 1.0 },
+                new UnitDefinition { Name = "mole", Symbol = "mol", BaseUnit = "mole", ConversionFactor = 1.0 },
+                new UnitDefinition { Name = "candela", Symbol = "cd", BaseUnit = "candela", ConversionFactor = 1.0 }
+            };
+            
+            // Define common derived units
+            var derivedUnits = new[]
+            {
+                // Length
+                new UnitDefinition { Name = "kilometer", Symbol = "km", BaseUnit = "meter", ConversionFactor = 1000.0 },
+                new UnitDefinition { Name = "centimeter", Symbol = "cm", BaseUnit = "meter", ConversionFactor = 0.01 },
+                new UnitDefinition { Name = "millimeter", Symbol = "mm", BaseUnit = "meter", ConversionFactor = 0.001 },
+                new UnitDefinition { Name = "mile", Symbol = "mi", BaseUnit = "meter", ConversionFactor = 1609.344 },
+                new UnitDefinition { Name = "foot", Symbol = "ft", BaseUnit = "meter", ConversionFactor = 0.3048 },
+                new UnitDefinition { Name = "inch", Symbol = "in", BaseUnit = "meter", ConversionFactor = 0.0254 },
+                
+                // Mass
+                new UnitDefinition { Name = "gram", Symbol = "g", BaseUnit = "kilogram", ConversionFactor = 0.001 },
+                new UnitDefinition { Name = "pound", Symbol = "lb", BaseUnit = "kilogram", ConversionFactor = 0.453592 },
+                new UnitDefinition { Name = "ounce", Symbol = "oz", BaseUnit = "kilogram", ConversionFactor = 0.0283495 },
+                
+                // Time
+                new UnitDefinition { Name = "minute", Symbol = "min", BaseUnit = "second", ConversionFactor = 60.0 },
+                new UnitDefinition { Name = "hour", Symbol = "h", BaseUnit = "second", ConversionFactor = 3600.0 },
+                new UnitDefinition { Name = "day", Symbol = "d", BaseUnit = "second", ConversionFactor = 86400.0 },
+                new UnitDefinition { Name = "millisecond", Symbol = "ms", BaseUnit = "second", ConversionFactor = 0.001 },
+                new UnitDefinition { Name = "microsecond", Symbol = "μs", BaseUnit = "second", ConversionFactor = 0.000001 },
+                
+                // Force
+                new UnitDefinition { Name = "newton", Symbol = "N", BaseUnit = "newton", ConversionFactor = 1.0 },
+                
+                // Energy
+                new UnitDefinition { Name = "joule", Symbol = "J", BaseUnit = "joule", ConversionFactor = 1.0 },
+                new UnitDefinition { Name = "calorie", Symbol = "cal", BaseUnit = "joule", ConversionFactor = 4.184 },
+                
+                // Power
+                new UnitDefinition { Name = "watt", Symbol = "W", BaseUnit = "watt", ConversionFactor = 1.0 },
+                new UnitDefinition { Name = "kilowatt", Symbol = "kW", BaseUnit = "watt", ConversionFactor = 1000.0 },
+                new UnitDefinition { Name = "horsepower", Symbol = "hp", BaseUnit = "watt", ConversionFactor = 745.7 },
+                
+                // Temperature
+                new UnitDefinition { Name = "celsius", Symbol = "°C", BaseUnit = "kelvin", ConversionFactor = 1.0 }, // Note: offset needed
+                new UnitDefinition { Name = "fahrenheit", Symbol = "°F", BaseUnit = "kelvin", ConversionFactor = 0.556 }, // Note: offset needed
+                
+                // Voltage
+                new UnitDefinition { Name = "volt", Symbol = "V", BaseUnit = "volt", ConversionFactor = 1.0 },
+                new UnitDefinition { Name = "millivolt", Symbol = "mV", BaseUnit = "volt", ConversionFactor = 0.001 },
+                
+                // Current
+                new UnitDefinition { Name = "milliampere", Symbol = "mA", BaseUnit = "ampere", ConversionFactor = 0.001 }
+            };
+            
+            // Add all units to the model
+            model.Units.AddRange(siBaseUnits);
+            model.Units.AddRange(derivedUnits);
+            
+            // Scan AST for unit literal expressions and unit-typed variables
+            var allNodes = GetAllNodes(model.Program);
+            
+            foreach (var node in allNodes)
+            {
+                switch (node)
+                {
+                    case UnitLiteral unitLit:
+                        // Ensure the unit is registered
+                        if (!model.Units.Any(u => u.Symbol == unitLit.Unit || u.Name == unitLit.Unit))
+                        {
+                            diagnostics.ReportWarning(
+                                $"Unknown unit '{unitLit.Unit}' used in literal",
+                                new SourceLocation { Line = unitLit.Line, Column = unitLit.Column }
+                            );
+                        }
+                        break;
+                        
+                    case VariableDeclaration varDecl when varDecl.Type?.Name?.Contains("_") == true:
+                        // Check for unit-typed variables (e.g., "double_meters")
+                        var parts = varDecl.Type.Name.Split('_');
+                        if (parts.Length == 2)
+                        {
+                            var unitName = parts[1];
+                            if (!model.Units.Any(u => u.Name == unitName || u.Symbol == unitName))
+                            {
+                                diagnostics.ReportInfo(
+                                    $"Variable '{varDecl.Name}' uses unit type '{unitName}'",
+                                    new SourceLocation { Line = varDecl.Line, Column = varDecl.Column }
+                                );
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+        
+        private IEnumerable<AstNode> GetAllNodes(AstNode root)
+        {
+            var nodes = new List<AstNode>();
+            TraverseNodes(root, nodes);
+            return nodes;
+        }
+        
+        private void TraverseNodes(AstNode node, List<AstNode> nodes)
+        {
+            if (node == null) return;
+            
+            nodes.Add(node);
+            
+            // Traverse child nodes based on node type
+            switch (node)
+            {
+                case Core.AST.Program program:
+                    foreach (var stmt in program.Statements)
+                        TraverseNodes(stmt, nodes);
+                    break;
+                    
+                case BlockStatement block:
+                    foreach (var stmt in block.Statements)
+                        TraverseNodes(stmt, nodes);
+                    break;
+                    
+                case BinaryExpression binExpr:
+                    TraverseNodes(binExpr.Left, nodes);
+                    TraverseNodes(binExpr.Right, nodes);
+                    break;
+                    
+                case UnaryExpression unExpr:
+                    TraverseNodes(unExpr.Operand, nodes);
+                    break;
+                    
+                case CallExpression callExpr:
+                    TraverseNodes(callExpr.Callee, nodes);
+                    foreach (var arg in callExpr.Arguments)
+                        TraverseNodes(arg, nodes);
+                    break;
+                    
+                case VariableDeclaration varDecl:
+                    if (varDecl.Initializer != null)
+                        TraverseNodes(varDecl.Initializer, nodes);
+                    break;
+            }
         }
         
         private void AnalyzeDimensionalCompatibility(SemanticModel model) 

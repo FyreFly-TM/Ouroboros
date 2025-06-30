@@ -570,9 +570,37 @@ Other:
         
         private void UpdateCurrentLocation()
         {
-            // This would get the current source location from the VM
-            // For now, just increment line
-            currentLine++;
+            // Get the current source location from the VM's program counter
+            int pc = vm.ProgramCounter;
+            
+            // Retrieve source mapping information if available
+            if (vm.CompiledProgram != null && vm.CompiledProgram.SourceMap != null)
+            {
+                // Look up the source location for the current PC
+                var sourceLocation = vm.CompiledProgram.SourceMap.GetSourceLocation(pc);
+                if (sourceLocation != null)
+                {
+                    currentFile = sourceLocation.File;
+                    currentLine = sourceLocation.Line;
+                    return;
+                }
+            }
+            
+            // Fallback: Try to extract location from debug symbols
+            if (vm.SymbolTable != null)
+            {
+                var symbol = vm.SymbolTable.GetSymbolAtAddress(pc);
+                if (symbol != null && symbol.SourceLocation != null)
+                {
+                    currentFile = symbol.SourceLocation.File;
+                    currentLine = symbol.SourceLocation.Line;
+                    return;
+                }
+            }
+            
+            // If no source mapping is available, estimate based on bytecode
+            // Assuming roughly 3 bytecode instructions per source line
+            currentLine = 1 + (pc / 3);
         }
         
         private void ShowCurrentLocation()
@@ -746,52 +774,147 @@ Other:
         
         private object EvaluateArithmeticExpression(string expr)
         {
-            // Very simplified arithmetic evaluation
-            // In a real implementation, this would use a proper expression parser
+            // Parse and evaluate arithmetic expressions using a simple recursive descent parser
             
-            // For now, just handle simple binary operations
-            foreach (char op in new[] { '+', '-', '*', '/', '%' })
+            // First, handle parentheses
+            expr = expr.Trim();
+            if (expr.StartsWith("(") && expr.EndsWith(")"))
             {
-                int opIndex = expr.IndexOf(op);
-                if (opIndex > 0 && opIndex < expr.Length - 1)
+                int parenCount = 1;
+                bool isFullParen = true;
+                for (int i = 1; i < expr.Length - 1; i++)
                 {
-                    string leftStr = expr.Substring(0, opIndex).Trim();
-                    string rightStr = expr.Substring(opIndex + 1).Trim();
-                    
-                    object left = EvaluateExpression(leftStr);
-                    object right = EvaluateExpression(rightStr);
-                    
-                    if (left is int li && right is int ri)
+                    if (expr[i] == '(') parenCount++;
+                    else if (expr[i] == ')') parenCount--;
+                    if (parenCount == 0)
                     {
-                        return op switch
-                        {
-                            '+' => li + ri,
-                            '-' => li - ri,
-                            '*' => li * ri,
-                            '/' => li / ri,
-                            '%' => li % ri,
-                            _ => throw new Exception($"Unknown operator: {op}")
-                        };
+                        isFullParen = false;
+                        break;
                     }
-                    else if ((left is double || left is int) && (right is double || right is int))
-                    {
-                        double ld = Convert.ToDouble(left);
-                        double rd = Convert.ToDouble(right);
-                        
-                        return op switch
-                        {
-                            '+' => ld + rd,
-                            '-' => ld - rd,
-                            '*' => ld * rd,
-                            '/' => ld / rd,
-                            '%' => ld % rd,
-                            _ => throw new Exception($"Unknown operator: {op}")
-                        };
-                    }
+                }
+                if (isFullParen)
+                {
+                    return EvaluateArithmeticExpression(expr.Substring(1, expr.Length - 2));
                 }
             }
             
-            throw new Exception($"Unable to evaluate arithmetic expression: {expr}");
+            // Handle operators in order of precedence (low to high)
+            // Level 1: Addition and Subtraction
+            int opIndex = FindOperatorOutsideParens(expr, new[] { '+', '-' });
+            if (opIndex >= 0)
+            {
+                char op = expr[opIndex];
+                string leftStr = expr.Substring(0, opIndex).Trim();
+                string rightStr = expr.Substring(opIndex + 1).Trim();
+                
+                // Handle unary minus
+                if (opIndex == 0 && op == '-')
+                {
+                    object value = EvaluateExpression(rightStr);
+                    if (value is int intVal) return -intVal;
+                    if (value is double doubleVal) return -doubleVal;
+                    throw new Exception($"Cannot negate non-numeric value");
+                }
+                
+                object left = EvaluateExpression(leftStr);
+                object right = EvaluateExpression(rightStr);
+                
+                return PerformOperation(left, right, op);
+            }
+            
+            // Level 2: Multiplication, Division, and Modulo
+            opIndex = FindOperatorOutsideParens(expr, new[] { '*', '/', '%' });
+            if (opIndex >= 0)
+            {
+                char op = expr[opIndex];
+                string leftStr = expr.Substring(0, opIndex).Trim();
+                string rightStr = expr.Substring(opIndex + 1).Trim();
+                
+                object left = EvaluateExpression(leftStr);
+                object right = EvaluateExpression(rightStr);
+                
+                return PerformOperation(left, right, op);
+            }
+            
+            // Level 3: Exponentiation (if supported)
+            opIndex = FindOperatorOutsideParens(expr, new[] { '^' });
+            if (opIndex >= 0)
+            {
+                string leftStr = expr.Substring(0, opIndex).Trim();
+                string rightStr = expr.Substring(opIndex + 1).Trim();
+                
+                object left = EvaluateExpression(leftStr);
+                object right = EvaluateExpression(rightStr);
+                
+                double ld = Convert.ToDouble(left);
+                double rd = Convert.ToDouble(right);
+                return Math.Pow(ld, rd);
+            }
+            
+            // If no operators found, evaluate as a simple expression
+            return EvaluateExpression(expr);
+        }
+        
+        private int FindOperatorOutsideParens(string expr, char[] operators)
+        {
+            int parenDepth = 0;
+            int lastOpIndex = -1;
+            
+            for (int i = expr.Length - 1; i >= 0; i--)
+            {
+                char c = expr[i];
+                
+                if (c == ')')
+                    parenDepth++;
+                else if (c == '(')
+                    parenDepth--;
+                else if (parenDepth == 0 && operators.Contains(c))
+                {
+                    // Skip unary operators at the beginning
+                    if (i > 0 || (c != '+' && c != '-'))
+                        return i;
+                }
+            }
+            
+            return lastOpIndex;
+        }
+        
+        private object PerformOperation(object left, object right, char op)
+        {
+            if (left is int li && right is int ri)
+            {
+                return op switch
+                {
+                    '+' => li + ri,
+                    '-' => li - ri,
+                    '*' => li * ri,
+                    '/' => ri != 0 ? li / ri : throw new DivideByZeroException(),
+                    '%' => ri != 0 ? li % ri : throw new DivideByZeroException(),
+                    _ => throw new Exception($"Unknown operator: {op}")
+                };
+            }
+            else if ((left is double || left is int) && (right is double || right is int))
+            {
+                double ld = Convert.ToDouble(left);
+                double rd = Convert.ToDouble(right);
+                
+                return op switch
+                {
+                    '+' => ld + rd,
+                    '-' => ld - rd,
+                    '*' => ld * rd,
+                    '/' => rd != 0 ? ld / rd : throw new DivideByZeroException(),
+                    '%' => rd != 0 ? ld % rd : throw new DivideByZeroException(),
+                    _ => throw new Exception($"Unknown operator: {op}")
+                };
+            }
+            else if (op == '+' && (left is string || right is string))
+            {
+                // String concatenation
+                return left.ToString() + right.ToString();
+            }
+            
+            throw new Exception($"Cannot perform {op} operation on {left?.GetType()?.Name ?? "null"} and {right?.GetType()?.Name ?? "null"}");
         }
         
         private string FormatValue(object value)
