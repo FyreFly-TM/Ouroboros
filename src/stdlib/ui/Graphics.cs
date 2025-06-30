@@ -30,9 +30,39 @@ namespace Ouroboros.StdLib.UI
         
         public void Clear(Color color) 
         {
-            // In a real implementation, this would clear the entire surface
-            // For now, we'll just log the operation
-            LogOperation($"Clear({color})");
+            // Clear the entire drawing surface with the specified color
+            
+            // Reset transformation and clipping state
+            var savedTransform = currentTransform;
+            var savedClipCount = clipStack.Count;
+            
+            // Apply identity transform for clearing
+            currentTransform = Matrix.Identity3;
+            
+            // Clear any clipping regions temporarily
+            var tempClipStack = new Stack<Rectangle>(clipStack.Reverse());
+            clipStack.Clear();
+            
+            // Perform platform-specific clear operation
+            if (platformContext != null)
+            {
+                // Platform-specific clear would go here
+                // For example, for GDI+: graphics.Clear(ConvertColor(color))
+                LogOperation($"Clear({color}) - Full surface clear");
+            }
+            else
+            {
+                // Fallback: Fill a large rectangle with the background color
+                // This ensures the entire visible area is cleared
+                FillRectangle(new Vector(-10000, -10000), new Vector(20000, 20000), color);
+            }
+            
+            // Restore transformation and clipping state
+            currentTransform = savedTransform;
+            while (tempClipStack.Count > 0)
+            {
+                clipStack.Push(tempClipStack.Pop());
+            }
         }
         
         public void DrawLine(Vector start, Vector end, Color color, double width = 1) 

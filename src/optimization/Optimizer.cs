@@ -822,9 +822,197 @@ namespace Ouroboros.Optimization
         
         public byte[] ApplyToBytecode(byte[] bytecode)
         {
-            // Simplified register allocation
-            // Real implementation would use graph coloring or linear scan
-            return bytecode;
+            // Linear scan register allocation
+            var allocator = new LinearScanAllocator();
+            return allocator.Allocate(bytecode);
+        }
+        
+        private class LinearScanAllocator
+        {
+            private const int NUM_REGISTERS = 16; // Typical register count
+            private readonly bool[] registerUsed = new bool[NUM_REGISTERS];
+            private readonly Dictionary<int, int> variableToRegister = new Dictionary<int, int>();
+            private readonly List<LiveInterval> intervals = new List<LiveInterval>();
+            
+            public byte[] Allocate(byte[] bytecode)
+            {
+                // Phase 1: Build live intervals
+                BuildLiveIntervals(bytecode);
+                
+                // Phase 2: Sort intervals by start point
+                intervals.Sort((a, b) => a.Start.CompareTo(b.Start));
+                
+                // Phase 3: Allocate registers using linear scan
+                AllocateRegisters();
+                
+                // Phase 4: Rewrite bytecode with register assignments
+                return RewriteBytecode(bytecode);
+            }
+            
+            private void BuildLiveIntervals(byte[] bytecode)
+            {
+                // Scan bytecode to determine variable lifetimes
+                for (int i = 0; i < bytecode.Length; i++)
+                {
+                    var opcode = (Opcode)bytecode[i];
+                    
+                    switch (opcode)
+                    {
+                        case Opcode.STORE_VAR:
+                            if (i + 1 < bytecode.Length)
+                            {
+                                int varIndex = bytecode[++i];
+                                RecordVariableUse(varIndex, i);
+                            }
+                            break;
+                            
+                        case Opcode.LOAD_VAR:
+                            if (i + 1 < bytecode.Length)
+                            {
+                                int varIndex = bytecode[++i];
+                                RecordVariableUse(varIndex, i);
+                            }
+                            break;
+                    }
+                }
+            }
+            
+            private void RecordVariableUse(int varIndex, int position)
+            {
+                var interval = intervals.FirstOrDefault(i => i.VarIndex == varIndex);
+                if (interval == null)
+                {
+                    interval = new LiveInterval { VarIndex = varIndex, Start = position, End = position };
+                    intervals.Add(interval);
+                }
+                else
+                {
+                    interval.End = position; // Extend live range
+                }
+            }
+            
+            private void AllocateRegisters()
+            {
+                var active = new List<LiveInterval>();
+                
+                foreach (var interval in intervals)
+                {
+                    // Expire old intervals
+                    active.RemoveAll(i => i.End < interval.Start);
+                    
+                    // Try to find a free register
+                    int register = FindFreeRegister(active);
+                    
+                    if (register != -1)
+                    {
+                        // Assign register
+                        interval.Register = register;
+                        variableToRegister[interval.VarIndex] = register;
+                        active.Add(interval);
+                    }
+                    else
+                    {
+                        // Spill - use memory location
+                        interval.Register = -1; // Indicates spill
+                    }
+                }
+            }
+            
+            private int FindFreeRegister(List<LiveInterval> active)
+            {
+                Array.Fill(registerUsed, false);
+                
+                foreach (var interval in active)
+                {
+                    if (interval.Register >= 0)
+                    {
+                        registerUsed[interval.Register] = true;
+                    }
+                }
+                
+                for (int i = 0; i < NUM_REGISTERS; i++)
+                {
+                    if (!registerUsed[i])
+                    {
+                        return i;
+                    }
+                }
+                
+                return -1; // No free registers
+            }
+            
+            private byte[] RewriteBytecode(byte[] bytecode)
+            {
+                var result = new List<byte>();
+                
+                for (int i = 0; i < bytecode.Length; i++)
+                {
+                    var opcode = (Opcode)bytecode[i];
+                    result.Add(bytecode[i]);
+                    
+                    switch (opcode)
+                    {
+                        case Opcode.STORE_VAR:
+                            if (i + 1 < bytecode.Length)
+                            {
+                                int varIndex = bytecode[++i];
+                                if (variableToRegister.TryGetValue(varIndex, out int register))
+                                {
+                                    // Replace with register store
+                                    result[result.Count - 1] = (byte)Opcode.STORE_REG;
+                                    result.Add((byte)register);
+                                }
+                                else
+                                {
+                                    // Keep memory store
+                                    result.Add((byte)varIndex);
+                                }
+                            }
+                            break;
+                            
+                        case Opcode.LOAD_VAR:
+                            if (i + 1 < bytecode.Length)
+                            {
+                                int varIndex = bytecode[++i];
+                                if (variableToRegister.TryGetValue(varIndex, out int register))
+                                {
+                                    // Replace with register load
+                                    result[result.Count - 1] = (byte)Opcode.LOAD_REG;
+                                    result.Add((byte)register);
+                                }
+                                else
+                                {
+                                    // Keep memory load
+                                    result.Add((byte)varIndex);
+                                }
+                            }
+                            break;
+                            
+                        default:
+                            // Copy operands
+                            while (i + 1 < bytecode.Length && !IsOpcode(bytecode[i + 1]))
+                            {
+                                result.Add(bytecode[++i]);
+                            }
+                            break;
+                    }
+                }
+                
+                return result.ToArray();
+            }
+            
+            private bool IsOpcode(byte value)
+            {
+                return Enum.IsDefined(typeof(Opcode), value);
+            }
+            
+            private class LiveInterval
+            {
+                public int VarIndex { get; set; }
+                public int Start { get; set; }
+                public int End { get; set; }
+                public int Register { get; set; } = -1;
+            }
         }
     }
     
