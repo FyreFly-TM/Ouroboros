@@ -1,0 +1,522 @@
+namespace Ouroboros.Core.VM
+{
+    /// <summary>
+    /// Opcodes for the Ouroboros Virtual Machine
+    /// </summary>
+    public enum Opcode
+    {
+        // Stack Operations
+        Push,
+        Pop,
+        Dup,
+        Duplicate,
+        Dup2,
+        Duplicate2,
+        Swap,
+        
+        // Arithmetic
+        Add,
+        Sub,
+        Subtract,
+        Mul,
+        Multiply,
+        Div,
+        Divide,
+        Mod,
+        Modulo,
+        Power,
+        Neg,
+        Negate,
+        SquareRoot,
+        Sin,
+        Cos,
+        Tan,
+        
+        // Comparison
+        Eq,
+        Equal,
+        Ne,
+        NotEqual,
+        Lt,
+        Less,
+        Le,
+        LessEqual,
+        Gt,
+        Greater,
+        Ge,
+        GreaterEqual,
+        Compare,
+        
+        // Logical
+        And,
+        LogicalAnd,
+        Or,
+        LogicalOr,
+        Not,
+        LogicalNot,
+        
+        // Bitwise
+        BitwiseAnd,
+        BitwiseOr,
+        BitwiseXor,
+        BitwiseNot,
+        LeftShift,
+        RightShift,
+        
+        // Memory operations
+        AddressOf,
+        
+        // Control Flow
+        Jump,
+        JumpIf,
+        JumpIfTrue,
+        JumpIfNot,
+        JumpIfFalse,
+        Call,
+        AsyncCall,
+        Return,
+        ReturnVoid,
+        
+        // Variables
+        LoadLocal,
+        StoreLocal,
+        LoadGlobal,
+        StoreGlobal,
+        LoadField,
+        StoreField,
+        LoadConstant,
+        LoadRegister,
+        StoreRegister,
+        LoadTrue,
+        LoadFalse,
+        LoadNull,
+        LoadThis,
+        LoadBase,
+        
+        // Objects
+        New,
+        NewObject,
+        NewArray,
+        MakeArray,
+        MakeVector,
+        MakeMatrix,
+        MakeQuaternion,
+        LoadElement,
+        StoreElement,
+        LoadMember,
+        LoadMemberNullSafe,
+        StoreMember,
+        
+        // Type Operations
+        Cast,
+        IsInstance,
+        TypeOf,
+        SizeOf,
+        
+        // Method Operations
+        CallMethod,
+        DefineClass,
+        DefineInterface,
+        DefineStruct,
+        DefineEnum,
+        DefineComponent,
+        DefineSystem,
+        DefineEntity,
+        DefineFunction,
+        
+        // String Operations
+        ToString,
+        StringConcat,
+        
+        // Special Operations
+        Nop,
+        NOP,
+        Break,
+        Continue,
+        Throw,
+        Rethrow,
+        Halt,
+        NullCoalesce,
+        
+        // Iterator Operations
+        GetIterator,
+        IteratorHasNext,
+        IteratorNext,
+        
+        // Vector/Math Operations
+        DotProduct,
+        CrossProduct,
+        
+        // Exception Handling
+        BeginTry,
+        EndTry,
+        BeginCatch,
+        BeginFinally,
+        EndFinally,
+        CheckExceptionType,
+        
+        // Parallel/Async
+        SetParallelism,
+        BeginAsync,
+        EndAsync,
+        BeginParallel,
+        EndParallel,
+        
+        // Pattern Matching
+        ThrowMatchError,
+        
+        // Assembly/Raw
+        EmitRawAssembly,
+        NativeInstruction,
+        RawBytes,
+        
+        // Yield Operations
+        YieldReturn,
+        YieldBreak,
+        
+        // Monitor Operations
+        MonitorEnter,
+        MonitorExit,
+        
+        // Import Operations
+        Import,
+        
+    // Mathematical operations
+    PreIncrement,
+    PostIncrement,
+    PreDecrement,
+    PostDecrement,
+    Summation,
+    Product,
+    MathOp,
+    
+    // Advanced mathematical operations for Ouroboros
+    PartialDerivative,
+    Gradient,
+    Limit,
+    Integral,
+    CrossProduct3D,
+    DotProduct3D,
+    AutoDiff,
+    ElementOf,
+    SetUnion,
+    SetIntersection,
+    SetDifference,
+    Mean,
+    StandardDeviation,
+    Variance,
+    Correlation,
+    
+    // Physics domain operations
+    PhysicsCrossProduct,
+    PhysicsDotProduct,
+    PhysicsGradient,
+    PhysicsPartialDerivative,
+    
+    // Statistics domain operations  
+    StatsMean,
+    StatsStandardDeviation,
+    StatsVariance,
+    StatsCorrelation,
+    
+    // Natural language operations
+    AllEvenNumbers,
+    EachMultipliedBy,
+    SumOfAll,
+    
+    // Power and comparison operations
+    IntegerDivision,
+    SpaceshipCompare,
+    
+    // Collection operations
+    AppendToCollection,
+    PrependToCollection,
+    
+    // Function domain binding
+    BindOperatorToFunction,
+    
+    // Closure operations
+    MakeClosure,
+
+    // Attribute-specific opcodes for enhanced functionality
+    
+    // Syntax level operations
+    BeginAssemblyBlock,
+    EndAssemblyBlock,
+    
+    // GPU operations
+    InitGPUContext,
+    BeginKernel,
+    EndKernel,
+    LoadThreadIdx,
+    LoadBlockIdx,
+    LoadBlockDim,
+    LoadGridDim,
+    SyncThreads,
+    GPUFunctionCall,
+    
+    // WebAssembly operations
+    InitWasmContext,
+    WasmExport,
+    WasmImport,
+    
+    // Embedded operations
+    SaveRegisters,
+    RestoreRegisters,
+    DisableInterrupts,
+    EnableInterrupts,
+    
+    // Compile-time operations
+    CompileTimeConstant,
+    CompileTimeFunction,
+    
+    // SIMD operations
+    EnableSimdMode,
+    DisableSimdMode,
+    VectorizeLoop,
+    SimdLoad,
+    SimdStore,
+    SimdAdd,
+    SimdMul,
+    
+    // Actor system operations
+    InitActor,
+    SetupMessageQueue,
+    SendMessage,
+    ReceiveMessage,
+    SpawnActor,
+    SetupMessageHandler,
+    
+    // Supervisor operations
+    InitSupervisor,
+    AddChildActor,
+    RestartActor,
+    
+    // Contract operations
+    InitContract,
+    ContractCall,
+    ContractEvent,
+    
+    // Verification operations
+    BeginVerification,
+    EndVerification,
+    VerifyCondition,
+    VerifyPrecondition,
+    VerifyPostcondition,
+    
+    // Real-time operations
+    SetRealTimePriority,
+    SetDeadline,
+    CheckDeadline,
+    
+    // Database operations
+    InitTable,
+    QueryTable,
+    InsertRow,
+    UpdateRow,
+    DeleteRow,
+    
+    // ECS operations
+    RegisterComponent,
+    RegisterSystem,
+    CreateEntity,
+    AddComponent,
+    RemoveComponent,
+    QueryEntities,
+    
+    // Automatic differentiation
+    BeginAutoDiff,
+    EndAutoDiff,
+    ComputeGradient,
+    
+    // Domain operations
+    EnterDomain,
+    ExitDomain,
+    RedefineOperator,
+    
+    // Additional attribute-specific operations
+    SetSyntaxMode,
+    EnableNaturalLanguageParser,
+    EnableModernOperators,
+    EnableUnsafeOperations,
+    EnableManualMemoryManagement,
+    EnableInlineAssembly,
+    EnableAssemblyVariableBinding,
+    InitializeGPUCompilation,
+    SetCompilationTarget,
+    EnableCUDASupport,
+    EnableOpenCLSupport,
+    MarkAsGPUKernel,
+    EnableGPUThreadIndexing,
+    EnableSharedMemory,
+    EnableSynchronization,
+    EnableWASMInterop,
+    EnableJavaScriptBinding,
+    EnableWebGLSupport,
+    EnableShaderCompilation,
+    EnableGLSLGeneration,
+    EnableWASMSIMD,
+    EnableVectorOperations,
+    EnableSPIRVCompilation,
+    EnableVulkanSupport,
+    EnableSPIRVAssembly,
+    EnableRayTracing,
+    EnableMeshShaders,
+    EnableComputeShaders,
+    DisableStandardLibrary,
+    EnableBareMetalMode,
+    DisableHeapAllocation,
+    EnableStackOnlyMode,
+    MarkAsCompileTime,
+    EnableConstantEvaluation,
+    EnableCompileTimeLoop,
+    ForceInline,
+    OptimizeForSpeed,
+    EnableZeroCostAbstraction,
+    EliminateVirtualCalls,
+    OptimizeMemoryLayout,
+    RemoveFunctionPrologue,
+    RemoveFunctionEpilogue,
+    DisableStackFrame,
+    MarkAsInterruptHandler,
+    EnableInterruptVector,
+    PreserveRegisters,
+    PreserveFunctionName,
+    EnableCCompatibility,
+    SetMemorySection,
+    EnableLinkerControl,
+    DisableStackOperations,
+    SetGlobalAllocator,
+    ForceMemoryAccess,
+    DisableMemoryOptimization,
+    EnableAutomaticDifferentiation,
+    BuildComputationGraph,
+    EnableGradientComputation,
+    EnableSIMDVectorization,
+    UseVectorInstructions,
+    OptimizeForSIMD,
+    EnableParallelExecution,
+    CreateThreadPool,
+    EnableWorkStealing,
+    CreateDomainScope,
+    EnableOperatorRedefinition,
+    EnableMathematicalNotation,
+    CreateActorSystem,
+    EnableMessagePassing,
+    EnableSupervision,
+    EnableSmartContract,
+    EnableGasMetering,
+    EnableEventEmission,
+    EnableFormalVerification,
+    CheckPreconditions,
+    CheckPostconditions,
+    VerifyInvariants,
+    EnableRealTimeScheduling,
+    SetDeadlineConstraints,
+    EnablePriorityInheritance,
+    CreateSupervisionTree,
+    EnableFaultTolerance,
+    SetRestartStrategy,
+    CreateDatabaseTable,
+    EnableSQLGeneration,
+    EnableTypeChecking,
+    SetPrimaryKey,
+    EnableUniqueConstraint,
+    CreateIndex,
+    OptimizeQueries,
+    SetForeignKey,
+    EnableReferentialIntegrity,
+    EnableDNAProcessing,
+    EnableSequenceAlignment,
+    EnableORFFinding,
+    EnableMolecularDynamics,
+    EnableForceCalculation,
+    EnableIntegration,
+    EnableGenomicsProcessing,
+    EnableVariantCalling,
+    EnableGenomeAssembly,
+    EnableSpatialDataStructures,
+    EnableGeospatialQueries,
+    CreateSpatialIndex,
+    EnableSpatialOptimization,
+    EnableFixedPointArithmetic,
+    SetFixedPointPrecision,
+    GenerateShaderCode,
+    AllocateSharedMemory,
+    EnableMemorySharing,
+    EnableSecureMemory,
+    EnableCryptography,
+    ZeroizeOnDestruct,
+    ForceConstantTime,
+    PreventTimingAttacks,
+    EnableZKProofs,
+    CreateCircuit,
+    EnableMPC,
+    CreateSecretShares,
+    CreateOracle,
+    EnableDataFeeds,
+    CreateStateChannel,
+    EnableOffChainComputation,
+    CreateMLModel,
+    EnableTraining,
+    EnableInference,
+    CreateComponent,
+    EnableECS,
+    CreateSystem,
+    EnableEntityProcessing,
+    AttachComponents,
+    CreateQuantumCircuit,
+    EnableQuantumGates,
+    EnableQuantumMeasurement,
+    MarkWithAttribute,
+    EnableAttributeMetadata,
+
+        // Assembly-style opcodes (aliases)
+        PUSH,
+        POP,
+        DUP,
+        SWAP,
+        ADD,
+        SUB,
+        MUL,
+        DIV,
+        MOD,
+        NEG,
+        AND,
+        OR,
+        XOR,
+        NOT,
+        SHL,
+        SHR,
+        EQ,
+        NE,
+        LT,
+        GT,
+        LE,
+        GE,
+        JMP,
+        JZ,
+        JNZ,
+        CALL,
+        RET,
+        LOAD,
+        STORE,
+        ALLOC,
+        FREE,
+        LOAD_BYTE,
+        LOAD_WORD,
+        LOAD_DWORD,
+        LOAD_QWORD,
+        INC,
+        DEC,
+        CMP,
+        TEST,
+        JE,
+        JNE,
+        JL,
+        JG,
+        JLE,
+        JGE,
+        HALT
+    }
+} 

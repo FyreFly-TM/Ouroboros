@@ -1,0 +1,36 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Loop round‑robin through every matched file.
+
+For each file:
+
+Fill in any TODO, FIXME, or blatant placeholder blocks.
+
+Keep the existing code style, comments, and APIs intact.
+
+Run quick lint adjustments (rename unused vars, remove dead imports).
+
+Skip heavyweight refactors—leave those for a dedicated pass.
+
+After finishing all files, provide a concise summary of what changed.
+
+## Token‑Limit Protocol
+
+When the reply is about to overflow the model’s output budget, respond with
+exactly CONTINUE on its own line so the user/agent can chain calls.
+
+Resume with the next file immediately in the follow‑up response.
+
+## Commit Strategy (Background‑Agent mode)
+
+Commit after each file modification to avoid massive diffs.
+
+Format commit message as:
+
+chore(sweep): <filename> – <one‑line tweak>
+
+
+If no iterative-sweep/<YYYY-MM-DD> branch exists, create it and push.

@@ -1,0 +1,145 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Base styles */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply antialiased;
+  }
+
+  /* Ensure all code blocks have visible text */
+  pre, code {
+    @apply font-mono;
+  }
+
+  /* Light mode code blocks */
+  pre {
+    @apply bg-gray-100 text-gray-900;
+  }
+
+  code:not(pre > code) {
+    @apply bg-gray-100 text-gray-900 px-1 py-0.5 rounded;
+  }
+
+  /* Dark mode code blocks */
+  .dark pre {
+    @apply bg-gray-800 text-gray-100;
+  }
+
+  .dark code:not(pre > code) {
+    @apply bg-gray-800 text-gray-100;
+  }
+
+  /* Ensure code blocks have proper contrast */
+  pre[class*="language-"] {
+    @apply border border-gray-300 dark:border-gray-700;
+  }
+
+  /* Fallback for any unmatched text in code blocks */
+  pre code,
+  pre code * {
+    color: inherit !important;
+  }
+
+  /* Ensure visibility of code that isn't tokenized */
+  pre code:empty::before,
+  pre code:not(:has(.token))::before {
+    content: attr(data-content);
+    color: inherit;
+  }
+}
+
+/* Custom scrollbar */
+@layer utilities {
+  /* ... existing code ... */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-800 rounded;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 dark:bg-gray-600 rounded hover:bg-gray-500 dark:hover:bg-gray-500;
+  }
+
+  /* Code block scrollbars */
+  pre[class*="language-"]::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  pre[class*="language-"]::-webkit-scrollbar-track {
+    @apply bg-gray-200 dark:bg-gray-700 rounded;
+  }
+
+  pre[class*="language-"]::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 dark:bg-gray-500 rounded hover:bg-gray-500 dark:hover:bg-gray-400;
+  }
+}
+
+/* Override any conflicting Prism styles */
+pre[class*="language-"] > code {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* Custom scrollbar styles */
+@layer base {
+  :root {
+    --scrollbar-track: #f1f5f9;
+    --scrollbar-thumb: #cbd5e1;
+  }
+
+  .dark {
+    --scrollbar-track: #1e293b;
+    --scrollbar-thumb: #475569;
+  }
+
+  /* Webkit browsers */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+}
+
+/* Custom utility classes */
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+} 

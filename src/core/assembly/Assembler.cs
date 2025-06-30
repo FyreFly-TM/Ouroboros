@@ -1,0 +1,913 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Ouroboros.Core.Lexer;
+using Ouroboros.Core.VM;
+
+namespace Ouroboros.Core.Assembly
+{
+    /// <summary>
+    /// Assembler for Ouroboros inline assembly support
+    /// </summary>
+    public class Assembler
+    {
+        private readonly Dictionary<string, ushort> opcodeMap;
+        private readonly Dictionary<string, int> labelMap;
+        private readonly List<AssemblyInstruction> instructions;
+        private readonly List<byte> output;
+        private int currentAddress;
+        
+        public Assembler()
+        {
+            opcodeMap = InitializeOpcodeMap();
+            labelMap = new Dictionary<string, int>();
+            instructions = new List<AssemblyInstruction>();
+            output = new List<byte>();
+            currentAddress = 0;
+        }
+        
+        private Dictionary<string, ushort> InitializeOpcodeMap()
+        {
+            var map = new Dictionary<string, ushort>(StringComparer.OrdinalIgnoreCase);
+            
+            // Stack operations
+            map["push"] = (ushort)Opcode.PUSH;
+            map["pop"] = (ushort)Opcode.POP;
+            map["dup"] = (ushort)Opcode.DUP;
+            map["swap"] = (ushort)Opcode.SWAP;
+            
+            // Arithmetic
+            map["add"] = (ushort)Opcode.ADD;
+            map["sub"] = (ushort)Opcode.SUB;
+            map["mul"] = (ushort)Opcode.MUL;
+            map["div"] = (ushort)Opcode.DIV;
+            map["mod"] = (ushort)Opcode.MOD;
+            map["neg"] = (ushort)Opcode.NEG;
+            
+            // Bitwise
+            map["and"] = (ushort)Opcode.AND;
+            map["or"] = (ushort)Opcode.OR;
+            map["xor"] = (ushort)Opcode.XOR;
+            map["not"] = (ushort)Opcode.NOT;
+            map["shl"] = (ushort)Opcode.SHL;
+            map["shr"] = (ushort)Opcode.SHR;
+            
+            // Comparison
+            map["eq"] = (ushort)Opcode.EQ;
+            map["ne"] = (ushort)Opcode.NE;
+            map["lt"] = (ushort)Opcode.LT;
+            map["gt"] = (ushort)Opcode.GT;
+            map["le"] = (ushort)Opcode.LE;
+            map["ge"] = (ushort)Opcode.GE;
+            
+            // Control flow
+            map["jmp"] = (ushort)Opcode.JMP;
+            map["jz"] = (ushort)Opcode.JZ;
+            map["jnz"] = (ushort)Opcode.JNZ;
+            map["call"] = (ushort)Opcode.CALL;
+            map["ret"] = (ushort)Opcode.RET;
+            
+            // Memory
+            map["load"] = (ushort)Opcode.LOAD;
+            map["store"] = (ushort)Opcode.STORE;
+            map["alloc"] = (ushort)Opcode.ALLOC;
+            map["free"] = (ushort)Opcode.FREE;
+            
+            // x86-style mnemonics
+            map["mov"] = (ushort)Opcode.LOAD;
+            map["movb"] = (ushort)Opcode.LOAD_BYTE;
+            map["movw"] = (ushort)Opcode.LOAD_WORD;
+            map["movl"] = (ushort)Opcode.LOAD_DWORD;
+            map["movq"] = (ushort)Opcode.LOAD_QWORD;
+            
+            map["inc"] = (ushort)Opcode.INC;
+            map["dec"] = (ushort)Opcode.DEC;
+            
+            map["cmp"] = (ushort)Opcode.CMP;
+            map["test"] = (ushort)Opcode.TEST;
+            
+            map["je"] = (ushort)Opcode.JE;
+            map["jne"] = (ushort)Opcode.JNE;
+            map["jl"] = (ushort)Opcode.JL;
+            map["jg"] = (ushort)Opcode.JG;
+            map["jle"] = (ushort)Opcode.JLE;
+            map["jge"] = (ushort)Opcode.JGE;
+            
+            map["nop"] = (ushort)Opcode.NOP;
+            map["halt"] = (ushort)Opcode.HALT;
+            
+            return map;
+        }
+        
+        /// <summary>
+        /// Assemble source code to bytecode
+        /// </summary>
+        public byte[] Assemble(string source)
+        {
+            // Parse assembly source
+            ParseSource(source);
+            
+            // First pass: collect labels
+            CollectLabels();
+            
+            // Second pass: generate bytecode
+            GenerateBytecode();
+            
+            return output.ToArray();
+        }
+        
+        private void ParseSource(string source)
+        {
+            var lines = source.Split('\n');
+            
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i].Trim();
+                
+                // Skip empty lines and comments
+                if (string.IsNullOrEmpty(line) || line.StartsWith(";"))
+                    continue;
+                
+                // Remove inline comments
+                int commentIndex = line.IndexOf(';');
+                if (commentIndex >= 0)
+                    line = line.Substring(0, commentIndex).Trim();
+                
+                // Parse instruction
+                var instruction = ParseInstruction(line, i + 1);
+                if (instruction != null)
+                    instructions.Add(instruction);
+            }
+        }
+        
+        private AssemblyInstruction ParseInstruction(string line, int lineNumber)
+        {
+            // Check for label
+            if (line.EndsWith(":"))
+            {
+                return new AssemblyInstruction
+                {
+                    Type = InstructionType.Label,
+                    Label = line.Substring(0, line.Length - 1),
+                    LineNumber = lineNumber
+                };
+            }
+            
+            // Parse mnemonic and operands
+            var parts = SplitInstruction(line);
+            if (parts.Length == 0)
+                return null;
+            
+            var mnemonic = parts[0].ToLower();
+            var operands = parts.Skip(1).ToArray();
+            
+            // Check for directives
+            if (mnemonic.StartsWith("."))
+            {
+                return ParseDirective(mnemonic, operands, lineNumber);
+            }
+            
+            // Regular instruction
+            if (!opcodeMap.ContainsKey(mnemonic))
+            {
+                throw new AssemblerException($"Unknown mnemonic: {mnemonic}", lineNumber);
+            }
+            
+            return new AssemblyInstruction
+            {
+                Type = InstructionType.Opcode,
+                Mnemonic = mnemonic,
+                Opcode = opcodeMap[mnemonic],
+                Operands = ParseOperands(operands, lineNumber),
+                LineNumber = lineNumber
+            };
+        }
+        
+        private string[] SplitInstruction(string line)
+        {
+            var parts = new List<string>();
+            var current = new StringBuilder();
+            bool inString = false;
+            
+            for (int i = 0; i < line.Length; i++)
+            {
+                char c = line[i];
+                
+                if (c == '"' && (i == 0 || line[i - 1] != '\\'))
+                {
+                    inString = !inString;
+                    current.Append(c);
+                }
+                else if (!inString && (char.IsWhiteSpace(c) || c == ','))
+                {
+                    if (current.Length > 0)
+                    {
+                        parts.Add(current.ToString());
+                        current.Clear();
+                    }
+                }
+                else
+                {
+                    current.Append(c);
+                }
+            }
+            
+            if (current.Length > 0)
+                parts.Add(current.ToString());
+            
+            return parts.ToArray();
+        }
+        
+        private AssemblyInstruction ParseDirective(string directive, string[] operands, int lineNumber)
+        {
+            switch (directive)
+            {
+                case ".byte":
+                case ".db":
+                    return new AssemblyInstruction
+                    {
+                        Type = InstructionType.Data,
+                        DataType = DataType.Byte,
+                        Data = ParseByteData(operands, lineNumber),
+                        LineNumber = lineNumber
+                    };
+                
+                case ".word":
+                case ".dw":
+                    return new AssemblyInstruction
+                    {
+                        Type = InstructionType.Data,
+                        DataType = DataType.Word,
+                        Data = ParseWordData(operands, lineNumber),
+                        LineNumber = lineNumber
+                    };
+                
+                case ".dword":
+                case ".dd":
+                    return new AssemblyInstruction
+                    {
+                        Type = InstructionType.Data,
+                        DataType = DataType.DWord,
+                        Data = ParseDWordData(operands, lineNumber),
+                        LineNumber = lineNumber
+                    };
+                
+                case ".string":
+                case ".ascii":
+                    return new AssemblyInstruction
+                    {
+                        Type = InstructionType.Data,
+                        DataType = DataType.String,
+                        Data = ParseStringData(string.Join(" ", operands), lineNumber),
+                        LineNumber = lineNumber
+                    };
+                
+                case ".align":
+                    return new AssemblyInstruction
+                    {
+                        Type = InstructionType.Align,
+                        AlignValue = (int)ParseNumber(operands[0], lineNumber),
+                        LineNumber = lineNumber
+                    };
+                
+                default:
+                    throw new AssemblerException($"Unknown directive: {directive}", lineNumber);
+            }
+        }
+        
+        private List<Operand> ParseOperands(string[] operands, int lineNumber)
+        {
+            var result = new List<Operand>();
+            
+            foreach (var operand in operands)
+            {
+                result.Add(ParseOperand(operand, lineNumber));
+            }
+            
+            return result;
+        }
+        
+        private Operand ParseOperand(string operand, int lineNumber)
+        {
+            // Register
+            if (IsRegister(operand))
+            {
+                return new Operand
+                {
+                    Type = OperandType.Register,
+                    Register = ParseRegister(operand, lineNumber)
+                };
+            }
+            
+            // Memory reference [address]
+            if (operand.StartsWith("[") && operand.EndsWith("]"))
+            {
+                var inner = operand.Substring(1, operand.Length - 2);
+                return new Operand
+                {
+                    Type = OperandType.Memory,
+                    MemoryOperand = ParseMemoryOperand(inner, lineNumber)
+                };
+            }
+            
+            // Immediate value
+            if (IsNumber(operand))
+            {
+                return new Operand
+                {
+                    Type = OperandType.Immediate,
+                    ImmediateValue = ParseNumber(operand, lineNumber)
+                };
+            }
+            
+            // Label reference
+            return new Operand
+            {
+                Type = OperandType.Label,
+                Label = operand
+            };
+        }
+        
+        private bool IsRegister(string operand)
+        {
+            // Check for register names
+            var registers = new[] 
+            { 
+                // General purpose
+                "eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp",
+                "ax", "bx", "cx", "dx", "si", "di", "sp", "bp",
+                "al", "ah", "bl", "bh", "cl", "ch", "dl", "dh",
+                
+                // 64-bit
+                "rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp",
+                "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
+                
+                // VM registers
+                "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
+                "pc", "sp", "fp", "acc"
+            };
+            
+            return registers.Contains(operand.ToLower());
+        }
+        
+        private Register ParseRegister(string name, int lineNumber)
+        {
+            var lower = name.ToLower();
+            
+            // Map register names to VM registers
+            return lower switch
+            {
+                "eax" or "rax" or "ax" or "al" or "r0" => Register.R0,
+                "ebx" or "rbx" or "bx" or "bl" or "r1" => Register.R1,
+                "ecx" or "rcx" or "cx" or "cl" or "r2" => Register.R2,
+                "edx" or "rdx" or "dx" or "dl" or "r3" => Register.R3,
+                "esi" or "rsi" or "si" or "r4" => Register.R4,
+                "edi" or "rdi" or "di" or "r5" => Register.R5,
+                "esp" or "rsp" or "sp" => Register.SP,
+                "ebp" or "rbp" or "fp" => Register.FP,
+                "pc" => Register.PC,
+                "acc" => Register.ACC,
+                _ => throw new AssemblerException($"Unknown register: {name}", lineNumber)
+            };
+        }
+        
+        private MemoryOperand ParseMemoryOperand(string operand, int lineNumber)
+        {
+            // Simple forms: [reg], [reg+offset], [reg+reg*scale+offset]
+            var mem = new MemoryOperand();
+            
+            // Remove spaces for easier parsing
+            operand = operand.Replace(" ", "");
+            
+            // For now, simple implementation
+            if (IsRegister(operand))
+            {
+                mem.BaseRegister = ParseRegister(operand, lineNumber);
+            }
+            else if (IsNumber(operand))
+            {
+                mem.Displacement = ParseNumber(operand, lineNumber);
+            }
+            else
+            {
+                // Parse complex addressing modes
+                // Try to parse [base+offset] form
+                if (operand.Contains('+'))
+                {
+                    var parts = operand.Split('+');
+                    if (parts.Length == 2)
+                    {
+                        // Check if first part is register
+                        if (IsRegister(parts[0]))
+                        {
+                            mem.BaseRegister = ParseRegister(parts[0], lineNumber);
+                            
+                            // Check if second part is number (displacement)
+                            if (IsNumber(parts[1]))
+                            {
+                                mem.Displacement = ParseNumber(parts[1], lineNumber);
+                            }
+                            // Check if second part is register*scale
+                            else if (parts[1].Contains('*'))
+                            {
+                                var scaleParts = parts[1].Split('*');
+                                if (scaleParts.Length == 2 && IsRegister(scaleParts[0]) && IsNumber(scaleParts[1]))
+                                {
+                                    mem.IndexRegister = ParseRegister(scaleParts[0], lineNumber);
+                                    mem.Scale = (int)ParseNumber(scaleParts[1], lineNumber);
+                                }
+                                else
+                                {
+                                    throw new AssemblerException($"Invalid scale format in memory operand: [{operand}]", lineNumber);
+                                }
+                            }
+                            else
+                            {
+                                throw new AssemblerException($"Invalid displacement in memory operand: [{operand}]", lineNumber);
+                            }
+                        }
+                        else
+                        {
+                            throw new AssemblerException($"Base must be a register in memory operand: [{operand}]", lineNumber);
+                        }
+                    }
+                    else if (parts.Length == 3)
+                    {
+                        // [base+index*scale+displacement] form
+                        // For simplicity, we'll just support [base+index+displacement] without scale
+                        if (IsRegister(parts[0]) && IsRegister(parts[1]) && IsNumber(parts[2]))
+                        {
+                            mem.BaseRegister = ParseRegister(parts[0], lineNumber);
+                            mem.IndexRegister = ParseRegister(parts[1], lineNumber);
+                            mem.Displacement = ParseNumber(parts[2], lineNumber);
+                        }
+                        else
+                        {
+                            throw new AssemblerException($"Complex memory operand format not supported: [{operand}]", lineNumber);
+                        }
+                    }
+                    else
+                    {
+                        throw new AssemblerException($"Too many components in memory operand: [{operand}]", lineNumber);
+                    }
+                }
+                else if (operand.Contains('-'))
+                {
+                    // Handle negative displacement
+                    var parts = operand.Split('-');
+                    if (parts.Length == 2 && IsRegister(parts[0]))
+                    {
+                        mem.BaseRegister = ParseRegister(parts[0], lineNumber);
+                        mem.Displacement = -ParseNumber(parts[1], lineNumber);
+                    }
+                    else
+                    {
+                        throw new AssemblerException($"Invalid negative displacement format: [{operand}]", lineNumber);
+                    }
+                }
+                else
+                {
+                    throw new AssemblerException($"Unsupported memory operand format: [{operand}]", lineNumber);
+                }
+            }
+            
+            return mem;
+        }
+        
+        private bool IsNumber(string operand)
+        {
+            if (string.IsNullOrEmpty(operand))
+                return false;
+            
+            // Hexadecimal
+            if (operand.StartsWith("0x") || operand.StartsWith("0X"))
+                return true;
+            
+            // Binary
+            if (operand.StartsWith("0b") || operand.StartsWith("0B"))
+                return true;
+            
+            // Decimal
+            return operand.All(c => char.IsDigit(c) || c == '-' || c == '+');
+        }
+        
+        private long ParseNumber(string operand, int lineNumber)
+        {
+            try
+            {
+                // Hexadecimal
+                if (operand.StartsWith("0x") || operand.StartsWith("0X"))
+                {
+                    return Convert.ToInt64(operand.Substring(2), 16);
+                }
+                
+                // Binary
+                if (operand.StartsWith("0b") || operand.StartsWith("0B"))
+                {
+                    return Convert.ToInt64(operand.Substring(2), 2);
+                }
+                
+                // Decimal
+                return long.Parse(operand);
+            }
+            catch (Exception ex)
+            {
+                throw new AssemblerException($"Invalid number format: {operand}", lineNumber, ex);
+            }
+        }
+        
+        private byte[] ParseByteData(string[] operands, int lineNumber)
+        {
+            var data = new List<byte>();
+            
+            foreach (var operand in operands)
+            {
+                data.Add((byte)ParseNumber(operand, lineNumber));
+            }
+            
+            return data.ToArray();
+        }
+        
+        private byte[] ParseWordData(string[] operands, int lineNumber)
+        {
+            var data = new List<byte>();
+            
+            foreach (var operand in operands)
+            {
+                ushort value = (ushort)ParseNumber(operand, lineNumber);
+                data.Add((byte)(value & 0xFF));
+                data.Add((byte)(value >> 8));
+            }
+            
+            return data.ToArray();
+        }
+        
+        private byte[] ParseDWordData(string[] operands, int lineNumber)
+        {
+            var data = new List<byte>();
+            
+            foreach (var operand in operands)
+            {
+                uint value = (uint)ParseNumber(operand, lineNumber);
+                data.Add((byte)(value & 0xFF));
+                data.Add((byte)((value >> 8) & 0xFF));
+                data.Add((byte)((value >> 16) & 0xFF));
+                data.Add((byte)(value >> 24));
+            }
+            
+            return data.ToArray();
+        }
+        
+        private byte[] ParseStringData(string operand, int lineNumber)
+        {
+            if (!operand.StartsWith("\"") || !operand.EndsWith("\""))
+            {
+                throw new AssemblerException("String must be enclosed in quotes", lineNumber);
+            }
+            
+            var str = operand.Substring(1, operand.Length - 2);
+            var data = new List<byte>();
+            
+            for (int i = 0; i < str.Length; i++)
+            {
+                if (str[i] == '\\' && i + 1 < str.Length)
+                {
+                    i++;
+                    char escaped = str[i];
+                    data.Add((byte)(escaped switch
+                    {
+                        'n' => '\n',
+                        'r' => '\r',
+                        't' => '\t',
+                        '0' => '\0',
+                        '\\' => '\\',
+                        '"' => '"',
+                        _ => escaped
+                    }));
+                }
+                else
+                {
+                    data.Add((byte)str[i]);
+                }
+            }
+            
+            return data.ToArray();
+        }
+        
+        private void CollectLabels()
+        {
+            currentAddress = 0;
+            
+            foreach (var instruction in instructions)
+            {
+                if (instruction.Type == InstructionType.Label)
+                {
+                    if (labelMap.ContainsKey(instruction.Label))
+                    {
+                        throw new AssemblerException($"Duplicate label: {instruction.Label}", instruction.LineNumber);
+                    }
+                    
+                    labelMap[instruction.Label] = currentAddress;
+                }
+                else
+                {
+                    currentAddress += GetInstructionSize(instruction);
+                }
+            }
+        }
+        
+        private void GenerateBytecode()
+        {
+            currentAddress = 0;
+            output.Clear();
+            
+            foreach (var instruction in instructions)
+            {
+                switch (instruction.Type)
+                {
+                    case InstructionType.Label:
+                        // Labels don't generate code
+                        break;
+                    
+                    case InstructionType.Opcode:
+                        GenerateOpcode(instruction);
+                        break;
+                    
+                    case InstructionType.Data:
+                        output.AddRange(instruction.Data);
+                        currentAddress += instruction.Data.Length;
+                        break;
+                    
+                    case InstructionType.Align:
+                        GenerateAlignment(instruction.AlignValue);
+                        break;
+                }
+            }
+        }
+        
+        private void GenerateOpcode(AssemblyInstruction instruction)
+        {
+            // Emit opcode as two bytes (little-endian)
+            output.Add((byte)(instruction.Opcode & 0xFF));
+            output.Add((byte)(instruction.Opcode >> 8));
+            currentAddress += 2;
+            
+            foreach (var operand in instruction.Operands)
+            {
+                GenerateOperand(operand, instruction);
+            }
+        }
+        
+        private void GenerateOperand(Operand operand, AssemblyInstruction instruction)
+        {
+            switch (operand.Type)
+            {
+                case OperandType.Register:
+                    output.Add((byte)operand.Register);
+                    currentAddress++;
+                    break;
+                
+                case OperandType.Immediate:
+                    GenerateImmediate(operand.ImmediateValue);
+                    break;
+                
+                case OperandType.Label:
+                    if (!labelMap.TryGetValue(operand.Label, out int address))
+                    {
+                        throw new AssemblerException($"Undefined label: {operand.Label}", instruction.LineNumber);
+                    }
+                    GenerateAddress(address);
+                    break;
+                
+                case OperandType.Memory:
+                    GenerateMemoryOperand(operand.MemoryOperand);
+                    break;
+            }
+        }
+        
+        private void GenerateImmediate(long value)
+        {
+            // For now, always generate 32-bit immediates
+            output.Add((byte)(value & 0xFF));
+            output.Add((byte)((value >> 8) & 0xFF));
+            output.Add((byte)((value >> 16) & 0xFF));
+            output.Add((byte)((value >> 24) & 0xFF));
+            currentAddress += 4;
+        }
+        
+        private void GenerateAddress(int address)
+        {
+            // Generate relative address for jumps
+            int relative = address - (currentAddress + 4);
+            GenerateImmediate(relative);
+        }
+        
+        private void GenerateMemoryOperand(MemoryOperand mem)
+        {
+            // Encode memory operand
+            byte modRM = 0;
+            
+            if (mem.BaseRegister.HasValue)
+            {
+                modRM |= (byte)mem.BaseRegister.Value;
+            }
+            
+            output.Add(modRM);
+            currentAddress++;
+            
+            if (mem.Displacement != 0)
+            {
+                GenerateImmediate(mem.Displacement);
+            }
+        }
+        
+        private void GenerateAlignment(int alignment)
+        {
+            while (currentAddress % alignment != 0)
+            {
+                ushort nopOpcode = (ushort)Opcode.NOP;
+                output.Add((byte)(nopOpcode & 0xFF));
+                output.Add((byte)(nopOpcode >> 8));
+                currentAddress += 2;
+            }
+        }
+        
+        private int GetInstructionSize(AssemblyInstruction instruction)
+        {
+            switch (instruction.Type)
+            {
+                case InstructionType.Label:
+                    return 0;
+                
+                case InstructionType.Opcode:
+                    int size = 2; // Opcode ushort (2 bytes)
+                    foreach (var operand in instruction.Operands)
+                    {
+                        size += GetOperandSize(operand);
+                    }
+                    return size;
+                
+                case InstructionType.Data:
+                    return instruction.Data.Length;
+                
+                case InstructionType.Align:
+                    // Calculate padding needed
+                    int padding = instruction.AlignValue - (currentAddress % instruction.AlignValue);
+                    return padding == instruction.AlignValue ? 0 : padding;
+                
+                default:
+                    return 0;
+            }
+        }
+        
+        private int GetOperandSize(Operand operand)
+        {
+            return operand.Type switch
+            {
+                OperandType.Register => 1,
+                OperandType.Immediate => 4, // 32-bit immediate
+                OperandType.Label => 4,     // 32-bit address
+                OperandType.Memory => 1 + (operand.MemoryOperand.Displacement != 0 ? 4 : 0),
+                _ => 0
+            };
+        }
+    }
+    
+    /// <summary>
+    /// Assembly instruction representation
+    /// </summary>
+    public class AssemblyInstruction
+    {
+        public InstructionType Type { get; set; }
+        public string Mnemonic { get; set; }
+        public ushort Opcode { get; set; }
+        public List<Operand> Operands { get; set; }
+        public string Label { get; set; }
+        public DataType DataType { get; set; }
+        public byte[] Data { get; set; }
+        public int AlignValue { get; set; }
+        public int LineNumber { get; set; }
+    }
+    
+    public enum InstructionType
+    {
+        Label,
+        Opcode,
+        Data,
+        Align
+    }
+    
+    public enum DataType
+    {
+        Byte,
+        Word,
+        DWord,
+        QWord,
+        String
+    }
+    
+    /// <summary>
+    /// Operand representation
+    /// </summary>
+    public class Operand
+    {
+        public OperandType Type { get; set; }
+        public Register Register { get; set; }
+        public long ImmediateValue { get; set; }
+        public string Label { get; set; }
+        public MemoryOperand MemoryOperand { get; set; }
+    }
+    
+    public enum OperandType
+    {
+        Register,
+        Immediate,
+        Label,
+        Memory
+    }
+    
+    /// <summary>
+    /// Memory operand representation
+    /// </summary>
+    public class MemoryOperand
+    {
+        public Register? BaseRegister { get; set; }
+        public Register? IndexRegister { get; set; }
+        public int Scale { get; set; } = 1;
+        public long Displacement { get; set; }
+    }
+    
+    /// <summary>
+    /// VM registers
+    /// </summary>
+    public enum Register
+    {
+        R0 = 0,
+        R1 = 1,
+        R2 = 2,
+        R3 = 3,
+        R4 = 4,
+        R5 = 5,
+        R6 = 6,
+        R7 = 7,
+        SP = 8,   // Stack pointer
+        FP = 9,   // Frame pointer
+        PC = 10,  // Program counter
+        ACC = 11  // Accumulator
+    }
+    
+    /// <summary>
+    /// Extended opcodes for assembly
+    /// </summary>
+    public enum ExtendedOpcode : byte
+    {
+        // Load variants
+        LOAD_BYTE = 0x80,
+        LOAD_WORD = 0x81,
+        LOAD_DWORD = 0x82,
+        LOAD_QWORD = 0x83,
+        
+        // Store variants
+        STORE_BYTE = 0x84,
+        STORE_WORD = 0x85,
+        STORE_DWORD = 0x86,
+        STORE_QWORD = 0x87,
+        
+        // Increment/Decrement
+        INC = 0x88,
+        DEC = 0x89,
+        
+        // Compare and test
+        CMP = 0x8A,
+        TEST = 0x8B,
+        
+        // Conditional jumps
+        JE = 0x8C,   // Jump if equal
+        JNE = 0x8D,  // Jump if not equal
+        JL = 0x8E,   // Jump if less
+        JG = 0x8F,   // Jump if greater
+        JLE = 0x90,  // Jump if less or equal
+        JGE = 0x91   // Jump if greater or equal
+    }
+    
+    /// <summary>
+    /// Assembler exception
+    /// </summary>
+    public class AssemblerException : Exception
+    {
+        public int LineNumber { get; }
+        
+        public AssemblerException(string message, int lineNumber) 
+            : base($"Line {lineNumber}: {message}")
+        {
+            LineNumber = lineNumber;
+        }
+        
+        public AssemblerException(string message, int lineNumber, Exception innerException) 
+            : base($"Line {lineNumber}: {message}", innerException)
+        {
+            LineNumber = lineNumber;
+        }
+    }
+} 

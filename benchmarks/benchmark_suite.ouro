@@ -1,0 +1,370 @@
+// Ouroboros Benchmark Suite
+// Comprehensive performance benchmarks for the language
+
+using Ouroboros.Testing;
+using Ouroboros.StdLib.Math;
+using Ouroboros.StdLib.Collections;
+using System.Diagnostics;
+
+namespace Benchmarks {
+    
+    benchmark class BenchmarkSuite {
+        private const int WARMUP_ITERATIONS = 100;
+        private const int BENCHMARK_ITERATIONS = 10000;
+        
+        // Benchmark runner
+        function runBenchmark(name: string, action: () => void, iterations: int = BENCHMARK_ITERATIONS): BenchmarkResult {
+            // Warmup
+            for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+                action();
+            }
+            
+            // Force garbage collection
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            
+            // Actual benchmark
+            let stopwatch = new Stopwatch();
+            let memoryBefore = GC.GetTotalMemory(false);
+            
+            stopwatch.Start();
+            for (int i = 0; i < iterations; i++) {
+                action();
+            }
+            stopwatch.Stop();
+            
+            let memoryAfter = GC.GetTotalMemory(false);
+            
+            return new BenchmarkResult {
+                Name = name,
+                Iterations = iterations,
+                TotalTime = stopwatch.Elapsed,
+                AverageTime = stopwatch.Elapsed / iterations,
+                MemoryUsed = memoryAfter - memoryBefore,
+                OpsPerSecond = iterations / stopwatch.Elapsed.TotalSeconds
+            };
+        }
+        
+        // Arithmetic benchmarks
+        benchmark function arithmeticBenchmarks() {
+            console.WriteLine("\n=== Arithmetic Benchmarks ===");
+            
+            // Integer arithmetic
+            let intResult = runBenchmark("Integer Arithmetic", () => {
+                int sum = 0;
+                for (int i = 0; i < 100; i++) {
+                    sum += i * 2 - i / 3 + i % 7;
+                }
+            });
+            intResult.Print();
+            
+            // Floating point arithmetic
+            let floatResult = runBenchmark("Floating Point Arithmetic", () => {
+                double sum = 0.0;
+                for (int i = 0; i < 100; i++) {
+                    sum += i * 2.5 - i / 3.7 + MathFunctions.Sin(i);
+                }
+            });
+            floatResult.Print();
+            
+            // Math functions
+            let mathResult = runBenchmark("Math Functions", () => {
+                for (int i = 0; i < 10; i++) {
+                    let x = MathFunctions.Sin(i) * MathFunctions.Cos(i);
+                    let y = MathFunctions.Sqrt(i) + MathFunctions.Log(i + 1);
+                    let z = MathFunctions.Pow(x, y);
+                }
+            });
+            mathResult.Print();
+        }
+        
+        // Collection benchmarks
+        benchmark function collectionBenchmarks() {
+            console.WriteLine("\n=== Collection Benchmarks ===");
+            
+            // List operations
+            let listAddResult = runBenchmark("List.Add", () => {
+                let list = new List<int>();
+                for (int i = 0; i < 100; i++) {
+                    list.Add(i);
+                }
+            });
+            listAddResult.Print();
+            
+            let listAccessResult = runBenchmark("List Access", () => {
+                let list = new List<int>();
+                for (int i = 0; i < 100; i++) {
+                    list.Add(i);
+                }
+                int sum = 0;
+                for (int i = 0; i < 100; i++) {
+                    sum += list[i];
+                }
+            });
+            listAccessResult.Print();
+            
+            // Dictionary operations
+            let dictResult = runBenchmark("Dictionary Operations", () => {
+                let dict = new Dictionary<string, int>();
+                for (int i = 0; i < 50; i++) {
+                    dict[$"key_{i}"] = i;
+                }
+                for (int i = 0; i < 50; i++) {
+                    int value = dict[$"key_{i}"];
+                }
+            });
+            dictResult.Print();
+            
+            // Stack operations
+            let stackResult = runBenchmark("Stack Push/Pop", () => {
+                let stack = new Stack<int>();
+                for (int i = 0; i < 50; i++) {
+                    stack.Push(i);
+                }
+                while (stack.Count > 0) {
+                    stack.Pop();
+                }
+            });
+            stackResult.Print();
+        }
+        
+        // String benchmarks
+        benchmark function stringBenchmarks() {
+            console.WriteLine("\n=== String Benchmarks ===");
+            
+            // String concatenation
+            let concatResult = runBenchmark("String Concatenation", () => {
+                string result = "";
+                for (int i = 0; i < 20; i++) {
+                    result += i.ToString();
+                }
+            }, 1000); // Fewer iterations for string concat
+            concatResult.Print();
+            
+            // String interpolation
+            let interpResult = runBenchmark("String Interpolation", () => {
+                for (int i = 0; i < 50; i++) {
+                    string s = $"Value: {i}, Double: {i * 2}, Square: {i * i}";
+                }
+            });
+            interpResult.Print();
+            
+            // String operations
+            let stringOpResult = runBenchmark("String Operations", () => {
+                string s = "Hello, Ouroboros World!";
+                for (int i = 0; i < 20; i++) {
+                    let upper = s.ToUpper();
+                    let lower = s.ToLower();
+                    let sub = s.Substring(7, 9);
+                    let index = s.IndexOf("World");
+                }
+            });
+            stringOpResult.Print();
+        }
+        
+        // Memory allocation benchmarks
+        benchmark function memoryBenchmarks() {
+            console.WriteLine("\n=== Memory Benchmarks ===");
+            
+            // Object allocation
+            let objectResult = runBenchmark("Object Allocation", () => {
+                for (int i = 0; i < 100; i++) {
+                    let obj = new TestObject { X = i, Y = i * 2, Name = $"Object_{i}" };
+                }
+            });
+            objectResult.Print();
+            
+            // Array allocation
+            let arrayResult = runBenchmark("Array Allocation", () => {
+                for (int i = 0; i < 10; i++) {
+                    int[] arr = new int[100];
+                    for (int j = 0; j < 100; j++) {
+                        arr[j] = j;
+                    }
+                }
+            });
+            arrayResult.Print();
+            
+            // Vector allocation
+            let vectorResult = runBenchmark("Vector Allocation", () => {
+                for (int i = 0; i < 100; i++) {
+                    let v = new Vector(3, i, i + 1, i + 2);
+                    let mag = v.Magnitude;
+                }
+            });
+            vectorResult.Print();
+        }
+        
+        // Loop benchmarks
+        benchmark function loopBenchmarks() {
+            console.WriteLine("\n=== Loop Benchmarks ===");
+            
+            // Traditional for loop
+            let forResult = runBenchmark("Traditional For Loop", () => {
+                int sum = 0;
+                for (int i = 0; i < 1000; i++) {
+                    sum += i;
+                }
+            });
+            forResult.Print();
+            
+            // Foreach loop
+            let foreachResult = runBenchmark("Foreach Loop", () => {
+                let list = new List<int>();
+                for (int i = 0; i < 100; i++) {
+                    list.Add(i);
+                }
+                int sum = 0;
+                foreach (int i in list) {
+                    sum += i;
+                }
+            });
+            foreachResult.Print();
+            
+            // Custom loops
+            let repeatResult = runBenchmark("Repeat Loop", () => {
+                int sum = 0;
+                int counter = 0;
+                repeat 1000 times {
+                    sum += counter++;
+                }
+            });
+            repeatResult.Print();
+            
+            let iterateResult = runBenchmark("Iterate Loop", () => {
+                int sum = 0;
+                iterate i: 0..1000 {
+                    sum += i;
+                }
+            });
+            iterateResult.Print();
+        }
+        
+        // Function call benchmarks
+        benchmark function functionCallBenchmarks() {
+            console.WriteLine("\n=== Function Call Benchmarks ===");
+            
+            // Direct function call
+            let directResult = runBenchmark("Direct Function Call", () => {
+                for (int i = 0; i < 100; i++) {
+                    int result = simpleFunction(i, i + 1);
+                }
+            });
+            directResult.Print();
+            
+            // Lambda call
+            let lambdaResult = runBenchmark("Lambda Call", () => {
+                let add = (a, b) => a + b;
+                for (int i = 0; i < 100; i++) {
+                    int result = add(i, i + 1);
+                }
+            });
+            lambdaResult.Print();
+            
+            // Virtual function call
+            let virtualResult = runBenchmark("Virtual Function Call", () => {
+                TestBase obj = new TestDerived();
+                for (int i = 0; i < 100; i++) {
+                    int result = obj.VirtualMethod(i);
+                }
+            });
+            virtualResult.Print();
+        }
+        
+        // Pattern matching benchmarks
+        benchmark function patternMatchingBenchmarks() {
+            console.WriteLine("\n=== Pattern Matching Benchmarks ===");
+            
+            // Simple pattern match
+            let simpleResult = runBenchmark("Simple Pattern Match", () => {
+                for (int i = 0; i < 100; i++) {
+                    string result = i switch {
+                        case 0 => "zero",
+                        case 1 => "one",
+                        case var x when x < 10 => "small",
+                        case var x when x < 100 => "medium",
+                        default => "large"
+                    };
+                }
+            });
+            simpleResult.Print();
+            
+            // Type pattern match
+            let typeResult = runBenchmark("Type Pattern Match", () => {
+                object[] objects = { "hello", 42, 3.14, true };
+                for (int i = 0; i < 100; i++) {
+                    object obj = objects[i % 4];
+                    string result = obj switch {
+                        case string s => "string",
+                        case int n => "int",
+                        case double d => "double",
+                        case bool b => "bool",
+                        default => "unknown"
+                    };
+                }
+            });
+            typeResult.Print();
+        }
+        
+        // Helper functions and classes
+        function simpleFunction(a: int, b: int): int {
+            return a + b;
+        }
+        
+        class TestObject {
+            public int X { get; set; }
+            public int Y { get; set; }
+            public string Name { get; set; }
+        }
+        
+        abstract class TestBase {
+            public abstract int VirtualMethod(int x);
+        }
+        
+        class TestDerived : TestBase {
+            public override int VirtualMethod(int x) {
+                return x * 2;
+            }
+        }
+        
+        // Benchmark result class
+        class BenchmarkResult {
+            public string Name { get; set; }
+            public int Iterations { get; set; }
+            public TimeSpan TotalTime { get; set; }
+            public TimeSpan AverageTime { get; set; }
+            public long MemoryUsed { get; set; }
+            public double OpsPerSecond { get; set; }
+            
+            public void Print() {
+                console.WriteLine($"{Name}:");
+                console.WriteLine($"  Iterations: {Iterations:N0}");
+                console.WriteLine($"  Total time: {TotalTime.TotalMilliseconds:F2} ms");
+                console.WriteLine($"  Average time: {AverageTime.TotalMicroseconds:F2} μs");
+                console.WriteLine($"  Ops/second: {OpsPerSecond:N0}");
+                console.WriteLine($"  Memory used: {MemoryUsed:N0} bytes");
+            }
+        }
+        
+        // Main benchmark runner
+        public static function runAllBenchmarks() {
+            console.WriteLine("=== Ouroboros Benchmark Suite ===");
+            console.WriteLine($"Date: {DateTime.Now}");
+            console.WriteLine($"Iterations: {BENCHMARK_ITERATIONS}");
+            console.WriteLine();
+            
+            let suite = new BenchmarkSuite();
+            
+            suite.arithmeticBenchmarks();
+            suite.collectionBenchmarks();
+            suite.stringBenchmarks();
+            suite.memoryBenchmarks();
+            suite.loopBenchmarks();
+            suite.functionCallBenchmarks();
+            suite.patternMatchingBenchmarks();
+            
+            console.WriteLine("\n=== Benchmark Complete ===");
+        }
+    }
+} 

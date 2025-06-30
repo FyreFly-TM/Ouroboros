@@ -1,0 +1,22 @@
+Parser constructor: Received 70 tokens
+First 20 tokens:
+  Token 0: Line=2 Col=1 Type=Function Lexeme='function'
+  Token 1: Line=2 Col=10 Type=Identifier Lexeme='main'
+  Token 2: Line=2 Col=14 Type=LeftParen Lexeme='('
+  Token 3: Line=2 Col=15 Type=RightParen Lexeme=')'
+  Token 4: Line=2 Col=17 Type=LeftBrace Lexeme='{'
+  Token 5: Line=3 Col=5 Type=Print Lexeme='print'
+  Token 6: Line=3 Col=10 Type=LeftParen Lexeme='('
+  Token 7: Line=3 Col=11 Type=StringLiteral Lexeme='"Hello from Ouroboros!"'
+  Token 8: Line=3 Col=34 Type=RightParen Lexeme=')'
+  Token 9: Line=5 Col=5 Type=Var Lexeme='var'
+  Token 10: Line=5 Col=9 Type=Identifier Lexeme='x'
+  Token 11: Line=5 Col=11 Type=Assign Lexeme='='
+  Token 12: Line=5 Col=13 Type=IntegerLiteral Lexeme='10'
+  Token 13: Line=6 Col=5 Type=Var Lexeme='var'
+  Token 14: Line=6 Col=9 Type=Identifier Lexeme='y'
+  Token 15: Line=6 Col=11 Type=Assign Lexeme='='
+  Token 16: Line=6 Col=13 Type=IntegerLiteral Lexeme='20'
+  Token 17: Line=7 Col=5 Type=Var Lexeme='var'
+  Token 18: Line=7 Col=9 Type=Identifier Lexeme='sum'
+  Token 19: Line=7 Col=13 Type=Assign Lexeme='='

@@ -1,0 +1,218 @@
+{
+  "name": "ouroboros-lang",
+  "displayName": "Ouroboros Language Support",
+  "description": "Language support for Ouroboros programming language",
+  "version": "1.0.0",
+  "publisher": "ouroboros-team",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Linters",
+    "Debuggers"
+  ],
+  "keywords": [
+    "ouroboros",
+    "ouro",
+    "ob",
+    "programming",
+    "language"
+  ],
+  "activationEvents": [
+    "onLanguage:ouroboros"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ouroboros",
+        "aliases": ["Ouroboros", "ouroboros"],
+        "extensions": [".ouro", ".ob"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ouroboros",
+        "scopeName": "source.ouroboros",
+        "path": "./syntaxes/ouroboros.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "ouroboros",
+        "path": "./snippets/ouroboros.json"
+      }
+    ],
+    "themes": [
+      {
+        "label": "Ouroboros Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/ouroboros-dark.json"
+      }
+    ],
+    "configuration": {
+      "title": "Ouroboros",
+      "properties": {
+        "ouroboros.compiler.path": {
+          "type": "string",
+          "default": "ouro",
+          "description": "Path to the Ouroboros compiler executable"
+        },
+        "ouroboros.compiler.optimizationLevel": {
+          "type": "string",
+          "default": "Release",
+          "enum": ["None", "Debug", "Release", "Aggressive"],
+          "description": "Optimization level for compilation"
+        },
+        "ouroboros.linting.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable linting"
+        },
+        "ouroboros.formatting.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable automatic formatting"
+        },
+        "ouroboros.syntaxLevel.default": {
+          "type": "string",
+          "default": "medium",
+          "enum": ["high", "medium", "low"],
+          "description": "Default syntax level for new files"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "ouroboros.compile",
+        "title": "Ouroboros: Compile Current File"
+      },
+      {
+        "command": "ouroboros.run",
+        "title": "Ouroboros: Run Current File"
+      },
+      {
+        "command": "ouroboros.debug",
+        "title": "Ouroboros: Debug Current File"
+      },
+      {
+        "command": "ouroboros.switchSyntaxLevel",
+        "title": "Ouroboros: Switch Syntax Level"
+      },
+      {
+        "command": "ouroboros.showDocumentation",
+        "title": "Ouroboros: Show Documentation"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "ouroboros.compile",
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "editorTextFocus && resourceExtname == .ouro || resourceExtname == .ob"
+      },
+      {
+        "command": "ouroboros.run",
+        "key": "f5",
+        "when": "editorTextFocus && resourceExtname == .ouro || resourceExtname == .ob"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "resourceExtname == .ouro || resourceExtname == .ob",
+          "command": "ouroboros.compile",
+          "group": "ouroboros@1"
+        },
+        {
+          "when": "resourceExtname == .ouro || resourceExtname == .ob",
+          "command": "ouroboros.run",
+          "group": "ouroboros@2"
+        }
+      ]
+    },
+    "debuggers": [
+      {
+        "type": "ouroboros",
+        "label": "Ouroboros Debug",
+        "program": "./out/debugAdapter.js",
+        "runtime": "node",
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Path to the Ouroboros program to debug"
+              },
+              "args": {
+                "type": "array",
+                "description": "Command line arguments",
+                "default": []
+              },
+              "cwd": {
+                "type": "string",
+                "description": "Working directory",
+                "default": "${workspaceFolder}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Stop on entry",
+                "default": false
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "ouroboros",
+            "request": "launch",
+            "name": "Debug Ouroboros Program",
+            "program": "${file}",
+            "stopOnEntry": false
+          }
+        ]
+      }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "ouroboros",
+        "required": [
+          "task"
+        ],
+        "properties": {
+          "task": {
+            "type": "string",
+            "description": "The Ouroboros task to perform"
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.0.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.74.0",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "@vscode/test-electron": "^2.2.0",
+    "eslint": "^8.28.0",
+    "glob": "^8.0.3",
+    "mocha": "^10.1.0",
+    "typescript": "^4.9.3"
+  }
+} 

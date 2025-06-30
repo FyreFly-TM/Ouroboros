@@ -1,0 +1,14 @@
+H:\Downloads\Ouroboros\bin\Debug\net6.0-windows\ouroboros.exe
+H:\Downloads\Ouroboros\bin\Debug\net6.0-windows\ouroboros.deps.json
+H:\Downloads\Ouroboros\bin\Debug\net6.0-windows\ouroboros.runtimeconfig.json
+H:\Downloads\Ouroboros\bin\Debug\net6.0-windows\ouroboros.dll
+H:\Downloads\Ouroboros\bin\Debug\net6.0-windows\ouroboros.pdb
+H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.GeneratedMSBuildEditorConfig.editorconfig
+H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.AssemblyInfoInputs.cache
+H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.AssemblyInfo.cs
+H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.csproj.CoreCompileInputs.cache
+H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\ouroboros.dll
+H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\refint\ouroboros.dll
+H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\ouroboros.pdb
+H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.genruntimeconfig.cache
+H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\ref\ouroboros.dll

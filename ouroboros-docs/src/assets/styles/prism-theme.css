@@ -1,0 +1,212 @@
+/* Prism.js Theme for Ouroboros - Clean & Simple */
+
+/* Base styles */
+code[class*="language-"],
+pre[class*="language-"] {
+  color: #1a202c !important;
+  background: none;
+  font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 0.875rem;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  line-height: 1.5;
+  -moz-tab-size: 4;
+  -o-tab-size: 4;
+  tab-size: 4;
+  -webkit-hyphens: none;
+  -moz-hyphens: none;
+  -ms-hyphens: none;
+  hyphens: none;
+}
+
+/* Dark mode base */
+.dark code[class*="language-"],
+.dark pre[class*="language-"] {
+  color: #f7fafc !important;
+}
+
+/* Ensure all tokens inherit base color */
+.token {
+  color: inherit !important;
+}
+
+/* Light mode tokens */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #718096 !important;
+  font-style: italic;
+}
+
+.token.punctuation {
+  color: #4a5568 !important;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #e53e3e !important;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #38a169 !important;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: #805ad5 !important;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #3182ce !important;
+  font-weight: 600;
+}
+
+.token.function,
+.token.class-name {
+  color: #dd6b20 !important;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: #ed8936 !important;
+}
+
+.token.greek-symbol,
+.token.math-symbol {
+  color: #805ad5 !important;
+  font-weight: 600;
+}
+
+.token.syntax-level {
+  color: #3182ce !important;
+  font-weight: 700;
+}
+
+/* Dark mode tokens */
+.dark .token.comment,
+.dark .token.prolog,
+.dark .token.doctype,
+.dark .token.cdata {
+  color: #a0aec0 !important;
+  font-style: italic;
+}
+
+.dark .token.punctuation {
+  color: #cbd5e0 !important;
+}
+
+.dark .token.property,
+.dark .token.tag,
+.dark .token.boolean,
+.dark .token.number,
+.dark .token.constant,
+.dark .token.symbol,
+.dark .token.deleted {
+  color: #fc8181 !important;
+}
+
+.dark .token.selector,
+.dark .token.attr-name,
+.dark .token.string,
+.dark .token.char,
+.dark .token.builtin,
+.dark .token.inserted {
+  color: #68d391 !important;
+}
+
+.dark .token.operator,
+.dark .token.entity,
+.dark .token.url,
+.dark .language-css .token.string,
+.dark .style .token.string {
+  color: #b794f4 !important;
+}
+
+.dark .token.atrule,
+.dark .token.attr-value,
+.dark .token.keyword {
+  color: #63b3ed !important;
+  font-weight: 600;
+}
+
+.dark .token.function,
+.dark .token.class-name {
+  color: #f6ad55 !important;
+}
+
+.dark .token.regex,
+.dark .token.important,
+.dark .token.variable {
+  color: #fbd38d !important;
+}
+
+.dark .token.greek-symbol,
+.dark .token.math-symbol {
+  color: #b794f4 !important;
+  font-weight: 600;
+}
+
+.dark .token.syntax-level {
+  color: #63b3ed !important;
+  font-weight: 700;
+}
+
+/* Selection */
+code[class*="language-"] ::selection,
+code[class*="language-"]::selection,
+pre[class*="language-"] ::selection,
+pre[class*="language-"]::selection {
+  background: #b3d4fc;
+}
+
+.dark code[class*="language-"] ::selection,
+.dark code[class*="language-"]::selection,
+.dark pre[class*="language-"] ::selection,
+.dark pre[class*="language-"]::selection {
+  background: #4a5568;
+}
+
+/* Highlighted lines */
+.highlight-line {
+  background-color: rgba(59, 130, 246, 0.1);
+  display: block;
+  margin-right: -1rem;
+  margin-left: -1rem;
+  padding-right: 1rem;
+  padding-left: 0.75rem;
+  border-left: 0.25rem solid #3b82f6;
+}
+
+.dark .highlight-line {
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+/* Ensure plain text is visible */
+pre[class*="language-"] > code {
+  color: inherit;
+}
+
+/* Fix for any unmatched tokens */
+.token.plain-text {
+  color: inherit;
+} 
