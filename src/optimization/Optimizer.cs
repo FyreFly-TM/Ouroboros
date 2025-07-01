@@ -4,6 +4,7 @@ using System.Linq;
 using Ouroboros.Core;
 using Ouroboros.Core.AST;
 using Ouroboros.Core.Compiler;
+using Ouroboros.Tokens;
 
 namespace Ouroboros.Optimization
 {
@@ -197,35 +198,35 @@ namespace Ouroboros.Optimization
                 return new BinaryExpression(left, expr.Operator, right, expr.Line, expr.Column);
             }
             
-            private object EvaluateBinary(TokenType op, object left, object right)
+            private object EvaluateBinary(Token op, object left, object right)
             {
                 if (left is int leftInt && right is int rightInt)
                 {
-                    return op switch
+                    return op.Type switch
                     {
                         TokenType.Plus => leftInt + rightInt,
                         TokenType.Minus => leftInt - rightInt,
-                        TokenType.Star => leftInt * rightInt,
-                        TokenType.Slash => leftInt / rightInt,
-                        TokenType.Percent => leftInt % rightInt,
+                        TokenType.Multiply => leftInt * rightInt,
+                        TokenType.Divide => leftInt / rightInt,
+                        TokenType.Modulo => leftInt % rightInt,
                         _ => throw new NotSupportedException()
                     };
                 }
                 
                 if (left is double leftDouble && right is double rightDouble)
                 {
-                    return op switch
+                    return op.Type switch
                     {
                         TokenType.Plus => leftDouble + rightDouble,
                         TokenType.Minus => leftDouble - rightDouble,
-                        TokenType.Star => leftDouble * rightDouble,
-                        TokenType.Slash => leftDouble / rightDouble,
-                        TokenType.Percent => leftDouble % rightDouble,
+                        TokenType.Multiply => leftDouble * rightDouble,
+                        TokenType.Divide => leftDouble / rightDouble,
+                        TokenType.Modulo => leftDouble % rightDouble,
                         _ => throw new NotSupportedException()
                     };
                 }
                 
-                if (left is string leftStr && right is string rightStr && op == TokenType.Plus)
+                if (left is string leftStr && right is string rightStr && op.Type == TokenType.Plus)
                 {
                     return leftStr + rightStr;
                 }
@@ -393,7 +394,7 @@ namespace Ouroboros.Optimization
             
             public override Expression VisitCallExpression(CallExpression expr)
             {
-                if (expr.Callee is VariableExpression varExpr && varExpr.Name == functionName)
+                if (expr.Callee is IdentifierExpression idExpr && idExpr.Name == functionName)
                 {
                     IsRecursive = true;
                 }
@@ -414,14 +415,14 @@ namespace Ouroboros.Optimization
             
             public override Expression VisitCallExpression(CallExpression expr)
             {
-                if (expr.Callee is VariableExpression varExpr && 
-                    inlineCandidates.TryGetValue(varExpr.Name, out var func))
+                if (expr.Callee is IdentifierExpression idExpr && 
+                    inlineCandidates.TryGetValue(idExpr.Name, out var func))
                 {
                     // Map parameters to arguments
                     parameterMap.Clear();
                     for (int i = 0; i < func.Parameters.Count; i++)
                     {
-                        parameterMap[func.Parameters[i]] = expr.Arguments[i];
+                        parameterMap[func.Parameters[i].Name] = expr.Arguments[i];
                     }
                     
                     // Inline the function body
@@ -480,12 +481,17 @@ namespace Ouroboros.Optimization
             private Expression CreateIIFE(FunctionDeclaration func, ExpressionCloner cloner)
             {
                 // Create a lambda expression that's immediately called
-                var lambdaParams = func.Parameters.Select(p => new Parameter(p, null)).ToList();
+                var lambdaParams = func.Parameters.Select(p => new Parameter
+                {
+                    Name = p.Name,
+                    Type = p.Type,
+                    DefaultValue = p.DefaultValue
+                }).ToList();
                 var lambdaBody = cloner.Visit(func.Body) as Statement;
                 var lambda = new LambdaExpression(lambdaParams, lambdaBody, func.Line, func.Column);
                 
                 // Create call with mapped arguments
-                var args = func.Parameters.Select(p => parameterMap[p]).ToList();
+                var args = func.Parameters.Select(p => parameterMap[p.Name]).ToList();
                 return new CallExpression(lambda, args, func.Line, func.Column);
             }
         }
@@ -517,7 +523,7 @@ namespace Ouroboros.Optimization
                 this.substitutions = substitutions;
             }
             
-            public override Expression VisitVariableExpression(VariableExpression expr)
+            public override Expression VisitIdentifierExpression(IdentifierExpression expr)
             {
                 if (substitutions.TryGetValue(expr.Name, out var replacement))
                 {
@@ -537,7 +543,7 @@ namespace Ouroboros.Optimization
             public override Expression VisitUnaryExpression(UnaryExpression expr)
             {
                 var operand = Visit(expr.Operand) as Expression;
-                return new UnaryExpression(expr.Operator, operand, expr.Prefix, expr.Line, expr.Column);
+                return new UnaryExpression(expr.Operator, operand, expr.IsPrefix, expr.Line, expr.Column);
             }
             
             public override Expression VisitCallExpression(CallExpression expr)
@@ -597,11 +603,13 @@ namespace Ouroboros.Optimization
                 // Check for simple counting loop: for (int i = 0; i < N; i++)
                 if (stmt.Initializer is VariableDeclaration init &&
                     init.Initializer is LiteralExpression { Value: 0 } &&
-                    stmt.Condition is BinaryExpression { Operator: TokenType.Less } cond &&
-                    cond.Left is VariableExpression { Name: var iterVar } &&
+                    stmt.Condition is BinaryExpression cond &&
+                    cond.Operator.Type == TokenType.Less &&
+                    cond.Left is IdentifierExpression { Name: var iterVar } &&
                     iterVar == init.Name &&
                     cond.Right is LiteralExpression { Value: int limit } &&
-                    stmt.Increment is UnaryExpression { Operator: TokenType.PlusPlus })
+                    stmt.Update is UnaryExpression update &&
+                    update.Operator.Type == TokenType.Increment)
                 {
                     iterations = limit;
                     return true;
@@ -722,8 +730,8 @@ namespace Ouroboros.Optimization
                 {
                     switch (expr)
                     {
-                        case VariableExpression varExpr:
-                            referenced.Add(varExpr.Name);
+                        case IdentifierExpression idExpr:
+                            referenced.Add(idExpr.Name);
                             break;
                             
                         case BinaryExpression binExpr:
@@ -822,7 +830,7 @@ namespace Ouroboros.Optimization
                 var right = Visit(expr.Right) as Expression;
                 
                 // Create canonical representation
-                string key = $"{GetExpressionKey(left)}_{expr.Operator}_{GetExpressionKey(right)}";
+                string key = $"{GetExpressionKey(left)}_{expr.Operator.Type}_{GetExpressionKey(right)}";
                 
                 if (expressions.TryGetValue(key, out var existing))
                 {
@@ -837,12 +845,11 @@ namespace Ouroboros.Optimization
             
             private string GetExpressionKey(Expression expr)
             {
-                // Generate unique key for expression
                 return expr switch
                 {
                     LiteralExpression lit => $"lit_{lit.Value}",
-                    VariableExpression var => $"var_{var.Name}",
-                    BinaryExpression bin => $"bin_{GetExpressionKey(bin.Left)}_{bin.Operator}_{GetExpressionKey(bin.Right)}",
+                    IdentifierExpression id => $"var_{id.Name}",
+                    BinaryExpression bin => $"bin_{GetExpressionKey(bin.Left)}_{bin.Operator.Type}_{GetExpressionKey(bin.Right)}",
                     _ => $"expr_{expr.GetHashCode()}"
                 };
             }
@@ -1186,7 +1193,7 @@ namespace Ouroboros.Optimization
                 BinaryExpression e => VisitBinaryExpression(e),
                 UnaryExpression e => VisitUnaryExpression(e),
                 LiteralExpression e => VisitLiteralExpression(e),
-                VariableExpression e => VisitVariableExpression(e),
+                IdentifierExpression e => VisitIdentifierExpression(e),
                 AssignmentExpression e => VisitAssignmentExpression(e),
                 CallExpression e => VisitCallExpression(e),
                 _ => expr
@@ -1235,9 +1242,9 @@ namespace Ouroboros.Optimization
         {
             var initializer = stmt.Initializer != null ? Visit(stmt.Initializer) as Statement : null;
             var condition = stmt.Condition != null ? Visit(stmt.Condition) as Expression : null;
-            var increment = stmt.Increment != null ? Visit(stmt.Increment) as Expression : null;
+            var update = stmt.Update != null ? Visit(stmt.Update) as Expression : null;
             var body = Visit(stmt.Body) as Statement;
-            return new ForStatement(initializer, condition, increment, body, stmt.Line, stmt.Column);
+            return new ForStatement(initializer, condition, update, body, stmt.Line, stmt.Column);
         }
         
         public virtual Statement VisitReturnStatement(ReturnStatement stmt)
@@ -1262,7 +1269,7 @@ namespace Ouroboros.Optimization
         public virtual Expression VisitUnaryExpression(UnaryExpression expr)
         {
             var operand = Visit(expr.Operand) as Expression;
-            return new UnaryExpression(expr.Operator, operand, expr.Line, expr.Column);
+            return new UnaryExpression(expr.Operator, operand, expr.IsPrefix, expr.Line, expr.Column);
         }
         
         public virtual Expression VisitLiteralExpression(LiteralExpression expr)
@@ -1270,7 +1277,7 @@ namespace Ouroboros.Optimization
             return expr;
         }
         
-        public virtual Expression VisitVariableExpression(VariableExpression expr)
+        public virtual Expression VisitIdentifierExpression(IdentifierExpression expr)
         {
             return expr;
         }
