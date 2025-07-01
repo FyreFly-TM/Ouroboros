@@ -13,12 +13,12 @@ namespace Ouroboros.Core
     /// </summary>
     public class AttributeProcessor
     {
-        private BytecodeBuilder builder;
-        private SymbolTable symbols;
-        private Dictionary<string, object> attributeContext;
+            private BytecodeBuilder builder;
+    private Ouroboros.Core.Compiler.SymbolTable symbols;
+    private Dictionary<string, object> attributeContext;
         private List<string> activeFeatures;
         
-        public AttributeProcessor(BytecodeBuilder builder, SymbolTable symbols)
+        public AttributeProcessor(BytecodeBuilder builder, Ouroboros.Core.Compiler.SymbolTable symbols)
         {
             this.builder = builder;
             this.symbols = symbols;

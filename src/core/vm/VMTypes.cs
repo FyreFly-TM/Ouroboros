@@ -55,7 +55,7 @@ namespace Ouroboros.Core.VM
     {
         public string Version { get; set; }
         public string CompilerVersion { get; set; }
-        public OptimizationLevel OptimizationLevel { get; set; }
+        public int OptimizationLevel { get; set; } // 0=None, 1=Basic, 2=Full
         public string[] SourceFiles { get; set; }
         public DateTime CompileTime { get; set; }
         public string TargetPlatform { get; set; }

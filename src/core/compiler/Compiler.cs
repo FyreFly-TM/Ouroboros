@@ -2467,35 +2467,35 @@ namespace Ouroboros.Core.Compiler
             }
         }
         
-        private void CompilePattern(Pattern pattern)
+        private void CompilePattern(Ouroboros.Core.AST.Pattern pattern)
         {
             // Compile pattern matching logic
             switch (pattern)
             {
-                case LiteralPattern literalPattern:
+                case Ouroboros.Core.AST.LiteralPattern literalPattern:
                     // Load the literal value for comparison
                     builder.Emit(Opcode.LoadConstant, builder.AddConstant(literalPattern.Value));
                     builder.Emit(Opcode.Equal);
                     break;
                     
-                case ConstantPattern constantPattern:
+                case Ouroboros.Core.AST.ConstantPattern constantPattern:
                     // Load the constant value for comparison
                     builder.Emit(Opcode.LoadConstant, builder.AddConstant(constantPattern.Value));
                     builder.Emit(Opcode.Equal);
                     break;
                     
-                case IdentifierPattern identifierPattern:
+                case Ouroboros.Core.AST.IdentifierPattern identifierPattern:
                     // Identifier pattern always matches, just bind the value
                     builder.Emit(Opcode.LoadTrue);
                     // The actual binding is handled in the match arm compilation
                     break;
                     
-                case WildcardPattern:
+                case Ouroboros.Core.AST.WildcardPattern:
                     // Wildcard always matches
                     builder.Emit(Opcode.LoadTrue);
                     break;
                     
-                case TupleMatchPattern tuplePattern:
+                case Ouroboros.Core.AST.TupleMatchPattern tuplePattern:
                     // Match tuple elements
                     foreach (var elementPattern in tuplePattern.Patterns)
                     {

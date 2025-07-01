@@ -76,7 +76,7 @@ namespace Ouroboros.Core.Compiler
         }
         
         // Visitor implementations
-        public TypeNode VisitProgram(Program program) 
+        public TypeNode VisitProgram(Ouroboros.Core.AST.Program program) 
         { 
             foreach (var s in program.Statements) 
                 s.Accept(this); 

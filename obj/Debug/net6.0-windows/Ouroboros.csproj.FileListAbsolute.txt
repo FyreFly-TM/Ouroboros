@@ -12,3 +12,8 @@ H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\refint\ouroboros.dll
 H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\ouroboros.pdb
 H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.genruntimeconfig.cache
 H:\Downloads\Ouroboros\obj\Debug\net6.0-windows\ref\ouroboros.dll
+H:\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.GeneratedMSBuildEditorConfig.editorconfig
+H:\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.AssemblyInfoInputs.cache
+H:\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.AssemblyInfo.cs
+H:\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.csproj.CoreCompileInputs.cache
+H:\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.sourcelink.json
