@@ -68,7 +68,7 @@ namespace Ouroboros.Core.VM
         /// <summary>
         /// Execute a compiled program
         /// </summary>
-        public object Execute(Compiler.CompiledProgram program)
+        public object Execute(VM.CompiledProgram program)
         {
             // Store the compiled program and symbol table for function resolution
             this.compiledProgram = program;
@@ -77,8 +77,8 @@ namespace Ouroboros.Core.VM
             try
             {
                 var bytecode = program.Bytecode;
-                var constants = bytecode.Constants.ToArray();
-                var code = bytecode.Code.ToArray();
+                var constants = bytecode.ConstantPool;
+                var code = bytecode.Instructions;
                 
                 // Load the bytecode
                 LoadBytecode(code, constants);
@@ -1577,16 +1577,77 @@ namespace Ouroboros.Core.VM
                     
                 // WebAssembly operations
                 case Opcode.InitWasmContext:
-                    Console.WriteLine("[VM] Initializing WebAssembly context");
-                    operandStack.Push("WASM context initialized");
+                    {
+                        // Initialize WebAssembly runtime context
+                        var wasmContext = new Dictionary<string, object>
+                        {
+                            ["imports"] = new Dictionary<string, object>(),
+                            ["exports"] = new Dictionary<string, object>(),
+                            ["memory"] = new byte[65536], // 64KB initial WASM memory
+                            ["table"] = new List<Delegate>(),
+                            ["stack"] = new Stack<object>()
+                        };
+                        
+                        environment.Globals["__wasm_context"] = wasmContext;
+                        
+                        Console.WriteLine("[VM] WebAssembly context initialized");
+                        operandStack.Push(wasmContext);
+                    }
                     break;
                     
                 case Opcode.WasmExport:
-                    Console.WriteLine("[VM] Exporting WASM function");
+                    {
+                        // Export function to WebAssembly module
+                        var functionName = constantPool[ReadInt32()] as string;
+                        var exportName = constantPool[ReadInt32()] as string;
+                        
+                        if (environment.Globals.TryGetValue("__wasm_context", out var contextObj) &&
+                            contextObj is Dictionary<string, object> wasmContext)
+                        {
+                            var exports = wasmContext["exports"] as Dictionary<string, object>;
+                            
+                            // Find the function to export
+                            if (environment.NativeFunctions.TryGetValue(functionName, out var function))
+                            {
+                                exports[exportName] = function;
+                                Console.WriteLine($"[VM] Exported function '{functionName}' as '{exportName}'");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"[VM] Warning: Function '{functionName}' not found for export");
+                            }
+                        }
+                    }
                     break;
                     
                 case Opcode.WasmImport:
-                    Console.WriteLine("[VM] Importing WASM function");
+                    {
+                        // Import function from WebAssembly host
+                        var moduleName = constantPool[ReadInt32()] as string;
+                        var importName = constantPool[ReadInt32()] as string;
+                        var localName = constantPool[ReadInt32()] as string;
+                        
+                        if (environment.Globals.TryGetValue("__wasm_context", out var contextObj) &&
+                            contextObj is Dictionary<string, object> wasmContext)
+                        {
+                            var imports = wasmContext["imports"] as Dictionary<string, object>;
+                            
+                            // Create import key
+                            var importKey = $"{moduleName}.{importName}";
+                            
+                            // For now, create a placeholder function
+                            Func<object[], object> importedFunc = (args) =>
+                            {
+                                Console.WriteLine($"[VM] Called imported WASM function '{importKey}' with {args.Length} args");
+                                return null;
+                            };
+                            
+                            imports[importKey] = importedFunc;
+                            environment.NativeFunctions[localName] = importedFunc;
+                            
+                            Console.WriteLine($"[VM] Imported '{importKey}' as '{localName}'");
+                        }
+                    }
                     break;
                     
                 // Embedded operations
@@ -2585,47 +2646,7 @@ namespace Ouroboros.Core.VM
             environment.NativeFunctions["SigmaSquared"] = new Func<double[], double>(MathSymbols.SigmaSquared);
         }
         
-        private void LoadTypesFromCompilerBytecode(Compiler.Bytecode bytecode)
-        {
-            // Load classes
-            foreach (var classInfo in bytecode.Classes)
-            {
-                // Register class type with metadata
-                var type = CreateDynamicClass(classInfo);
-                typeRegistry[classInfo.Name] = type;
-                
-                // Store class metadata for runtime instantiation
-                environment.Globals[$"__metadata_{classInfo.Name}"] = classInfo;
-            }
-            
-            // Load structs
-            foreach (var structInfo in bytecode.Structs)
-            {
-                // Register struct type with metadata
-                var type = CreateDynamicStruct(structInfo);
-                typeRegistry[structInfo.Name] = type;
-                
-                // Store struct metadata for runtime instantiation
-                environment.Globals[$"__metadata_{structInfo.Name}"] = structInfo;
-            }
-            
-            // Load enums
-            foreach (var enumInfo in bytecode.Enums)
-            {
-                // Register enum type with metadata
-                var type = CreateDynamicEnum(enumInfo);
-                typeRegistry[enumInfo.Name] = type;
-                
-                // Store enum metadata and create enum value mappings
-                environment.Globals[$"__metadata_{enumInfo.Name}"] = enumInfo;
-                
-                // Register enum values as constants
-                foreach (var member in enumInfo.Members)
-                {
-                    environment.Globals[$"{enumInfo.Name}.{member.Name}"] = member.Value;
-                }
-            }
-        }
+
         
         private void LoadTypes(Bytecode bytecode)
         {
@@ -3174,33 +3195,31 @@ namespace Ouroboros.Core.VM
         
         private FunctionInfo ResolveUserFunction(string functionName)
         {
-            // Look through the compiled program's function table
-            var compiledProgram = this.compiledProgram;
-            if (compiledProgram?.Functions != null)
+            // Look through the bytecode's function table
+            var bytecode = this.compiledProgram?.Bytecode;
+            if (bytecode?.Functions != null)
             {
-                if (compiledProgram.Functions.ContainsKey(functionName))
+                foreach (var function in bytecode.Functions)
                 {
-                    var functionInfo = compiledProgram.Functions[functionName];
-                    return new FunctionInfo
+                    if (function.Name == functionName)
                     {
-                        Name = functionInfo.Name,
-                        StartAddress = functionInfo.StartAddress,
-                        EndAddress = functionInfo.EndAddress
-                    };
+                        return function;
+                    }
                 }
             }
             
-            // Fallback: Try to find in symbol table addresses
+            // Fallback: Try to find in symbol table
             if (symbolTable != null)
             {
                 var symbol = symbolTable.Lookup(functionName);
-                if (symbol != null && symbol.Address != -1)
+                if (symbol != null && symbol is FunctionSymbol funcSymbol)
                 {
+                    // Create a basic FunctionInfo from the symbol
                     return new FunctionInfo
                     {
                         Name = functionName,
-                        StartAddress = symbol.Address,
-                        EndAddress = -1 // Will be determined during execution
+                        StartAddress = -1, // Address not stored in symbol
+                        EndAddress = -1
                     };
                 }
             }
@@ -3295,10 +3314,10 @@ namespace Ouroboros.Core.VM
             
             if (symbolTable != null)
             {
-                var globalIndex = symbolTable.GetGlobalIndex(name);
-                if (globalIndex >= 0 && globalIndex < globals.Count)
+                var symbol = symbolTable.Lookup(name);
+                if (symbol != null && symbol.IsGlobal && symbol.Index < globals.Count)
                 {
-                    value = globals[globalIndex];
+                    value = globals[symbol.Index];
                     return true;
                 }
             }
@@ -3319,17 +3338,16 @@ namespace Ouroboros.Core.VM
         {
             var result = new Dictionary<string, object>();
             
-            if (callStack.Count > 0 && symbolTable != null)
+            if (callStack.Count > 0)
             {
                 var frame = callStack.Peek();
                 var localBase = frame.LocalsBase;
                 
-                // Get local variable names from symbol table
-                var localNames = symbolTable.GetLocalNames();
-                
-                for (int i = 0; i < localNames.Count && localBase + i < locals.Count; i++)
+                // For now, just return indexed locals
+                // A full implementation would need to track local variable names
+                for (int i = 0; i < 10 && localBase + i < locals.Count; i++)
                 {
-                    result[localNames[i]] = locals[localBase + i];
+                    result[$"local{i}"] = locals[localBase + i];
                 }
             }
             
@@ -3362,7 +3380,7 @@ namespace Ouroboros.Core.VM
                     // Physics constants
                     constants["c"] = 299792458.0; // Speed of light
                     constants["ε₀"] = 8.854e-12; // Permittivity of free space
-                    constants["μ₀"] = 4 * Math.PI * 1e-7; // Permeability of free space
+                    constants["μ₀"] = 4 * System.Math.PI * 1e-7; // Permeability of free space
                     constants["ℏ"] = 1.054e-34; // Reduced Planck constant
                     break;
                     

@@ -51,9 +51,9 @@ namespace Ouroboros.Syntaxes.High
             if (Match(TokenType.For))
             {
                 if (Match(TokenType.Each))
-            {
+                {
                     return ParseForEachStatement();
-            }
+                }
                 // Rewind if not "for each"
                 current--;
             }
@@ -497,7 +497,7 @@ namespace Ouroboros.Syntaxes.High
         
         private Expression ParseAggregationExpression(Token aggregationFunction)
         {
-            // aggregationFunction (like "sum") already consumed
+            // aggregationFunction (like "sum", "average", "count", etc.) already consumed
             Console.WriteLine($"DEBUG: Parsing aggregation expression starting with '{aggregationFunction.Lexeme}'");
             
             // Parse "sum of all X" pattern
@@ -505,14 +505,55 @@ namespace Ouroboros.Syntaxes.High
             Consume(TokenType.All, "Expected 'all' after 'of'");
             var source = ParseIdentifierLikeExpression();
             
-            // Create an aggregation call expression equivalent to numbers.Sum()
-            var aggregationCall = new CallExpression(
-                new MemberExpression(source, CreateToken(TokenType.Dot, ".", null), CreateToken(TokenType.Identifier, "Sum", null)),
-                new List<Expression>()  // No arguments for Sum()
-            );
+            // Map natural language aggregation to LINQ methods
+            string methodName = aggregationFunction.Lexeme.ToLower() switch
+            {
+                "sum" => "Sum",
+                "average" => "Average",
+                "count" => "Count",
+                "minimum" => "Min",
+                "maximum" => "Max",
+                "product" => "Aggregate",
+                _ => throw Error(aggregationFunction, $"Unknown aggregation function: {aggregationFunction.Lexeme}")
+            };
             
-            Console.WriteLine($"DEBUG: Generated {aggregationFunction.Lexeme.ToUpper()} expression for 'sum of all'");
-            return aggregationCall;
+            if (methodName == "Aggregate" && aggregationFunction.Lexeme.ToLower() == "product")
+            {
+                // Special case for product: numbers.Aggregate(1, (acc, x) => acc * x)
+                var accParam = CreateToken(TokenType.Identifier, "acc", null);
+                var xParam = CreateToken(TokenType.Identifier, "x", null);
+                var accParameter = new Parameter(new TypeNode("var"), "acc");
+                var xParameter = new Parameter(new TypeNode("var"), "x");
+                
+                var multiplyExpression = new BinaryExpression(
+                    new IdentifierExpression(accParam),
+                    CreateToken(TokenType.Multiply, "*", null),
+                    new IdentifierExpression(xParam)
+                );
+                
+                var aggregationCall = new CallExpression(
+                    new MemberExpression(source, CreateToken(TokenType.Dot, ".", null), CreateToken(TokenType.Identifier, methodName, null)),
+                    new List<Expression> 
+                    { 
+                        new LiteralExpression(CreateToken(TokenType.IntegerLiteral, "1", 1)),
+                        new LambdaExpression(new List<Parameter> { accParameter, xParameter }, multiplyExpression)
+                    }
+                );
+                
+                Console.WriteLine($"DEBUG: Generated PRODUCT expression using Aggregate");
+                return aggregationCall;
+            }
+            else
+            {
+                // Create an aggregation call expression equivalent to numbers.Sum() / Average() / etc.
+                var aggregationCall = new CallExpression(
+                    new MemberExpression(source, CreateToken(TokenType.Dot, ".", null), CreateToken(TokenType.Identifier, methodName, null)),
+                    new List<Expression>()  // No arguments for most aggregation functions
+                );
+                
+                Console.WriteLine($"DEBUG: Generated {methodName} expression for '{aggregationFunction.Lexeme} of all'");
+                return aggregationCall;
+            }
         }
         
         private Expression ParseTryExpression()
@@ -521,17 +562,57 @@ namespace Ouroboros.Syntaxes.High
             Console.WriteLine($"DEBUG: Parsing try expression");
             
             var tryExpr = ParseExpression();
-            Consume(TokenType.Else, "Expected 'else' after try expression");
-            var elseExpr = ParseExpression();
             
-            // Create a try-catch expression equivalent to try { tryExpr } catch { elseExpr }
-            var tryCall = new CallExpression(
-                new IdentifierExpression(
-                    CreateToken(TokenType.Identifier, "TryCatch", null)),
-                new List<Expression> { tryExpr, elseExpr });
-            
-            Console.WriteLine($"DEBUG: Generated TryCatch expression for 'try X else Y'");
-            return tryCall;
+            if (Match(TokenType.Catch))
+            {
+                // Handle "try X catch Y" pattern
+                var catchExpr = ParseExpression();
+                
+                // Create a lambda for the try block: () => tryExpr
+                var tryLambda = new LambdaExpression(new List<Parameter>(), tryExpr);
+                
+                // Create a lambda for the catch block: (e) => catchExpr
+                var exceptionParam = new Parameter(new TypeNode("Exception"), "e");
+                var catchLambda = new LambdaExpression(new List<Parameter> { exceptionParam }, catchExpr);
+                
+                // Generate: System.TryCatch(tryLambda, catchLambda)
+                var tryCatchCall = new CallExpression(
+                    new MemberExpression(
+                        new IdentifierExpression(CreateToken(TokenType.Identifier, "System", null)),
+                        CreateToken(TokenType.Dot, ".", null),
+                        CreateToken(TokenType.Identifier, "TryCatch", null)
+                    ),
+                    new List<Expression> { tryLambda, catchLambda }
+                );
+                
+                Console.WriteLine($"DEBUG: Generated System.TryCatch call for 'try X catch Y'");
+                return tryCatchCall;
+            }
+            else if (Match(TokenType.Else))
+            {
+                // Handle "try X else Y" pattern (shorthand for try-catch with default value)
+                var elseExpr = ParseExpression();
+                
+                // Create a lambda for the try block: () => tryExpr
+                var tryLambda = new LambdaExpression(new List<Parameter>(), tryExpr);
+                
+                // Generate: System.TryGetValue(tryLambda, elseExpr)
+                var tryCall = new CallExpression(
+                    new MemberExpression(
+                        new IdentifierExpression(CreateToken(TokenType.Identifier, "System", null)),
+                        CreateToken(TokenType.Dot, ".", null),
+                        CreateToken(TokenType.Identifier, "TryGetValue", null)
+                    ),
+                    new List<Expression> { tryLambda, elseExpr }
+                );
+                
+                Console.WriteLine($"DEBUG: Generated System.TryGetValue call for 'try X else Y'");
+                return tryCall;
+            }
+            else
+            {
+                throw Error(Current(), "Expected 'catch' or 'else' after try expression");
+            }
         }
 
         
