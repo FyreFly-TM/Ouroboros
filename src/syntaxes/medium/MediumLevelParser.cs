@@ -507,7 +507,7 @@ namespace Ouroboros.Syntaxes.Medium
                 Match(TokenType.StringLiteral) ||
                 Match(TokenType.True) ||
                 Match(TokenType.False) ||
-                Match(TokenType.Null))
+                Match(TokenType.NullLiteral))
             {
                 return new ConstantPattern(new LiteralExpression(Previous()));
             }
@@ -1403,7 +1403,7 @@ namespace Ouroboros.Syntaxes.Medium
             if (Match(TokenType.IntegerLiteral, TokenType.FloatLiteral, 
                      TokenType.DoubleLiteral, TokenType.StringLiteral,
                      TokenType.CharLiteral, TokenType.True, TokenType.False, 
-                     TokenType.Null))
+                     TokenType.NullLiteral))
             {
                 return new LiteralExpression(Previous());
             }

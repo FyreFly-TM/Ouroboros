@@ -48,19 +48,15 @@ namespace Ouroboros.IDE
             // Initialize default color scheme
             tokenColors = new Dictionary<TokenType, string>
             {
-                [TokenType.STRING] = "#ce9178",
-                [TokenType.NUMBER] = "#b5cea8",
-                [TokenType.INTEGER] = "#b5cea8",
-                [TokenType.DOUBLE] = "#b5cea8",
-                [TokenType.FLOAT] = "#b5cea8",
-                [TokenType.COMMENT] = "#6a9955",
-                [TokenType.KEYWORD] = "#569cd6",
-                [TokenType.IDENTIFIER] = "#9cdcfe",
-                [TokenType.TYPE] = "#4ec9b0",
-                [TokenType.OPERATOR] = "#d4d4d4",
-                [TokenType.UNIT_LITERAL] = "#dcdcaa",
-                [TokenType.BOOLEAN] = "#569cd6",
-                [TokenType.NULL] = "#569cd6"
+                [TokenType.StringLiteral] = "#ce9178",
+                [TokenType.IntegerLiteral] = "#b5cea8",
+                [TokenType.DoubleLiteral] = "#b5cea8",
+                [TokenType.FloatLiteral] = "#b5cea8",
+                [TokenType.Comment] = "#6a9955",
+                [TokenType.Identifier] = "#9cdcfe",
+                [TokenType.UnitLiteral] = "#dcdcaa",
+                [TokenType.BooleanLiteral] = "#569cd6",
+                [TokenType.NullLiteral] = "#569cd6"
             };
 
             // Special keywords that need different colors
@@ -197,7 +193,7 @@ namespace Ouroboros.IDE
                 TokenType.OPERATOR => "keyword.operator.ouroboros",
                 TokenType.UNIT_LITERAL => "constant.other.unit.ouroboros",
                 TokenType.BOOLEAN => "constant.language.boolean.ouroboros",
-                TokenType.NULL => "constant.language.null.ouroboros",
+                TokenType.NullLiteral => "constant.language.null.ouroboros",
                 _ => "source.ouroboros"
             };
         }
