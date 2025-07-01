@@ -1080,6 +1080,467 @@ namespace Ouroboros.Syntaxes.Medium
             return new TypeNode(typeName);
         }
 
+        // ===== EXPRESSION PARSING =====
+        
+        private Expression ParseExpression()
+        {
+            return ParseConditional();
+        }
+        
+        private Expression ParseConditional()
+        {
+            var expr = ParseCoalescing();
+            
+            if (Match(TokenType.Question))
+            {
+                var thenExpr = ParseExpression();
+                Consume(TokenType.Colon, "Expected ':' in conditional expression");
+                var elseExpr = ParseExpression();
+                
+                return new ConditionalExpression(expr, thenExpr, elseExpr);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseCoalescing()
+        {
+            var expr = ParseLogicalOr();
+            
+            while (Match(TokenType.NullCoalescing))
+            {
+                var op = Previous();
+                var right = ParseLogicalOr();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseLogicalOr()
+        {
+            var expr = ParseLogicalAnd();
+            
+            while (Match(TokenType.LogicalOr))
+            {
+                var op = Previous();
+                var right = ParseLogicalAnd();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseLogicalAnd()
+        {
+            var expr = ParseBitwiseOr();
+            
+            while (Match(TokenType.LogicalAnd))
+            {
+                var op = Previous();
+                var right = ParseBitwiseOr();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseBitwiseOr()
+        {
+            var expr = ParseBitwiseXor();
+            
+            while (Match(TokenType.BitwiseOr))
+            {
+                var op = Previous();
+                var right = ParseBitwiseXor();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseBitwiseXor()
+        {
+            var expr = ParseBitwiseAnd();
+            
+            while (Match(TokenType.BitwiseXor))
+            {
+                var op = Previous();
+                var right = ParseBitwiseAnd();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseBitwiseAnd()
+        {
+            var expr = ParseEquality();
+            
+            while (Match(TokenType.BitwiseAnd))
+            {
+                var op = Previous();
+                var right = ParseEquality();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseEquality()
+        {
+            var expr = ParseComparison();
+            
+            while (Match(TokenType.Equal, TokenType.NotEqual))
+            {
+                var op = Previous();
+                var right = ParseComparison();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseComparison()
+        {
+            var expr = ParseShift();
+            
+            while (Match(TokenType.Less, TokenType.LessEqual, 
+                         TokenType.Greater, TokenType.GreaterEqual,
+                         TokenType.Is, TokenType.As))
+            {
+                var op = Previous();
+                var right = ParseShift();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseShift()
+        {
+            var expr = ParseAddition();
+            
+            while (Match(TokenType.LeftShift, TokenType.RightShift))
+            {
+                var op = Previous();
+                var right = ParseAddition();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseAddition()
+        {
+            var expr = ParseMultiplication();
+            
+            while (Match(TokenType.Plus, TokenType.Minus))
+            {
+                var op = Previous();
+                var right = ParseMultiplication();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseMultiplication()
+        {
+            var expr = ParseUnary();
+            
+            while (Match(TokenType.Multiply, TokenType.Divide, TokenType.Modulo))
+            {
+                var op = Previous();
+                var right = ParseUnary();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseUnary()
+        {
+            if (Match(TokenType.LogicalNot, TokenType.BitwiseNot, TokenType.Minus, TokenType.Plus,
+                     TokenType.Increment, TokenType.Decrement))
+            {
+                var op = Previous();
+                var right = ParseUnary();
+                return new UnaryExpression(op, right);
+            }
+            
+            // Type cast
+            if (Match(TokenType.LeftParen))
+            {
+                var checkpoint = current;
+                try
+                {
+                    var type = ParseType();
+                    if (Match(TokenType.RightParen))
+                    {
+                        // It's a cast
+                        var expr = ParseUnary();
+                        return new CastExpression(type, expr);
+                    }
+                }
+                catch { }
+                // Not a cast, reset
+                current = checkpoint;
+            }
+            
+            return ParsePostfix();
+        }
+        
+        private Expression ParsePostfix()
+        {
+            var expr = ParsePrimary();
+            
+            while (true)
+            {
+                if (Match(TokenType.LeftParen))
+                {
+                    // Method call
+                    var args = new List<Expression>();
+                    if (!Check(TokenType.RightParen))
+                    {
+                        do
+                        {
+                            args.Add(ParseExpression());
+                        } while (Match(TokenType.Comma));
+                    }
+                    Consume(TokenType.RightParen, "Expected ')' after arguments");
+                    expr = new CallExpression(expr, args);
+                }
+                else if (Match(TokenType.LeftBracket))
+                {
+                    // Array index
+                    var index = ParseExpression();
+                    Consume(TokenType.RightBracket, "Expected ']' after array index");
+                    expr = new IndexExpression(expr, index);
+                }
+                else if (Match(TokenType.Dot))
+                {
+                    // Member access
+                    var name = Consume(TokenType.Identifier, "Expected member name");
+                    expr = new MemberExpression(expr, Previous(), name);
+                }
+                else if (Match(TokenType.Arrow))
+                {
+                    // Pointer member access
+                    var name = Consume(TokenType.Identifier, "Expected member name");
+                    expr = new PointerMemberExpression(expr, name);
+                }
+                else if (Match(TokenType.Increment, TokenType.Decrement))
+                {
+                    // Postfix increment/decrement
+                    expr = new PostfixExpression(expr, Previous());
+                }
+                else
+                {
+                    break;
+                }
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParsePrimary()
+        {
+            // Literals
+            if (Match(TokenType.IntegerLiteral, TokenType.FloatLiteral, 
+                     TokenType.DoubleLiteral, TokenType.StringLiteral,
+                     TokenType.CharLiteral, TokenType.True, TokenType.False, 
+                     TokenType.Null))
+            {
+                return new LiteralExpression(Previous());
+            }
+            
+            // Identifier
+            if (Match(TokenType.Identifier))
+            {
+                return new IdentifierExpression(Previous());
+            }
+            
+            // This
+            if (Match(TokenType.This))
+            {
+                return new ThisExpression(Previous());
+            }
+            
+            // Base
+            if (Match(TokenType.Base))
+            {
+                return new BaseExpression(Previous());
+            }
+            
+            // New
+            if (Match(TokenType.New))
+            {
+                var type = ParseType();
+                
+                // Object creation
+                if (Match(TokenType.LeftParen))
+                {
+                    var args = new List<Expression>();
+                    if (!Check(TokenType.RightParen))
+                    {
+                        do
+                        {
+                            args.Add(ParseExpression());
+                        } while (Match(TokenType.Comma));
+                    }
+                    Consume(TokenType.RightParen, "Expected ')' after arguments");
+                    
+                    // Object initializer
+                    Dictionary<string, Expression> initializers = null;
+                    if (Match(TokenType.LeftBrace))
+                    {
+                        initializers = new Dictionary<string, Expression>();
+                        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+                        {
+                            var name = Consume(TokenType.Identifier, "Expected property name");
+                            Consume(TokenType.Assign, "Expected '=' in initializer");
+                            var value = ParseExpression();
+                            initializers[name.Lexeme] = value;
+                            
+                            if (!Match(TokenType.Comma))
+                                break;
+                        }
+                        Consume(TokenType.RightBrace, "Expected '}' after initializers");
+                    }
+                    
+                    return new NewExpression(type, args, initializers);
+                }
+                // Array creation
+                else if (Match(TokenType.LeftBracket))
+                {
+                    var size = ParseExpression();
+                    Consume(TokenType.RightBracket, "Expected ']' after array size");
+                    
+                    // Array initializer
+                    List<Expression> elements = null;
+                    if (Match(TokenType.LeftBrace))
+                    {
+                        elements = new List<Expression>();
+                        if (!Check(TokenType.RightBrace))
+                        {
+                            do
+                            {
+                                elements.Add(ParseExpression());
+                            } while (Match(TokenType.Comma));
+                        }
+                        Consume(TokenType.RightBrace, "Expected '}' after array elements");
+                    }
+                    
+                    return new ArrayCreationExpression(type, size, elements);
+                }
+            }
+            
+            // Typeof
+            if (Match(TokenType.Typeof))
+            {
+                Consume(TokenType.LeftParen, "Expected '(' after 'typeof'");
+                var type = ParseType();
+                Consume(TokenType.RightParen, "Expected ')' after type");
+                return new TypeofExpression(type);
+            }
+            
+            // Sizeof
+            if (Match(TokenType.Sizeof))
+            {
+                Consume(TokenType.LeftParen, "Expected '(' after 'sizeof'");
+                var type = ParseType();
+                Consume(TokenType.RightParen, "Expected ')' after type");
+                return new SizeofExpression(type);
+            }
+            
+            // Lambda
+            if (Check(TokenType.Identifier) || Check(TokenType.LeftParen))
+            {
+                var checkpoint = current;
+                try
+                {
+                    return ParseLambda();
+                }
+                catch
+                {
+                    // Not a lambda, reset
+                    current = checkpoint;
+                }
+            }
+            
+            // Parenthesized expression
+            if (Match(TokenType.LeftParen))
+            {
+                var expr = ParseExpression();
+                Consume(TokenType.RightParen, "Expected ')' after expression");
+                return expr;
+            }
+            
+            // Array literal
+            if (Match(TokenType.LeftBracket))
+            {
+                var elements = new List<Expression>();
+                if (!Check(TokenType.RightBracket))
+                {
+                    do
+                    {
+                        elements.Add(ParseExpression());
+                    } while (Match(TokenType.Comma));
+                }
+                Consume(TokenType.RightBracket, "Expected ']' after array elements");
+                return new ArrayExpression(Previous(), elements);
+            }
+            
+            // Anonymous object
+            if (Check(TokenType.LeftBrace))
+            {
+                return ParseAnonymousObject();
+            }
+            
+            throw Error(Current(), "Expected expression");
+        }
+        
+        private Expression ParseAssignment()
+        {
+            var expr = ParseConditional();
+            
+            if (Match(TokenType.Assign, TokenType.PlusAssign, TokenType.MinusAssign,
+                     TokenType.MultiplyAssign, TokenType.DivideAssign, TokenType.ModuloAssign,
+                     TokenType.BitwiseAndAssign, TokenType.BitwiseOrAssign, TokenType.BitwiseXorAssign,
+                     TokenType.LeftShiftAssign, TokenType.RightShiftAssign))
+            {
+                var op = Previous();
+                var right = ParseAssignment();
+                return new AssignmentExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseAnonymousObject()
+        {
+            Consume(TokenType.LeftBrace, "Expected '{'");
+            
+            var properties = new Dictionary<string, Expression>();
+            
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                var name = Consume(TokenType.Identifier, "Expected property name");
+                Consume(TokenType.Assign, "Expected '=' after property name");
+                var value = ParseExpression();
+                
+                properties[name.Lexeme] = value;
+                
+                if (!Match(TokenType.Comma))
+                    break;
+            }
+            
+            Consume(TokenType.RightBrace, "Expected '}' after properties");
+            
+            return new AnonymousObjectExpression(properties);
+        }
+
         #endregion
     }
 } 
