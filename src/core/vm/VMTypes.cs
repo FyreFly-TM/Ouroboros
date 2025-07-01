@@ -35,6 +35,19 @@ namespace Ouroboros.Core.VM
         public SystemInfo[] Systems { get; set; }
         public EntityInfo[] Entities { get; set; }
         public ExceptionHandler[] ExceptionHandlers { get; set; }
+        
+        // Legacy properties for compatibility
+        public List<byte> Code 
+        { 
+            get => Instructions?.ToList() ?? new List<byte>();
+            set => Instructions = value?.ToArray() ?? Array.Empty<byte>();
+        }
+        
+        public List<object> Constants 
+        { 
+            get => ConstantPool?.ToList() ?? new List<object>();
+            set => ConstantPool = value?.ToArray() ?? Array.Empty<object>();
+        }
     }
     
     /// <summary>
@@ -257,6 +270,7 @@ namespace Ouroboros.Core.VM
         public int TryStart { get; set; }
         public int TryEnd { get; set; }
         public int HandlerStart { get; set; }
+        public int CatchStart { get; set; }
         public string ExceptionType { get; set; }
         public int FilterStart { get; set; }
     }
@@ -425,7 +439,15 @@ namespace Ouroboros.Core.VM
         
         public override bool Match(object value)
         {
-            // Implementation would compare values
+            // For now, we need to evaluate the expression and compare
+            // In a full implementation, this would use the expression evaluator
+            if (Value is LiteralExpression lit)
+            {
+                return Equals(lit.Value, value);
+            }
+            
+            // For other expression types, we'd need an expression evaluator
+            // For now, return false for non-literal expressions
             return false;
         }
     }
@@ -440,12 +462,44 @@ namespace Ouroboros.Core.VM
         
         public override bool Match(object value)
         {
-            // Implementation would check type
+            if (value == null)
+                return Type == null || Type.Name == "null";
+                
+            // Get the runtime type of the value
+            var valueType = value.GetType();
+            
+            // Simple type name matching
+            // In a full implementation, this would handle generics, inheritance, etc.
+            return valueType.Name == Type.Name || 
+                   valueType.FullName == Type.Name ||
+                   IsAssignableToType(valueType, Type.Name);
+        }
+        
+        private bool IsAssignableToType(Type valueType, string typeName)
+        {
+            // Check if value type matches or inherits from the pattern type
+            if (valueType.Name == typeName || valueType.FullName == typeName)
+                return true;
+                
+            // Check base types
+            var baseType = valueType.BaseType;
+            while (baseType != null)
+            {
+                if (baseType.Name == typeName || baseType.FullName == typeName)
+                    return true;
+                baseType = baseType.BaseType;
+            }
+            
+            // Check interfaces
+            foreach (var iface in valueType.GetInterfaces())
+            {
+                if (iface.Name == typeName || iface.FullName == typeName)
+                    return true;
+            }
+            
             return false;
         }
     }
-    
-
     
     /// <summary>
     /// Loop context for break/continue
