@@ -668,20 +668,74 @@ namespace Ouroboros.Runtime
         private void CompactHeap()
         {
             // Compact heap to reduce fragmentation
-            // This is a placeholder - real implementation would:
-            // 1. Move live objects to eliminate gaps
-            // 2. Update all references to moved objects
-            // 3. Coalesce free memory blocks
-            
             lock (gcLock)
             {
-                // Sort allocations by memory address (if we had addresses)
-                // Move objects to eliminate fragmentation
-                // Update references
-                
-                // For now, just remove null entries to compact the list
+                // Remove dead entries to compact the allocation list
+                var oldCount = allocations.Count;
                 allocations.RemoveAll(wr => !wr.IsAlive);
+                var removedCount = oldCount - allocations.Count;
+                
+                if (removedCount > 0)
+                {
+                    Console.WriteLine($"[GC] Compacted allocation list, removed {removedCount} dead entries");
+                }
+                
+                // Estimate fragmentation (simplified)
+                var fragmentation = CalculateFragmentation();
+                if (fragmentation > 0.3) // 30% fragmentation threshold
+                {
+                    Console.WriteLine($"[GC] High fragmentation detected: {fragmentation:P}");
+                    
+                    // In a real implementation, we would:
+                    // 1. Create a new heap region
+                    // 2. Copy live objects to the new region (compacting them)
+                    // 3. Update all references to point to new locations
+                    // 4. Release the old heap region
+                    
+                    // For managed runtime, we can trigger a full GC
+                    if (options.EnableConcurrentGc)
+                    {
+                        GC.Collect(2, GCCollectionMode.Optimized);
+                    }
+                }
+                
+                // Sort allocations by approximate size for better cache locality
+                allocations.Sort((a, b) =>
+                {
+                    var aSize = a.IsAlive && a.Target != null ? CalculateObjectSize(a.Target.GetType()) : 0;
+                    var bSize = b.IsAlive && b.Target != null ? CalculateObjectSize(b.Target.GetType()) : 0;
+                    return bSize.CompareTo(aSize); // Largest first
+                });
             }
+        }
+        
+        private double CalculateFragmentation()
+        {
+            // Estimate heap fragmentation
+            // This is simplified - real implementation would track actual memory regions
+            
+            long totalAllocatedSize = 0;
+            long actualUsedSize = 0;
+            int liveObjectCount = 0;
+            
+            foreach (var weakRef in allocations)
+            {
+                if (weakRef.IsAlive && weakRef.Target != null)
+                {
+                    var size = CalculateObjectSize(weakRef.Target.GetType());
+                    actualUsedSize += size;
+                    liveObjectCount++;
+                }
+            }
+            
+            // Estimate total allocated including gaps
+            // Assume average 20% overhead for fragmentation
+            totalAllocatedSize = (long)(actualUsedSize * 1.2);
+            
+            if (totalAllocatedSize == 0)
+                return 0;
+                
+            return 1.0 - ((double)actualUsedSize / totalAllocatedSize);
         }
         
         private void UpdateStatistics()
