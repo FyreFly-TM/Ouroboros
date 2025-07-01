@@ -57,8 +57,8 @@ namespace Ouroboros.CodeGen
             var functionType = LLVM.FunctionType(returnType, paramTypes, false);
 
             // Create function
-            currentFunction = LLVM.AddFunction(llvmContext.Module, funcDecl.Name.Lexeme, functionType);
-            functions[funcDecl.Name.Lexeme] = currentFunction;
+            currentFunction = LLVM.AddFunction(llvmContext.Module, funcDecl.Name, functionType);
+            functions[funcDecl.Name] = currentFunction;
 
             // Create entry block
             currentBlock = LLVM.AppendBasicBlockInContext(llvmContext.Context, currentFunction, "entry");
@@ -95,6 +95,11 @@ namespace Ouroboros.CodeGen
 
             // Verify function
             LLVM.VerifyFunction(currentFunction, LLVMVerifierFailureAction.LLVMPrintMessageAction);
+        }
+
+        public bool TryGetFunction(string name, out LLVMValueRef function)
+        {
+            return functions.TryGetValue(name, out function);
         }
 
         private void BuildFromBytecode(byte[] bytecode)
