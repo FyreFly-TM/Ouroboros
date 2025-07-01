@@ -502,8 +502,15 @@ code {
     margin: 10px 0;
 }
 
+nav {
+    background: #f0f0f0;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
 nav ul {
-    list-style-type: none;
+    list-style: none;
     padding: 0;
 }
 
@@ -511,29 +518,52 @@ nav li {
     margin: 5px 0;
 }
 
-nav a {
+a {
     color: #2196F3;
     text-decoration: none;
 }
 
-nav a:hover {
+a:hover {
     text-decoration: underline;
+}
+
+dl dt {
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+dl dd {
+    margin-left: 20px;
+    margin-bottom: 10px;
 }
 ";
             await File.WriteAllTextAsync(Path.Combine(assetsDir, "style.css"), css);
+
+            // Generate JavaScript for code highlighting (placeholder)
+            var js = @"
+// Code highlighting would go here
+document.addEventListener('DOMContentLoaded', function() {
+    // Placeholder for syntax highlighting
+    console.log('Documentation loaded');
+});
+";
+            await File.WriteAllTextAsync(Path.Combine(assetsDir, "script.js"), js);
         }
 
         private Dictionary<string, int> GenerateStatistics()
         {
-            return new Dictionary<string, int>
+            var stats = new Dictionary<string, int>
             {
                 ["Total Items"] = documentedItems.Count,
+                ["Namespaces"] = documentedItems.Values.Select(i => i.Namespace).Distinct().Count(),
                 ["Classes"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Class),
-                ["Functions"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Function),
                 ["Interfaces"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Interface),
+                ["Functions"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Function),
                 ["Enums"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Enum),
-                ["Namespaces"] = documentedItems.Values.Select(i => i.Namespace).Distinct().Count()
+                ["Properties"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Property)
             };
+
+            return stats;
         }
     }
 
