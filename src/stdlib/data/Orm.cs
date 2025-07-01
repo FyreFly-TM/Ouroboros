@@ -152,7 +152,9 @@ namespace Ouroboros.Stdlib.Data
         /// </summary>
         public int SaveChanges()
         {
-            return SaveChangesAsync().GetAwaiter().GetResult();
+            // Running async code synchronously can cause deadlocks
+            // This is intentionally not implemented to force async patterns
+            throw new NotImplementedException("Use SaveChangesAsync instead");
         }
 
         private async Task<int> InsertEntityAsync(object entity, TableMapping mapping)
@@ -425,7 +427,9 @@ namespace Ouroboros.Stdlib.Data
         /// </summary>
         public List<T> ToList()
         {
-            return ToListAsync().GetAwaiter().GetResult();
+            // Synchronous database operations can cause thread pool starvation
+            // We strongly recommend using async methods instead
+            throw new NotImplementedException("Synchronous execution not supported - use ToListAsync");
         }
 
         /// <summary>
@@ -467,6 +471,8 @@ namespace Ouroboros.Stdlib.Data
         {
             return WhereAsync(predicate).GetAwaiter().GetResult();
         }
+
+
     }
 
     /// <summary>
