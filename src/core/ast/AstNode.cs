@@ -159,9 +159,8 @@ namespace Ouroboros.Core.AST
 
         public LiteralExpression(Token token) : base(token)
         {
-            Console.WriteLine($"DEBUG: LiteralExpression constructor - token: {token?.Type} '{token?.Lexeme}' Value: {token?.Value}");
+            // LiteralExpression constructor - token type and value
             Value = token.Value;
-            Console.WriteLine($"DEBUG: LiteralExpression constructor - COMPLETED successfully");
         }
 
         public override T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitLiteralExpression(this);

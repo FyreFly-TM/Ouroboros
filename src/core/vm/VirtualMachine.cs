@@ -1152,7 +1152,7 @@ namespace Ouroboros.Core.VM
                                 }
                                 else
                                 {
-                                    Console.WriteLine($"[VM] Warning: Static module '{staticModule}' not found");
+                                    LogDebug($"Warning: Static module '{staticModule}' not found");
                                 }
                             }
                         }

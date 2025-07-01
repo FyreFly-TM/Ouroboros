@@ -430,16 +430,16 @@ namespace Ouroboros.Core.GPU
         private IntPtr GetCUDAKernel(IntPtr module, string name) 
         {
             // CUDA kernel lookup
-            Console.WriteLine($"Getting CUDA kernel '{name}' (stub implementation)");
-            // Return a non-zero dummy handle
+            // In a full implementation, this would use cuModuleGetFunction
+            // Return a non-zero dummy handle for now
             return new IntPtr(2);
         }
         
         private IntPtr CreateOpenCLProgram(string source) 
         {
             // OpenCL program creation
-            Console.WriteLine("Creating OpenCL program (stub implementation)");
-            // Return a non-zero dummy handle
+            // In a full implementation, this would use clCreateProgramWithSource
+            // Return a non-zero dummy handle for now
             return new IntPtr(3);
         }
         
@@ -450,30 +450,30 @@ namespace Ouroboros.Core.GPU
                 throw new ArgumentException("Invalid OpenCL program handle");
                 
             // In a full implementation, this would call clBuildProgram
-            Console.WriteLine("Building OpenCL program...");
+            // Building OpenCL program...
         }
         
         private IntPtr CreateOpenCLKernel(IntPtr program, string name) 
         {
             // OpenCL kernel creation
-            Console.WriteLine($"Creating OpenCL kernel '{name}' (stub implementation)");
-            // Return a non-zero dummy handle
+            // In a full implementation, this would use clCreateKernel
+            // Return a non-zero dummy handle for now
             return new IntPtr(4);
         }
         
         private byte[] GetOpenCLBinary(IntPtr program) 
         {
-            // OpenCL binary
-            Console.WriteLine("Getting OpenCL binary (stub implementation)");
-            // Return minimal valid SPIR-V binary header
+            // OpenCL binary retrieval
+            // In a full implementation, this would use clGetProgramInfo
+            // Return minimal valid SPIR-V binary header for now
             return new byte[] { 0x03, 0x02, 0x23, 0x07, 0x00, 0x00, 0x01, 0x00 };
         }
         
         private byte[] CompileToSPIRV(string source, SPIRVType type) 
         {
             // SPIR-V compilation
-            Console.WriteLine($"Compiling to SPIR-V {type} shader (stub implementation)");
-            // Return minimal valid SPIR-V binary
+            // In a full implementation, this would use a SPIR-V compiler like glslang
+            // Return minimal valid SPIR-V binary header for now
             var spirv = new List<byte>();
             spirv.AddRange(BitConverter.GetBytes(0x07230203u)); // Magic
             spirv.AddRange(BitConverter.GetBytes(0x00010500u)); // Version
@@ -485,33 +485,33 @@ namespace Ouroboros.Core.GPU
         
         private IntPtr CreateVulkanShaderModule(byte[] spirv) 
         {
-            // Vulkan shader module
-            Console.WriteLine("Creating Vulkan shader module (stub implementation)");
-            // Return a non-zero dummy handle
+            // Vulkan shader module creation
+            // In a full implementation, this would use vkCreateShaderModule
+            // Return a non-zero dummy handle for now
             return new IntPtr(5);
         }
         
         private IntPtr CreateVulkanPipeline(SPIRVModule vs, SPIRVModule fs, PipelineState state) 
         {
-            // Graphics pipeline
-            Console.WriteLine("Creating Vulkan graphics pipeline (stub implementation)");
-            // Return a non-zero dummy handle
+            // Graphics pipeline creation
+            // In a full implementation, this would use vkCreateGraphicsPipelines
+            // Return a non-zero dummy handle for now
             return new IntPtr(6);
         }
         
         private IntPtr CreateVulkanComputePipeline(SPIRVModule cs) 
         {
-            // Compute pipeline
-            Console.WriteLine("Creating Vulkan compute pipeline (stub implementation)");
-            // Return a non-zero dummy handle
+            // Compute pipeline creation
+            // In a full implementation, this would use vkCreateComputePipelines
+            // Return a non-zero dummy handle for now
             return new IntPtr(7);
         }
         
         private IntPtr AllocateGPUMemory(int size, GPUMemoryType type) 
         {
             // GPU memory allocation
-            Console.WriteLine($"Allocating {size} bytes of {type} GPU memory (stub implementation)");
-            // Return a non-zero dummy handle
+            // In a full implementation, this would use CUDA/Vulkan memory allocation APIs
+            // Return a non-zero dummy handle for now
             return new IntPtr(8);
         }
         
@@ -539,21 +539,22 @@ namespace Ouroboros.Core.GPU
         {
             ValidateKernelLaunch(kernel, grid, block, args);
             // In a full implementation, this would launch the kernel on CUDA device
-            Console.WriteLine($"Launching CUDA kernel '{kernel.EntryPoint}' with grid({grid.X},{grid.Y},{grid.Z}) block({block.X},{block.Y},{block.Z})");
+            // using cuLaunchKernel or similar API
+            // Kernel: {kernel.EntryPoint}, Grid: ({grid.X},{grid.Y},{grid.Z}), Block: ({block.X},{block.Y},{block.Z})
         }
         
         private void LaunchOpenCLKernel(CompiledKernel kernel, GridDimension grid, BlockDimension block, object[] args) 
         {
             ValidateKernelLaunch(kernel, grid, block, args);
             // In a full implementation, this would launch the kernel on OpenCL device
-            Console.WriteLine($"Launching OpenCL kernel '{kernel.EntryPoint}' with {args.Length} arguments");
+            // using clEnqueueNDRangeKernel or similar API
         }
         
         private void LaunchVulkanKernel(CompiledKernel kernel, GridDimension grid, BlockDimension block, object[] args) 
         {
             ValidateKernelLaunch(kernel, grid, block, args);
             // In a full implementation, this would launch the kernel on Vulkan device
-            Console.WriteLine($"Launching Vulkan compute shader '{kernel.EntryPoint}'");
+            // using vkCmdDispatch or similar API
         }
         
         private void ValidateSPIRVModule(SPIRVModule module) 
@@ -758,13 +759,13 @@ namespace Ouroboros.Core.GPU
                 throw new ArgumentException($"Host data length ({hostData.Length}) does not match buffer element count ({ElementCount})");
             
             // In a real implementation, this would copy data to GPU memory
-            Console.WriteLine($"Copying {ElementCount} elements to GPU buffer (stub implementation)");
+            // using cudaMemcpy, clEnqueueWriteBuffer, or vkCmdCopyBuffer
         }
         
         public T[] CopyToHost()
         {
             // Copy data from device to host
-            Console.WriteLine($"Copying {ElementCount} elements from GPU buffer (stub implementation)");
+            // In a real implementation, this would use cudaMemcpy, clEnqueueReadBuffer, etc.
             return new T[ElementCount];
         }
         
@@ -773,8 +774,8 @@ namespace Ouroboros.Core.GPU
             // Free GPU memory
             if (DevicePointer != IntPtr.Zero)
             {
-                Console.WriteLine($"Freeing GPU buffer at {DevicePointer} (stub implementation)");
                 // In a real implementation, this would free the GPU memory
+                // using cudaFree, clReleaseMemObject, vkFreeMemory, etc.
                 DevicePointer = IntPtr.Zero;
             }
         }
