@@ -90,6 +90,42 @@ namespace Ouroboros.Syntaxes.Low
                 return ParseDataDeclaration();
             }
             
+            // Check for struct declaration
+            if (Match(TokenType.Struct))
+            {
+                return ParseStructDeclaration();
+            }
+            
+            // Check for union declaration
+            if (Match(TokenType.UnionKeyword))
+            {
+                return ParseUnionDeclaration();
+            }
+            
+            // Check for typedef
+            if (Match(TokenType.Typedef))
+            {
+                return ParseTypedefStatement();
+            }
+            
+            // Check for static/extern/const variable declarations
+            if (IsStorageSpecifier() || IsTypeKeyword())
+            {
+                return ParseVariableDeclaration();
+            }
+            
+            // Check for unsafe block
+            if (Match(TokenType.Unsafe))
+            {
+                return ParseUnsafeBlock();
+            }
+            
+            // Check for fixed statement
+            if (Match(TokenType.Fixed))
+            {
+                return ParseFixedStatement();
+            }
+            
             // Check for directives
             if (Current().Type == TokenType.Dot)
             {
@@ -342,6 +378,206 @@ namespace Ouroboros.Syntaxes.Low
             );
         }
         
+        private Statement ParseStructDeclaration()
+        {
+            var name = Consume(TokenType.Identifier, "Expected struct name");
+            var fields = new List<StructField>();
+            
+            // Check for packed struct
+            bool isPacked = false;
+            if (Match(TokenType.Attribute))
+            {
+                if (Match(TokenType.Packed))
+                {
+                    isPacked = true;
+                }
+            }
+            
+            Consume(TokenType.LeftBrace, "Expected '{' after struct name");
+            
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                var field = ParseStructField();
+                if (field != null)
+                {
+                    fields.Add(field);
+                }
+            }
+            
+            Consume(TokenType.RightBrace, "Expected '}' after struct fields");
+            Match(TokenType.Semicolon); // Optional semicolon after struct
+            
+            return new StructDeclaration(name.Lexeme, fields, isPacked, name.Line, name.Column);
+        }
+        
+        private StructField ParseStructField()
+        {
+            var type = ParseType();
+            var name = Consume(TokenType.Identifier, "Expected field name");
+            
+            // Check for bit field
+            int? bitWidth = null;
+            if (Match(TokenType.Colon))
+            {
+                var widthToken = Consume(TokenType.IntegerLiteral, "Expected bit width");
+                bitWidth = int.Parse(widthToken.Lexeme);
+            }
+            
+            // Check for array
+            Expression arraySize = null;
+            if (Match(TokenType.LeftBracket))
+            {
+                if (!Check(TokenType.RightBracket))
+                {
+                    arraySize = ParseExpression();
+                }
+                Consume(TokenType.RightBracket, "Expected ']'");
+            }
+            
+            Consume(TokenType.Semicolon, "Expected ';' after field");
+            
+            return new StructField(type, name.Lexeme, bitWidth, arraySize);
+        }
+        
+        private Statement ParseUnionDeclaration()
+        {
+            var name = Consume(TokenType.Identifier, "Expected union name");
+            var members = new List<StructField>();
+            
+            Consume(TokenType.LeftBrace, "Expected '{' after union name");
+            
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                var member = ParseStructField();
+                if (member != null)
+                {
+                    members.Add(member);
+                }
+            }
+            
+            Consume(TokenType.RightBrace, "Expected '}' after union members");
+            Match(TokenType.Semicolon); // Optional semicolon
+            
+            return new UnionDeclaration(name.Lexeme, members, name.Line, name.Column);
+        }
+        
+        private Statement ParseTypedefStatement()
+        {
+            var type = ParseType();
+            var alias = Consume(TokenType.Identifier, "Expected typedef alias");
+            Consume(TokenType.Semicolon, "Expected ';' after typedef");
+            
+            return new TypedefStatement(alias.Lexeme, type, alias.Line, alias.Column);
+        }
+        
+        private Statement ParseVariableDeclaration()
+        {
+            // Parse storage specifiers
+            var modifiers = new List<string>();
+            while (IsStorageSpecifier())
+            {
+                modifiers.Add(Advance().Lexeme);
+            }
+            
+            var type = ParseType();
+            var declarations = new List<Statement>();
+            
+            do
+            {
+                // Handle pointer declarator
+                int pointerLevel = 0;
+                while (Match(TokenType.Multiply))
+                {
+                    pointerLevel++;
+                }
+                
+                var name = Consume(TokenType.Identifier, "Expected variable name");
+                
+                // Handle array declarator
+                Expression arraySize = null;
+                if (Match(TokenType.LeftBracket))
+                {
+                    if (!Check(TokenType.RightBracket))
+                    {
+                        arraySize = ParseExpression();
+                    }
+                    Consume(TokenType.RightBracket, "Expected ']'");
+                }
+                
+                // Handle initializer
+                Expression initializer = null;
+                if (Match(TokenType.Assign))
+                {
+                    initializer = ParseExpression();
+                }
+                
+                // Create appropriate type node
+                var varType = type;
+                if (pointerLevel > 0)
+                {
+                    varType = new PointerType(type, pointerLevel);
+                }
+                
+                var decl = new VariableDeclaration(
+                    varType,
+                    name,
+                    initializer,
+                    modifiers.Contains("const"),
+                    modifiers.Contains("readonly")
+                );
+                
+                declarations.Add(decl);
+                
+            } while (Match(TokenType.Comma));
+            
+            Consume(TokenType.Semicolon, "Expected ';' after variable declaration");
+            
+            // If multiple declarations, wrap in block
+            if (declarations.Count == 1)
+            {
+                return declarations[0];
+            }
+            else
+            {
+                return new BlockStatement(declarations);
+            }
+        }
+        
+        private Statement ParseUnsafeBlock()
+        {
+            Consume(TokenType.LeftBrace, "Expected '{' after unsafe");
+            var statements = new List<Statement>();
+            
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                var stmt = ParseStatement();
+                if (stmt != null)
+                {
+                    statements.Add(stmt);
+                }
+            }
+            
+            Consume(TokenType.RightBrace, "Expected '}' after unsafe block");
+            
+            return new UnsafeBlock(statements, 0, 0);
+        }
+        
+        private Statement ParseFixedStatement()
+        {
+            Consume(TokenType.LeftParen, "Expected '(' after fixed");
+            
+            var type = ParseType();
+            var name = Consume(TokenType.Identifier, "Expected variable name");
+            Consume(TokenType.Assign, "Expected '=' in fixed statement");
+            var target = ParseExpression();
+            
+            Consume(TokenType.RightParen, "Expected ')' after fixed declaration");
+            
+            var body = ParseStatement();
+            
+            return new FixedStatement(type, name.Lexeme, target, body, 0, 0);
+        }
+        
         private TypeNode ParseType()
         {
             if (Match(TokenType.Byte)) return new TypeNode("byte");
@@ -455,6 +691,21 @@ namespace Ouroboros.Syntaxes.Low
             public string Mnemonic { get; set; }
             public List<string> Operands { get; set; }
             public int Address { get; set; }
+        }
+        
+        private bool IsStorageSpecifier()
+        {
+            return Check(TokenType.Static) || Check(TokenType.Extern) || 
+                   Check(TokenType.Const) || Check(TokenType.Volatile);
+        }
+        
+        private bool IsTypeKeyword()
+        {
+            return Check(TokenType.Byte) || Check(TokenType.Short) || 
+                   Check(TokenType.Int) || Check(TokenType.Long) ||
+                   Check(TokenType.Float) || Check(TokenType.Double) ||
+                   Check(TokenType.Void) || Check(TokenType.Char) ||
+                   Check(TokenType.Unsigned) || Check(TokenType.Signed);
         }
     }
     

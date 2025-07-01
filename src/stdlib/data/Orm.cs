@@ -7,6 +7,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Ouroboros.StdLib.Data;
 
 namespace Ouroboros.Stdlib.Data
 {
@@ -17,8 +18,8 @@ namespace Ouroboros.Stdlib.Data
     {
         private readonly Database database;
         private readonly Dictionary<Type, TableMapping> tableMappings = new();
-        private readonly List<object> trackedEntities = new();
-        private readonly Dictionary<object, EntityState> entityStates = new();
+        internal readonly List<object> trackedEntities = new();
+        internal readonly Dictionary<object, EntityState> entityStates = new();
 
         public Database Database => database;
 
@@ -146,6 +147,14 @@ namespace Ouroboros.Stdlib.Data
             return affectedRows;
         }
 
+        /// <summary>
+        /// Save all changes to the database (synchronous)
+        /// </summary>
+        public int SaveChanges()
+        {
+            return SaveChangesAsync().GetAwaiter().GetResult();
+        }
+
         private async Task<int> InsertEntityAsync(object entity, TableMapping mapping)
         {
             var columns = new List<string>();
@@ -164,10 +173,11 @@ namespace Ouroboros.Stdlib.Data
             
             // Get identity value if present
             var identityColumn = mapping.Columns.FirstOrDefault(c => c.IsIdentity);
-            if (identityColumn != null && database.Provider == DatabaseProvider.SqlServer)
+            if (identityColumn != null)
             {
-                var identity = await database.ExecuteScalarAsync<object>("SELECT SCOPE_IDENTITY()");
-                if (identity != null)
+                // For SQLite, use last_insert_rowid()
+                var identity = await database.ExecuteScalarAsync("SELECT last_insert_rowid()");
+                if (identity != null && identity != DBNull.Value)
                 {
                     identityColumn.Property.SetValue(entity, Convert.ChangeType(identity, identityColumn.Property.PropertyType));
                 }
@@ -382,6 +392,14 @@ namespace Ouroboros.Stdlib.Data
         }
 
         /// <summary>
+        /// Find entity by primary key (synchronous)
+        /// </summary>
+        public T? Find(params object[] keyValues)
+        {
+            return FindAsync(keyValues).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
         /// Get all entities
         /// </summary>
         public async Task<List<T>> ToListAsync()
@@ -400,6 +418,14 @@ namespace Ouroboros.Stdlib.Data
             }
             
             return results;
+        }
+
+        /// <summary>
+        /// Get all entities (synchronous)
+        /// </summary>
+        public List<T> ToList()
+        {
+            return ToListAsync().GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -432,6 +458,14 @@ namespace Ouroboros.Stdlib.Data
             }
             
             return results;
+        }
+
+        /// <summary>
+        /// Where clause helper (synchronous)
+        /// </summary>
+        public List<T> Where(Expression<Func<T, bool>> predicate)
+        {
+            return WhereAsync(predicate).GetAwaiter().GetResult();
         }
     }
 

@@ -17,6 +17,9 @@ namespace Ouroboros.Core.Compiler
         private List<TypeCheckError> errors;
         private Stack<Dictionary<string, TypeNode>> scopes;
         private TypeNode currentReturnType;
+        private Stack<ContractContext> contractStack;
+        private Dictionary<string, GenericTypeConstraints> genericConstraints;
+        private TypeInferenceEngine inferenceEngine;
         
         public TypeChecker()
         {
@@ -25,6 +28,9 @@ namespace Ouroboros.Core.Compiler
             errors = new List<TypeCheckError>();
             scopes = new Stack<Dictionary<string, TypeNode>>();
             scopes.Push(new Dictionary<string, TypeNode>()); // Global scope
+            contractStack = new Stack<ContractContext>();
+            genericConstraints = new Dictionary<string, GenericTypeConstraints>();
+            inferenceEngine = new TypeInferenceEngine(this);
         }
         
         public Ouroboros.Core.AST.Program Check(Ouroboros.Core.AST.Program ast)
@@ -60,7 +66,7 @@ namespace Ouroboros.Core.Compiler
             scopes.Peek()[name] = type;
         }
         
-        private TypeNode LookupVariable(string name)
+        public TypeNode LookupVariable(string name)
         {
             foreach (var scope in scopes)
             {
@@ -268,6 +274,9 @@ namespace Ouroboros.Core.Compiler
                 decl.ReturnType
             );
             DefineVariable(decl.Name, funcType);
+            
+            // Verify contracts
+            VerifyContracts(decl);
             
             return null;
         }
@@ -601,16 +610,161 @@ namespace Ouroboros.Core.Compiler
     
     public TypeNode VisitStructLiteral(StructLiteral expr) 
     { 
-        // Find the struct type
-        var structType = new TypeNode(expr.StructName.Lexeme);
-        
-        // Type check all field values
-        foreach (var field in expr.Fields)
+        // Check if struct type exists and validate fields
+        // For now, return unknown type
+        foreach (var field in expr.Fields.Values)
         {
-            field.Value.Accept(this);
+            field.Accept(this);
         }
         
-        return structType;
+        // Try to infer struct type from name
+        return new TypeNode(expr.StructName.Lexeme);
+    }
+    
+    // Contract verification methods
+    private void VerifyContracts(FunctionDeclaration func)
+    {
+        var context = new ContractContext();
+        contractStack.Push(context);
+        
+        // Extract contracts from function attributes or special statements
+        ExtractContracts(func, context);
+        
+        // Verify preconditions are checkable
+        foreach (var requires in context.Requires)
+        {
+            var condType = requires.Accept(this);
+            if (condType?.Name != "bool")
+            {
+                AddError($"Requires clause must be boolean expression", requires.Line, requires.Column);
+            }
+        }
+        
+        // Store old values for postcondition checking
+        if (context.Ensures.Count > 0)
+        {
+            // In a real implementation, would analyze which values need to be saved
+        }
+        
+        contractStack.Pop();
+    }
+    
+    private void ExtractContracts(FunctionDeclaration func, ContractContext context)
+    {
+        // Look for contract statements at the beginning of function body
+        if (func.Body != null)
+        {
+            foreach (var stmt in func.Body.Statements)
+            {
+                if (stmt is ExpressionStatement exprStmt)
+                {
+                    if (exprStmt.Expression is CallExpression call)
+                    {
+                        if (call.Callee is IdentifierExpression id)
+                        {
+                            switch (id.Name)
+                            {
+                                case "requires":
+                                    if (call.Arguments.Count > 0)
+                                        context.Requires.Add(call.Arguments[0]);
+                                    break;
+                                    
+                                case "ensures":
+                                    if (call.Arguments.Count > 0)
+                                        context.Ensures.Add(call.Arguments[0]);
+                                    break;
+                                    
+                                case "invariant":
+                                    if (call.Arguments.Count > 0)
+                                        context.Invariants.Add(call.Arguments[0]);
+                                    break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Stop at first non-contract statement
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Unit type operations
+    private TypeNode HandleUnitOperation(BinaryExpression expr, TypeNode leftType, TypeNode rightType)
+    {
+        // Extract base types and units
+        var leftBase = leftType is UnitTypeNode leftUnit ? leftUnit.BaseType : leftType;
+        var rightBase = rightType is UnitTypeNode rightUnit ? rightUnit.BaseType : rightType;
+        
+        var leftUnitStr = leftType is UnitTypeNode lu ? lu.Unit : "";
+        var rightUnitStr = rightType is UnitTypeNode ru ? ru.Unit : "";
+        
+        // Check base types are compatible
+        if (!IsNumericType(leftBase) || !IsNumericType(rightBase))
+        {
+            AddError("Unit operations require numeric types", expr.Line, expr.Column);
+            return typeRegistry.Unknown;
+        }
+        
+        switch (expr.Operator.Type)
+        {
+            case TokenType.Multiply:
+                return MultiplyUnits(leftUnitStr, rightUnitStr, GetNumericResultType(leftBase, rightBase));
+                
+            case TokenType.Divide:
+                return DivideUnits(leftUnitStr, rightUnitStr, GetNumericResultType(leftBase, rightBase));
+                
+            case TokenType.Plus:
+            case TokenType.Minus:
+                if (leftUnitStr != rightUnitStr)
+                {
+                    AddError($"Cannot {expr.Operator.Lexeme} incompatible units: [{leftUnitStr}] and [{rightUnitStr}]", 
+                            expr.Line, expr.Column);
+                    return typeRegistry.Unknown;
+                }
+                return new UnitTypeNode(GetNumericResultType(leftBase, rightBase), leftUnitStr);
+                
+            default:
+                return GetNumericResultType(leftBase, rightBase);
+        }
+    }
+    
+    private TypeNode MultiplyUnits(string left, string right, TypeNode baseType)
+    {
+        if (string.IsNullOrEmpty(left) && string.IsNullOrEmpty(right))
+            return baseType;
+            
+        if (string.IsNullOrEmpty(left))
+            return new UnitTypeNode(baseType, right);
+            
+        if (string.IsNullOrEmpty(right))
+            return new UnitTypeNode(baseType, left);
+            
+        // Simplify common patterns
+        if (left == right)
+            return new UnitTypeNode(baseType, $"{left}²");
+            
+        return new UnitTypeNode(baseType, $"{left}·{right}");
+    }
+    
+    private TypeNode DivideUnits(string left, string right, TypeNode baseType)
+    {
+        if (string.IsNullOrEmpty(left) && string.IsNullOrEmpty(right))
+            return baseType;
+            
+        if (string.IsNullOrEmpty(right))
+            return new UnitTypeNode(baseType, left);
+            
+        if (string.IsNullOrEmpty(left))
+            return new UnitTypeNode(baseType, $"1/{right}");
+            
+        // Cancel out same units
+        if (left == right)
+            return baseType;
+            
+        return new UnitTypeNode(baseType, $"{left}/{right}");
     }
     }
     
@@ -693,6 +847,266 @@ namespace Ouroboros.Core.Compiler
             : base($"{elementType.Name}[]")
         {
             ElementType = elementType;
+        }
+    }
+    
+    /// <summary>
+    /// Represents a type with units (e.g., int[meters], float[kg])
+    /// </summary>
+    public class UnitTypeNode : TypeNode
+    {
+        public TypeNode BaseType { get; }
+        public string Unit { get; }
+        
+        public UnitTypeNode(TypeNode baseType, string unit)
+            : base($"{baseType.Name}[{unit}]")
+        {
+            BaseType = baseType;
+            Unit = unit;
+        }
+    }
+    
+    /// <summary>
+    /// Contract context for tracking requires/ensures clauses
+    /// </summary>
+    public class ContractContext
+    {
+        public List<Expression> Requires { get; } = new List<Expression>();
+        public List<Expression> Ensures { get; } = new List<Expression>();
+        public List<Expression> Invariants { get; } = new List<Expression>();
+        public Dictionary<string, object> OldValues { get; } = new Dictionary<string, object>();
+    }
+    
+    /// <summary>
+    /// Generic type constraints
+    /// </summary>
+    public class GenericTypeConstraints
+    {
+        public string TypeParameterName { get; set; }
+        public List<TypeNode> Constraints { get; set; } = new List<TypeNode>();
+        public bool IsCovariant { get; set; }
+        public bool IsContravariant { get; set; }
+    }
+    
+    /// <summary>
+    /// Type inference engine for automatic type deduction
+    /// </summary>
+    public class TypeInferenceEngine
+    {
+        private readonly TypeChecker typeChecker;
+        private readonly Dictionary<string, TypeNode> inferredTypes;
+        
+        public TypeInferenceEngine(TypeChecker typeChecker)
+        {
+            this.typeChecker = typeChecker;
+            this.inferredTypes = new Dictionary<string, TypeNode>();
+        }
+        
+        public TypeNode InferType(Expression expr)
+        {
+            // Basic inference rules
+            switch (expr)
+            {
+                case LiteralExpression lit:
+                    return InferLiteralType(lit);
+                    
+                case BinaryExpression bin:
+                    return InferBinaryType(bin);
+                    
+                case CallExpression call:
+                    return InferCallType(call);
+                    
+                default:
+                    return expr.Accept(typeChecker);
+            }
+        }
+        
+        private TypeNode InferLiteralType(LiteralExpression lit)
+        {
+            if (lit.Value == null) return new TypeNode("null");
+            
+            return lit.Value switch
+            {
+                int _ => new TypeNode("int"),
+                double _ => new TypeNode("double"),
+                float _ => new TypeNode("float"),
+                string _ => new TypeNode("string"),
+                bool _ => new TypeNode("bool"),
+                _ => new TypeNode("object")
+            };
+        }
+        
+        private TypeNode InferBinaryType(BinaryExpression bin)
+        {
+            var leftType = InferType(bin.Left);
+            var rightType = InferType(bin.Right);
+            
+            // Handle unit types for mathematical operations
+            if (leftType is UnitTypeNode leftUnit && rightType is UnitTypeNode rightUnit)
+            {
+                switch (bin.Operator.Type)
+                {
+                    case TokenType.Multiply:
+                        // m * m = m²
+                        if (leftUnit.Unit == rightUnit.Unit)
+                            return new UnitTypeNode(leftUnit.BaseType, $"{leftUnit.Unit}²");
+                        // m * s = m·s
+                        return new UnitTypeNode(leftUnit.BaseType, $"{leftUnit.Unit}·{rightUnit.Unit}");
+                        
+                    case TokenType.Divide:
+                        // m / s = m/s
+                        return new UnitTypeNode(leftUnit.BaseType, $"{leftUnit.Unit}/{rightUnit.Unit}");
+                        
+                    case TokenType.Plus:
+                    case TokenType.Minus:
+                        // Can only add/subtract same units
+                        if (leftUnit.Unit == rightUnit.Unit)
+                            return leftUnit;
+                        throw new TypeCheckException(new List<TypeCheckError> {
+                            new TypeCheckError($"Cannot {bin.Operator.Lexeme} different units: {leftUnit.Unit} and {rightUnit.Unit}", 
+                                bin.Line, bin.Column)
+                        });
+                }
+            }
+            
+            return typeChecker.VisitBinaryExpression(bin);
+        }
+        
+        private TypeNode InferCallType(CallExpression call)
+        {
+            // Infer generic type arguments if not provided
+            if (call.GenericTypeArguments == null && call.Callee is IdentifierExpression id)
+            {
+                // Look up function signature and try to infer type arguments
+                var funcType = typeChecker.LookupVariable(id.Name);
+                if (funcType is GenericFunctionTypeNode genFunc)
+                {
+                    var inferredArgs = InferGenericArguments(genFunc, call.Arguments);
+                    if (inferredArgs != null)
+                    {
+                        // Create specialized function type
+                        return InstantiateGenericFunction(genFunc, inferredArgs);
+                    }
+                }
+            }
+            
+            return call.Accept(typeChecker);
+        }
+        
+        private List<TypeNode> InferGenericArguments(GenericFunctionTypeNode funcType, List<Expression> arguments)
+        {
+            // Simple unification-based type inference
+            var typeVars = new Dictionary<string, TypeNode>();
+            
+            for (int i = 0; i < Math.Min(funcType.ParameterTypes.Count, arguments.Count); i++)
+            {
+                var paramType = funcType.ParameterTypes[i];
+                var argType = InferType(arguments[i]);
+                
+                if (!UnifyTypes(paramType, argType, typeVars))
+                    return null;
+            }
+            
+            // Extract inferred types in order
+            return funcType.TypeParameters.Select(tp => 
+                typeVars.ContainsKey(tp) ? typeVars[tp] : new TypeNode("object")
+            ).ToList();
+        }
+        
+        private bool UnifyTypes(TypeNode pattern, TypeNode actual, Dictionary<string, TypeNode> typeVars)
+        {
+            // If pattern is a type variable
+            if (pattern is TypeVariableNode tv)
+            {
+                if (typeVars.ContainsKey(tv.Name))
+                    return UnifyTypes(typeVars[tv.Name], actual, typeVars);
+                    
+                typeVars[tv.Name] = actual;
+                return true;
+            }
+            
+            // If both are generic types
+            if (pattern is GenericTypeNode genPattern && actual is GenericTypeNode genActual)
+            {
+                if (genPattern.Name != genActual.Name) return false;
+                if (genPattern.TypeArguments.Count != genActual.TypeArguments.Count) return false;
+                
+                for (int i = 0; i < genPattern.TypeArguments.Count; i++)
+                {
+                    if (!UnifyTypes(genPattern.TypeArguments[i], genActual.TypeArguments[i], typeVars))
+                        return false;
+                }
+                return true;
+            }
+            
+            // Otherwise, types must match exactly
+            return pattern.Name == actual.Name;
+        }
+        
+        private TypeNode InstantiateGenericFunction(GenericFunctionTypeNode funcType, List<TypeNode> typeArgs)
+        {
+            var substitution = new Dictionary<string, TypeNode>();
+            for (int i = 0; i < Math.Min(funcType.TypeParameters.Count, typeArgs.Count); i++)
+            {
+                substitution[funcType.TypeParameters[i]] = typeArgs[i];
+            }
+            
+            var paramTypes = funcType.ParameterTypes.Select(pt => SubstituteType(pt, substitution)).ToList();
+            var returnType = SubstituteType(funcType.ReturnType, substitution);
+            
+            return new FunctionTypeNode(paramTypes, returnType);
+        }
+        
+        private TypeNode SubstituteType(TypeNode type, Dictionary<string, TypeNode> substitution)
+        {
+            if (type is TypeVariableNode tv && substitution.ContainsKey(tv.Name))
+                return substitution[tv.Name];
+                
+            if (type is GenericTypeNode gen)
+            {
+                var args = gen.TypeArguments.Select(arg => SubstituteType(arg, substitution)).ToList();
+                return new GenericTypeNode(gen.Name, args);
+            }
+            
+            return type;
+        }
+    }
+    
+    /// <summary>
+    /// Represents a generic function type
+    /// </summary>
+    public class GenericFunctionTypeNode : FunctionTypeNode
+    {
+        public List<string> TypeParameters { get; }
+        
+        public GenericFunctionTypeNode(List<string> typeParams, List<TypeNode> paramTypes, TypeNode returnType)
+            : base(paramTypes, returnType)
+        {
+            TypeParameters = typeParams;
+        }
+    }
+    
+    /// <summary>
+    /// Represents a type variable (T, U, etc.)
+    /// </summary>
+    public class TypeVariableNode : TypeNode
+    {
+        public TypeVariableNode(string name) : base(name)
+        {
+        }
+    }
+    
+    /// <summary>
+    /// Represents a generic type with type arguments
+    /// </summary>
+    public class GenericTypeNode : TypeNode
+    {
+        public List<TypeNode> TypeArguments { get; }
+        
+        public GenericTypeNode(string name, List<TypeNode> typeArgs)
+            : base($"{name}<{string.Join(", ", typeArgs.Select(t => t.Name))}>")
+        {
+            TypeArguments = typeArgs;
         }
     }
 } 

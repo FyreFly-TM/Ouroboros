@@ -498,52 +498,52 @@ namespace Ouroboros.Syntaxes.Medium
                 Match(TokenType.False) ||
                 Match(TokenType.Null))
             {
-                // Constant pattern
-                Expression constant = ParsePrimary();
-                return new ConstantPattern(constant);
+                return new ConstantPattern(new LiteralExpression(Previous()));
             }
-            else if (Match(TokenType.Var))
+            
+            if (Match(TokenType.Underscore))
             {
-                // Variable pattern
-                string name = Consume(TokenType.Identifier, "Expected variable name").Lexeme;
-                return new VariablePattern(name);
+                return new WildcardPattern();
             }
-            else if (Match(TokenType.Identifier))
+            
+            if (Check(TokenType.Identifier))
             {
-                string typeName = Advance().Lexeme;
+                var start = current;
+                var type = ParseType();
                 
-                if (Match(TokenType.LeftParen))
+                if (Check(TokenType.Identifier))
                 {
-                    // Deconstruction pattern
-                    List<Pattern> subpatterns = new List<Pattern>();
-                    
-                    if (!Match(TokenType.RightParen))
-                    {
-                        do
-                        {
-                            subpatterns.Add(ParsePattern());
-                        } while (Match(TokenType.Comma));
-                    }
-                    
-                    Consume(TokenType.RightParen, "Expected ')' after deconstruction patterns");
-                    
-                    return new DeconstructionPattern(typeName, subpatterns);
+                    // Type pattern with variable binding
+                    var varName = Advance();
+                    return new TypePattern { Type = type, VariableName = varName.Lexeme };
                 }
                 else
                 {
-                    // Type pattern
-                    return new TypePattern(typeName);
+                    // Reset and parse as identifier pattern
+                    current = start;
+                    var identifier = Advance();
+                    return new IdentifierPattern(identifier);
                 }
             }
-            else if (Match(TokenType.Underscore))
-            {
-                // Wildcard pattern
-                return new WildcardPattern();
+                
+                if (Match(TokenType.LeftParen))
+                {
+                // Tuple pattern
+                var patterns = new List<Pattern>();
+                    
+                if (!Check(TokenType.RightParen))
+                    {
+                        do
+                        {
+                        patterns.Add(ParsePattern());
+                        } while (Match(TokenType.Comma));
+                    }
+                    
+                Consume(TokenType.RightParen, "Expected ')' after tuple pattern");
+                return new TupleMatchPattern(patterns);
             }
-            else
-            {
+            
                 throw Error(Current(), "Invalid pattern");
-            }
         }
 
         #region Helper Methods
@@ -626,15 +626,458 @@ namespace Ouroboros.Syntaxes.Medium
 
         private bool IsTypeKeyword()
         {
-            return Check(TokenType.Void) || Check(TokenType.Bool) || 
-                   Check(TokenType.Byte) || Check(TokenType.SByte) ||
-                   Check(TokenType.Short) || Check(TokenType.UShort) ||
-                   Check(TokenType.Int) || Check(TokenType.UInt) ||
-                   Check(TokenType.Long) || Check(TokenType.ULong) ||
-                   Check(TokenType.Float) || Check(TokenType.Double) ||
-                   Check(TokenType.Decimal) || Check(TokenType.String) ||
-                   Check(TokenType.Char) || Check(TokenType.Object) ||
-                   Check(TokenType.Dynamic) || Check(TokenType.Var);
+            return Check(TokenType.Int) || Check(TokenType.Float) || 
+                   Check(TokenType.Double) || Check(TokenType.Bool) ||
+                   Check(TokenType.String) || Check(TokenType.Char) ||
+                   Check(TokenType.Byte) || Check(TokenType.Short) ||
+                   Check(TokenType.Long) || Check(TokenType.Void);
+        }
+
+        private Statement ParseClassDeclaration()
+        {
+            var classToken = Previous();
+            var name = Consume(TokenType.Identifier, "Expected class name");
+            
+            // Parse generic parameters
+            var typeParameters = new List<TypeParameter>();
+            if (Match(TokenType.Less))
+            {
+                do
+                {
+                    var paramName = Consume(TokenType.Identifier, "Expected type parameter name");
+                    var constraints = new List<TypeNode>();
+                    
+                    if (Match(TokenType.Colon))
+                    {
+                        do
+                        {
+                            constraints.Add(ParseType());
+                        } while (Match(TokenType.Comma));
+                    }
+                    
+                    typeParameters.Add(new TypeParameter(paramName.Lexeme, constraints));
+                } while (Match(TokenType.Comma));
+                
+                Consume(TokenType.Greater, "Expected '>' after type parameters");
+            }
+            
+            // Parse base class and interfaces
+            TypeNode baseClass = null;
+            var interfaces = new List<TypeNode>();
+            
+            if (Match(TokenType.Colon))
+            {
+                baseClass = ParseType();
+                
+                while (Match(TokenType.Comma))
+                {
+                    interfaces.Add(ParseType());
+                }
+            }
+            
+            // Parse class body
+            Consume(TokenType.LeftBrace, "Expected '{' after class declaration");
+            var members = new List<Declaration>();
+            
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                members.Add(ParseMemberDeclaration());
+            }
+            
+            Consume(TokenType.RightBrace, "Expected '}' after class body");
+            
+            return new ClassDeclaration(classToken, name, baseClass, interfaces, members, typeParameters);
+        }
+        
+        private Statement ParseStructDeclaration()
+        {
+            var structToken = Previous();
+            var name = Consume(TokenType.Identifier, "Expected struct name");
+            
+            // Parse generic parameters
+            var typeParameters = new List<TypeParameter>();
+            if (Match(TokenType.Less))
+            {
+                do
+                {
+                    var paramName = Consume(TokenType.Identifier, "Expected type parameter name");
+                    typeParameters.Add(new TypeParameter(paramName.Lexeme));
+                } while (Match(TokenType.Comma));
+                
+                Consume(TokenType.Greater, "Expected '>' after type parameters");
+            }
+            
+            // Parse interfaces
+            var interfaces = new List<TypeNode>();
+            if (Match(TokenType.Colon))
+            {
+                do
+                {
+                    interfaces.Add(ParseType());
+                } while (Match(TokenType.Comma));
+            }
+            
+            // Parse struct body
+            Consume(TokenType.LeftBrace, "Expected '{' after struct declaration");
+            var members = new List<Declaration>();
+            
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                members.Add(ParseMemberDeclaration());
+            }
+            
+            Consume(TokenType.RightBrace, "Expected '}' after struct body");
+            
+            return new StructDeclaration(structToken, name, interfaces, members, typeParameters);
+        }
+        
+        private Statement ParseInterfaceDeclaration()
+        {
+            var interfaceToken = Previous();
+            var name = Consume(TokenType.Identifier, "Expected interface name");
+            
+            // Parse generic parameters
+            var typeParameters = new List<TypeParameter>();
+            if (Match(TokenType.Less))
+            {
+                do
+                {
+                    var paramName = Consume(TokenType.Identifier, "Expected type parameter name");
+                    typeParameters.Add(new TypeParameter(paramName.Lexeme));
+                } while (Match(TokenType.Comma));
+                
+                Consume(TokenType.Greater, "Expected '>' after type parameters");
+            }
+            
+            // Parse base interfaces
+            var baseInterfaces = new List<TypeNode>();
+            if (Match(TokenType.Colon))
+            {
+                do
+                {
+                    baseInterfaces.Add(ParseType());
+                } while (Match(TokenType.Comma));
+            }
+            
+            // Parse interface body
+            Consume(TokenType.LeftBrace, "Expected '{' after interface declaration");
+            var members = new List<Declaration>();
+            
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                members.Add(ParseInterfaceMember());
+            }
+            
+            Consume(TokenType.RightBrace, "Expected '}' after interface body");
+            
+            return new InterfaceDeclaration(interfaceToken, name, baseInterfaces, members, typeParameters);
+        }
+        
+        private Statement ParseEnumDeclaration()
+        {
+            var enumToken = Previous();
+            var name = Consume(TokenType.Identifier, "Expected enum name");
+            
+            // Parse underlying type
+            TypeNode underlyingType = null;
+            if (Match(TokenType.Colon))
+            {
+                underlyingType = ParseType();
+            }
+            
+            // Parse enum body
+            Consume(TokenType.LeftBrace, "Expected '{' after enum declaration");
+            var members = new List<EnumMember>();
+            
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                var memberName = Consume(TokenType.Identifier, "Expected enum member name");
+                Expression value = null;
+                
+                if (Match(TokenType.Assign))
+                {
+                    value = ParseExpression();
+                }
+                
+                members.Add(new EnumMember(memberName.Lexeme, value));
+                
+                if (!Check(TokenType.RightBrace))
+                {
+                    Consume(TokenType.Comma, "Expected ',' between enum members");
+                }
+                else
+                {
+                    // Optional trailing comma
+                    Match(TokenType.Comma);
+                }
+            }
+            
+            Consume(TokenType.RightBrace, "Expected '}' after enum body");
+            
+            return new EnumDeclaration(enumToken, name, underlyingType, members);
+        }
+        
+        private Statement ParseUnionDeclaration()
+        {
+            var unionToken = Previous();
+            var name = Consume(TokenType.Identifier, "Expected union name");
+            
+            // For now, parse union as a struct with special flag
+            // In a real implementation, you'd have a separate UnionDeclaration class
+            Consume(TokenType.LeftBrace, "Expected '{' after union declaration");
+            var members = new List<Declaration>();
+            
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                members.Add(ParseMemberDeclaration());
+            }
+            
+            Consume(TokenType.RightBrace, "Expected '}' after union body");
+            
+            // Create a struct declaration but mark it as a union
+            var structDecl = new StructDeclaration(unionToken, name, new List<TypeNode>(), members);
+            // You might want to add a IsUnion property to StructDeclaration
+            return structDecl;
+        }
+        
+        private Declaration ParseMemberDeclaration()
+        {
+            // Parse modifiers
+            var modifiers = new List<Modifier>();
+            while (IsModifier())
+            {
+                modifiers.Add(ParseModifier());
+            }
+            
+            // Check for constructor (name matches current class)
+            // For now, parse as regular member
+            
+            var type = ParseType();
+            var name = Consume(TokenType.Identifier, "Expected member name");
+            
+            // Property
+            if (Match(TokenType.LeftBrace))
+            {
+                BlockStatement getter = null;
+                BlockStatement setter = null;
+                
+                while (!Check(TokenType.RightBrace) && !IsAtEnd())
+                {
+                    if (Match(TokenType.Get))
+                    {
+                        if (Match(TokenType.Semicolon))
+                        {
+                            // Auto-property getter
+                            getter = new BlockStatement(new List<Statement>());
+                        }
+                        else
+                        {
+                            getter = ParseBlockStatement();
+                        }
+                    }
+                    else if (Match(TokenType.Set))
+                    {
+                        if (Match(TokenType.Semicolon))
+                        {
+                            // Auto-property setter
+                            setter = new BlockStatement(new List<Statement>());
+                        }
+                        else
+                        {
+                            setter = ParseBlockStatement();
+                        }
+                    }
+                }
+                
+                Consume(TokenType.RightBrace, "Expected '}' after property");
+                
+                return new PropertyDeclaration(name, type, getter, setter, null, modifiers);
+            }
+            // Method
+            else if (Match(TokenType.LeftParen))
+            {
+                var parameters = new List<Parameter>();
+                
+                if (!Check(TokenType.RightParen))
+                {
+                    do
+                    {
+                        var paramType = ParseType();
+                        var paramName = Consume(TokenType.Identifier, "Expected parameter name");
+                        Expression defaultValue = null;
+                        
+                        if (Match(TokenType.Assign))
+                        {
+                            defaultValue = ParseExpression();
+                        }
+                        
+                        parameters.Add(new Parameter(paramType, paramName.Lexeme, defaultValue));
+                    } while (Match(TokenType.Comma));
+                }
+                
+                Consume(TokenType.RightParen, "Expected ')' after parameters");
+                
+                BlockStatement body;
+                if (Match(TokenType.Semicolon))
+                {
+                    // Abstract method
+                    body = null;
+                }
+                else
+                {
+                    body = ParseBlockStatement();
+                }
+                
+                return new FunctionDeclaration(name, type, parameters, body, null, false, modifiers);
+            }
+            // Field
+            else
+            {
+                Expression initializer = null;
+                if (Match(TokenType.Assign))
+                {
+                    initializer = ParseExpression();
+                }
+                
+                Consume(TokenType.Semicolon, "Expected ';' after field");
+                
+                return new FieldDeclaration(name, type, initializer, modifiers);
+            }
+        }
+        
+        private Declaration ParseInterfaceMember()
+        {
+            var type = ParseType();
+            var name = Consume(TokenType.Identifier, "Expected member name");
+            
+            // Interface property
+            if (Match(TokenType.LeftBrace))
+            {
+                bool hasGetter = false;
+                bool hasSetter = false;
+                
+                while (!Check(TokenType.RightBrace) && !IsAtEnd())
+                {
+                    if (Match(TokenType.Get))
+                    {
+                        hasGetter = true;
+                        Consume(TokenType.Semicolon, "Expected ';' after get");
+                    }
+                    else if (Match(TokenType.Set))
+                    {
+                        hasSetter = true;
+                        Consume(TokenType.Semicolon, "Expected ';' after set");
+                    }
+                }
+                
+                Consume(TokenType.RightBrace, "Expected '}' after property");
+                
+                return new PropertyDeclaration(name, type, 
+                    hasGetter ? new BlockStatement(new List<Statement>()) : null,
+                    hasSetter ? new BlockStatement(new List<Statement>()) : null);
+            }
+            // Interface method
+            else if (Match(TokenType.LeftParen))
+            {
+                var parameters = new List<Parameter>();
+                
+                if (!Check(TokenType.RightParen))
+                {
+                    do
+                    {
+                        var paramType = ParseType();
+                        var paramName = Consume(TokenType.Identifier, "Expected parameter name");
+                        parameters.Add(new Parameter(paramType, paramName.Lexeme));
+                    } while (Match(TokenType.Comma));
+                }
+                
+                Consume(TokenType.RightParen, "Expected ')' after parameters");
+                Consume(TokenType.Semicolon, "Expected ';' after interface method");
+                
+                return new FunctionDeclaration(name, type, parameters, null);
+            }
+            
+            throw Error(Current(), "Invalid interface member");
+        }
+        
+        private bool IsModifier()
+        {
+            return Check(TokenType.Public) || Check(TokenType.Private) ||
+                   Check(TokenType.Protected) || Check(TokenType.Internal) ||
+                   Check(TokenType.Static) || Check(TokenType.Abstract) ||
+                   Check(TokenType.Virtual) || Check(TokenType.Override) ||
+                   Check(TokenType.Sealed) || Check(TokenType.Readonly) ||
+                   Check(TokenType.Const) || Check(TokenType.Async);
+        }
+        
+        private Modifier ParseModifier()
+        {
+            var token = Advance();
+            return token.Type switch
+            {
+                TokenType.Public => Modifier.Public,
+                TokenType.Private => Modifier.Private,
+                TokenType.Protected => Modifier.Protected,
+                TokenType.Internal => Modifier.Internal,
+                TokenType.Static => Modifier.Static,
+                TokenType.Abstract => Modifier.Abstract,
+                TokenType.Virtual => Modifier.Virtual,
+                TokenType.Override => Modifier.Override,
+                TokenType.Sealed => Modifier.Sealed,
+                TokenType.Readonly => Modifier.Readonly,
+                TokenType.Const => Modifier.Const,
+                TokenType.Async => Modifier.Async,
+                _ => throw Error(token, "Invalid modifier")
+            };
+        }
+        
+        private TypeNode ParseType()
+        {
+            var baseType = ParseBaseType();
+            
+            // Handle arrays
+            if (Match(TokenType.LeftBracket))
+            {
+                int rank = 1;
+                while (Match(TokenType.Comma))
+                {
+                    rank++;
+                }
+                Consume(TokenType.RightBracket, "Expected ']' after array type");
+                
+                return new TypeNode(baseType.Name, null, true, rank);
+            }
+            
+            // Handle nullable
+            if (Match(TokenType.Question))
+            {
+                return new TypeNode(baseType.Name, baseType.TypeArguments, 
+                    baseType.IsArray, baseType.ArrayRank, true);
+            }
+            
+            return baseType;
+        }
+        
+        private TypeNode ParseBaseType()
+        {
+            var typeName = Consume(TokenType.Identifier, "Expected type name").Lexeme;
+            
+            // Handle generics
+            if (Match(TokenType.Less))
+            {
+                var typeArgs = new List<TypeNode>();
+                
+                do
+                {
+                    typeArgs.Add(ParseType());
+                } while (Match(TokenType.Comma));
+                
+                Consume(TokenType.Greater, "Expected '>' after type arguments");
+                
+                return new TypeNode(typeName, typeArgs);
+            }
+            
+            return new TypeNode(typeName);
         }
 
         #endregion
