@@ -1,0 +1,14 @@
+namespace Ouroboros
+{
+    public static class Version
+    {
+        public const string Major = "@PROJECT_VERSION_MAJOR@";
+        public const string Minor = "@PROJECT_VERSION_MINOR@";
+        public const string Patch = "@PROJECT_VERSION_PATCH@";
+        public const string Full = "@PROJECT_VERSION@";
+        public const string BuildType = "@CMAKE_BUILD_TYPE@";
+        public const string BuildDate = "@BUILD_DATE@";
+        public const bool JitEnabled = @ENABLE_JIT@;
+        public const bool GpuEnabled = @ENABLE_GPU@;
+    }
+} 
