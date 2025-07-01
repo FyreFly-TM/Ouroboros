@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.9.0--alpha-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.9.5--alpha-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-green.svg" alt="License">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg" alt="Platform">
 </p>
@@ -34,6 +34,112 @@ Ouroboros is a revolutionary multi-paradigm programming language designed to be 
 - **🛡️ Memory Safe by Default**: Prevent common bugs without sacrificing performance
 - **⚡ Modern Concurrency**: Async/await, actors, channels, and GPU computing built-in
 - **🎨 Expressive Type System**: Units, contracts, dependent types, and more
+
+## 🏗️ Architecture Overview
+
+Ouroboros features a sophisticated multi-stage compilation pipeline that supports four distinct syntax levels:
+
+```mermaid
+graph TB
+    subgraph "Source Code Levels"
+        HL["@high<br/>Natural Language"]
+        ML["@medium<br/>Modern Syntax"]
+        LL["@low<br/>Systems Programming"]
+        AL["@assembly<br/>Machine Code"]
+    end
+    
+    subgraph "Frontend Pipeline"
+        LEX["Lexer<br/>(Tokenization)"]
+        HP["High-Level Parser"]
+        MP["Medium-Level Parser"]
+        LP["Low-Level Parser"]
+        AP["Assembly Parser"]
+        AST["Abstract Syntax Tree"]
+        TC["Type Checker<br/>& Analysis"]
+    end
+    
+    subgraph "Middle-End"
+        BC["Bytecode Generation"]
+        OPT1["Bytecode Optimizer"]
+        VM["Virtual Machine<br/>(Interpretation)"]
+    end
+    
+    subgraph "Backend Pipeline"
+        LLVM["LLVM IR Generation"]
+        OPT2["LLVM Optimizer<br/>(O0-O3)"]
+        CG["Code Generation"]
+        NATIVE["Native Executable<br/>(x86-64, ARM64)"]
+        WASM["WebAssembly"]
+        GPU["GPU Kernels<br/>(CUDA/Vulkan/OpenCL)"]
+    end
+    
+    HL --> LEX
+    ML --> LEX
+    LL --> LEX
+    AL --> LEX
+    
+    LEX --> HP
+    LEX --> MP
+    LEX --> LP
+    LEX --> AP
+    
+    HP --> AST
+    MP --> AST
+    LP --> AST
+    AP --> AST
+    
+    AST --> TC
+    TC --> BC
+    BC --> OPT1
+    OPT1 --> VM
+    OPT1 --> LLVM
+    
+    LLVM --> OPT2
+    OPT2 --> CG
+    CG --> NATIVE
+    CG --> WASM
+    CG --> GPU
+```
+
+### Standard Library Architecture
+
+```mermaid
+graph LR
+    subgraph "Standard Library"
+        subgraph "Core Runtime"
+            RT["Runtime System"]
+            MEM["Memory Management"]
+            ASYNC["Async Runtime"]
+            ERR["Error Handling"]
+        end
+        
+        subgraph "Data Structures"
+            COL["Collections<br/>(List, Dict, Queue)"]
+            TREE["Tree Structures"]
+            CONC["Concurrent Types<br/>(Channels, Actors)"]
+        end
+        
+        subgraph "I/O & Networking"
+            FS["File System"]
+            NET["Network<br/>(HTTP, TCP, WebSocket)"]
+            DB["Database<br/>(PostgreSQL, MySQL, SQLite)"]
+        end
+        
+        subgraph "Mathematics"
+            MATH["Math Functions"]
+            LA["Linear Algebra<br/>(Vector, Matrix)"]
+            UNITS["Unit System"]
+            SYM["Math Symbols"]
+        end
+        
+        subgraph "Advanced"
+            ML["Machine Learning<br/>(Neural Networks)"]
+            GPU2["GPU Computing<br/>(CUDA, Vulkan, OpenCL)"]
+            UI["UI Framework"]
+            CRYPTO["Cryptography"]
+        end
+    end
+```
 
 ## 🎯 Key Differentiators
 
