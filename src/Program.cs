@@ -15,9 +15,27 @@ namespace Ouroboros
     {
         private static Runtime.Runtime runtime;
         
+        private static bool debugMode = false;
+        
+        private static void LogDebug(string message)
+        {
+            if (debugMode)
+            {
+                Console.WriteLine($"[DEBUG] {message}");
+            }
+        }
+        
         public static void Main(string[] args)
         {
-            Console.WriteLine("DEBUG: Ouroboros compiler starting...");
+            // Check for debug flag
+            debugMode = args.Length > 0 && (args[0] == "--debug" || Environment.GetEnvironmentVariable("OURO_DEBUG") == "1");
+            if (debugMode && args.Length > 0 && args[0] == "--debug")
+            {
+                // Remove debug flag from args
+                args = args.Length > 1 ? args[1..] : Array.Empty<string>();
+            }
+            
+            LogDebug("Ouroboros compiler starting...");
             
             System.Console.WriteLine("Ouroboros Programming Language v1.0.0");
             System.Console.WriteLine("=====================================\n");
@@ -53,7 +71,7 @@ namespace Ouroboros
         {
             try
             {
-                Console.WriteLine("DEBUG: Starting ExecuteFile method");
+                LogDebug("Starting ExecuteFile method");
                 
                 // Check if file exists
                 if (!File.Exists(filePath))
@@ -63,7 +81,7 @@ namespace Ouroboros
                     return;
                 }
 
-                Console.WriteLine("DEBUG: File exists, checking extension");
+                LogDebug("File exists, checking extension");
                 
                 // Check file extension
                 if (!filePath.EndsWith(".ouro", StringComparison.OrdinalIgnoreCase))
@@ -74,29 +92,29 @@ namespace Ouroboros
                 Console.WriteLine($"Executing: {filePath}");
                 Console.WriteLine();
 
-                Console.WriteLine("DEBUG: Reading source code");
+                LogDebug("Reading source code");
                 
                 // Read source code
                 string sourceCode = File.ReadAllText(filePath, Encoding.UTF8);
-                Console.WriteLine($"DEBUG: Read {sourceCode.Length} characters from file");
+                LogDebug($"Read {sourceCode.Length} characters from file");
 
-                Console.WriteLine("DEBUG: Initializing runtime");
+                LogDebug("Initializing runtime");
                 
                 // Initialize runtime
                 var runtimeOptions = new RuntimeOptions
                 {
                     EnableJit = true,
-                    EnableDebugging = false,
+                    EnableDebugging = debugMode,
                     EnableProfiling = false
                 };
                 runtime = new Runtime.Runtime(runtimeOptions);
 
-                Console.WriteLine("DEBUG: Starting compilation");
+                LogDebug("Starting compilation");
                 
                 // Compile and execute
                 var compiledProgram = CompileSource(sourceCode, filePath);
                 
-                Console.WriteLine($"DEBUG: Compilation result: {(compiledProgram != null ? "Success" : "Failed")}");
+                LogDebug($"Compilation result: {(compiledProgram != null ? "Success" : "Failed")}");
                 
                 if (compiledProgram != null)
                 {
@@ -131,7 +149,7 @@ namespace Ouroboros
                 }
                 else
                 {
-                    Console.WriteLine("DEBUG: Compilation failed, no program to execute");
+                    LogDebug("Compilation failed, no program to execute");
                 }
             }
             catch (Exception ex)
@@ -151,7 +169,7 @@ namespace Ouroboros
             }
             finally
             {
-                Console.WriteLine("DEBUG: Cleanup - shutting down runtime");
+                LogDebug("Cleanup - shutting down runtime");
                 
                 // Clean up runtime
                 runtime?.Shutdown();
@@ -163,47 +181,47 @@ namespace Ouroboros
             try
             {
                 Console.WriteLine("Starting compilation...");
-                Console.WriteLine("DEBUG: Entering CompileSource method");
+                LogDebug("Entering CompileSource method");
                 
                 // Step 1: Lexical Analysis
                 Console.WriteLine("1. Lexical analysis...");
-                Console.WriteLine("DEBUG: Creating lexer");
+                LogDebug("Creating lexer");
                 
                 var lexer = new Lexer(sourceCode, fileName);
-                Console.WriteLine("DEBUG: Calling ScanTokens");
+                LogDebug("Calling ScanTokens");
                 
                 var tokens = lexer.ScanTokens();
                 Console.WriteLine($"   Generated {tokens.Count} tokens");
-                Console.WriteLine("DEBUG: Lexical analysis completed successfully");
+                LogDebug("Lexical analysis completed successfully");
                 
                 // Step 2: Syntax Analysis
                 Console.WriteLine("2. Syntax analysis...");
-                Console.WriteLine("DEBUG: Creating parser");
+                LogDebug("Creating parser");
                 
                 var parser = new Parser(tokens);
-                Console.WriteLine("DEBUG: Calling Parse");
+                LogDebug("Calling Parse");
                 
                 var ast = parser.Parse();
                 Console.WriteLine($"   Generated AST with {ast.Statements.Count} top-level statements");
-                Console.WriteLine("DEBUG: Syntax analysis completed successfully");
+                LogDebug("Syntax analysis completed successfully");
 
                 // Step 3: Code Generation
                 Console.WriteLine("3. Code generation...");
-                Console.WriteLine("DEBUG: Creating compiler");
+                LogDebug("Creating compiler");
                 
                 var compiler = new Compiler(OptimizationLevel.Release);
-                Console.WriteLine("DEBUG: Calling Compile");
+                LogDebug("Calling Compile");
                 
                 var compiledProgram = compiler.Compile(ast);
                 Console.WriteLine($"   Generated {compiledProgram.Bytecode.Code.Count} bytes of bytecode");
-                Console.WriteLine("DEBUG: Code generation completed successfully");
+                LogDebug("Code generation completed successfully");
 
                 return compiledProgram;
             }
             catch (ParseException ex)
             {
                 Console.WriteLine($"Parse Error: {ex.Message}");
-                Console.WriteLine("DEBUG: ParseException caught");
+                LogDebug("ParseException caught");
                 return null;
             }
             catch (CompilerException ex)
@@ -213,14 +231,14 @@ namespace Ouroboros
                 {
                     Console.WriteLine($"   at line {ex.Line}, column {ex.Column}");
                 }
-                Console.WriteLine("DEBUG: CompilerException caught");
+                LogDebug("CompilerException caught");
                 return null;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Compilation Error: {ex.Message}");
-                Console.WriteLine($"DEBUG: General Exception caught: {ex.GetType().Name}");
-                Console.WriteLine($"DEBUG: Stack trace: {ex.StackTrace}");
+                LogDebug($"General Exception caught: {ex.GetType().Name}");
+                LogDebug($"Stack trace: {ex.StackTrace}");
                 return null;
             }
         }
@@ -231,6 +249,7 @@ namespace Ouroboros
             Console.WriteLine("\nOptions:");
             Console.WriteLine("  -h, --help     Show this help message");
             Console.WriteLine("  -v, --version  Show version information");
+            Console.WriteLine("  --debug        Enable debug output");
             Console.WriteLine("  [file]         Run the specified .ouro file");
             Console.WriteLine("\nExamples:");
             Console.WriteLine("  ouroboros hello.ouro       Run a file");
