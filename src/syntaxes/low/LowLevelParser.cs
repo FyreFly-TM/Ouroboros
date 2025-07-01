@@ -139,21 +139,81 @@ namespace Ouroboros.Syntaxes.Low
         private Statement ParseAssemblyBlock()
         {
             var asmStatements = new List<string>();
+            var registers = new HashSet<string>();
+            var variables = new Dictionary<string, string>();
             
             // Optional target specifier
             string target = "x86_64";
-            if (Check(TokenType.Identifier))
+            string dialect = "intel"; // default to Intel syntax
+            bool isVolatile = false;
+            
+            // Parse assembly attributes
+            if (Match(TokenType.LeftParen))
             {
-                target = Advance().Lexeme;
+                // Parse attributes like target, dialect, volatile
+                do
+                {
+                    if (Match(TokenType.Identifier))
+                    {
+                        var attr = Previous().Lexeme;
+                        if (attr == "target" && Match(TokenType.Assign))
+                        {
+                            target = Consume(TokenType.StringLiteral, "Expected target string").Lexeme.Trim('"');
+                        }
+                        else if (attr == "dialect" && Match(TokenType.Assign))
+                        {
+                            dialect = Consume(TokenType.StringLiteral, "Expected dialect string").Lexeme.Trim('"');
+                        }
+                        else if (attr == "volatile")
+                        {
+                            isVolatile = true;
+                        }
+                    }
+                } while (Match(TokenType.Comma));
+                
+                Consume(TokenType.RightParen, "Expected ')' after assembly attributes");
             }
             
             Consume(TokenType.LeftBrace, "Expected '{' after @asm");
             
+            // Parse optional input/output/clobber lists
+            var inputs = new List<AsmOperand>();
+            var outputs = new List<AsmOperand>();
+            var clobbers = new List<string>();
+            
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
+                // Check for constraint syntax
+                if (Match(TokenType.Colon))
+                {
+                    // Output operands
+                    if (!Check(TokenType.Colon))
+                    {
+                        outputs = ParseAsmOperands();
+                    }
+                    
+                    if (Match(TokenType.Colon))
+                    {
+                        // Input operands
+                        if (!Check(TokenType.Colon))
+                        {
+                            inputs = ParseAsmOperands();
+                        }
+                        
+                        if (Match(TokenType.Colon))
+                        {
+                            // Clobber list
+                            clobbers = ParseClobberList();
+                        }
+                    }
+                    break;
+                }
+                
                 var line = ParseAsmLine();
                 if (!string.IsNullOrWhiteSpace(line))
                 {
+                    // Process line for variable substitutions
+                    line = ProcessAsmVariables(line, variables);
                     asmStatements.Add(line);
                 }
             }
@@ -161,10 +221,62 @@ namespace Ouroboros.Syntaxes.Low
             Consume(TokenType.RightBrace, "Expected '}' to close assembly block");
             
             var asmCode = string.Join("\n", asmStatements);
-            return new AssemblyStatement(
+            
+            // Create extended assembly statement with constraints
+            return new ExtendedAssemblyStatement(
                 CreateToken(TokenType.Assembly, "@asm", null),
-                asmCode
+                asmCode,
+                target,
+                dialect,
+                isVolatile,
+                outputs,
+                inputs,
+                clobbers
             );
+        }
+        
+        private List<AsmOperand> ParseAsmOperands()
+        {
+            var operands = new List<AsmOperand>();
+            
+            do
+            {
+                // Parse constraint string
+                var constraint = Consume(TokenType.StringLiteral, "Expected constraint string").Lexeme.Trim('"');
+                
+                // Parse expression
+                Consume(TokenType.LeftParen, "Expected '(' after constraint");
+                var expr = ParseExpression();
+                Consume(TokenType.RightParen, "Expected ')' after expression");
+                
+                operands.Add(new AsmOperand(constraint, expr));
+                
+            } while (Match(TokenType.Comma));
+            
+            return operands;
+        }
+        
+        private List<string> ParseClobberList()
+        {
+            var clobbers = new List<string>();
+            
+            do
+            {
+                var clobber = Consume(TokenType.StringLiteral, "Expected clobber string").Lexeme.Trim('"');
+                clobbers.Add(clobber);
+            } while (Match(TokenType.Comma));
+            
+            return clobbers;
+        }
+        
+        private string ProcessAsmVariables(string line, Dictionary<string, string> variables)
+        {
+            // Replace %0, %1, etc. with actual register names
+            // Replace ${varname} with variable references
+            
+            // Simple regex replacement for demonstration
+            // In production, use proper parsing
+            return line;
         }
         
         private string ParseAsmLine()
@@ -254,6 +366,17 @@ namespace Ouroboros.Syntaxes.Low
             var mnemonic = Advance();
             var operands = new List<Expression>();
             
+            // Check for size suffix (e.g., movl, movq, movb)
+            string size = "";
+            if (mnemonic.Lexeme.Length > 3)
+            {
+                var lastChar = mnemonic.Lexeme[^1];
+                if ("bwlq".Contains(lastChar))
+                {
+                    size = lastChar.ToString();
+                }
+            }
+            
             // Parse operands
             while (!Check(TokenType.NewLine) && !Check(TokenType.Semicolon) && 
                    !IsAtEnd() && !Check(TokenType.RightBrace))
@@ -266,14 +389,70 @@ namespace Ouroboros.Syntaxes.Low
                 }
             }
             
-            // Create assembly instruction
+            // Validate instruction
+            ValidateInstruction(mnemonic.Lexeme, operands);
+            
+            // Create assembly instruction with metadata
             var asmText = mnemonic.Lexeme;
             if (operands.Count > 0)
             {
                 asmText += " " + string.Join(", ", operands.Select(FormatOperand));
             }
             
-            return new AssemblyStatement(mnemonic, asmText);
+            return new AssemblyInstructionStatement(
+                mnemonic, 
+                asmText,
+                operands,
+                size
+            );
+        }
+        
+        private void ValidateInstruction(string mnemonic, List<Expression> operands)
+        {
+            // Basic validation for common x86 instructions
+            var mnemonicBase = mnemonic.TrimEnd('b', 'w', 'l', 'q');
+            
+            switch (mnemonicBase.ToLower())
+            {
+                case "mov":
+                case "add":
+                case "sub":
+                case "cmp":
+                    if (operands.Count != 2)
+                        throw Error(Current(), $"{mnemonic} requires exactly 2 operands");
+                    break;
+                    
+                case "push":
+                case "pop":
+                case "inc":
+                case "dec":
+                case "not":
+                case "neg":
+                    if (operands.Count != 1)
+                        throw Error(Current(), $"{mnemonic} requires exactly 1 operand");
+                    break;
+                    
+                case "ret":
+                case "nop":
+                case "hlt":
+                case "cli":
+                case "sti":
+                    if (operands.Count != 0)
+                        throw Error(Current(), $"{mnemonic} takes no operands");
+                    break;
+                    
+                case "call":
+                case "jmp":
+                case "je":
+                case "jne":
+                case "jg":
+                case "jl":
+                case "jge":
+                case "jle":
+                    if (operands.Count != 1)
+                        throw Error(Current(), $"{mnemonic} requires exactly 1 operand");
+                    break;
+            }
         }
         
         private Expression ParseOperand()
@@ -311,21 +490,71 @@ namespace Ouroboros.Syntaxes.Low
         
         private Expression ParseMemoryOperand()
         {
-            // Simplified memory operand parsing
-            // Real implementation would handle full x86 addressing modes
-            var baseReg = ParseOperand();
+            // Enhanced memory operand parsing for x86 addressing modes
+            // Supports: [base], [base+offset], [base+index*scale+offset]
             
-            if (Match(TokenType.Plus))
+            Expression baseReg = null;
+            Expression index = null;
+            Expression scale = null;
+            Expression displacement = null;
+            
+            // Parse base register or displacement
+            if (Check(TokenType.Modulo) || Check(TokenType.Identifier))
             {
-                var offset = ParseOperand();
-                return new BinaryExpression(
-                    baseReg,
-                    CreateToken(TokenType.Plus, "+", null),
-                    offset
-                );
+                baseReg = ParseOperand();
+            }
+            else if (Check(TokenType.IntegerLiteral) || Check(TokenType.HexLiteral))
+            {
+                displacement = ParseOperand();
             }
             
-            return baseReg;
+            while (Match(TokenType.Plus) || Match(TokenType.Minus))
+            {
+                var op = Previous();
+                
+                // Check for index*scale pattern
+                if (Check(TokenType.Modulo) || Check(TokenType.Identifier))
+                {
+                    var nextOperand = ParseOperand();
+                    
+                    if (Match(TokenType.Multiply))
+                    {
+                        // This is index*scale
+                        index = nextOperand;
+                        scale = ParseOperand();
+                    }
+                    else
+                    {
+                        // This is either another base or displacement
+                        if (displacement == null && (Check(TokenType.IntegerLiteral) || Check(TokenType.HexLiteral)))
+                        {
+                            displacement = nextOperand;
+                        }
+                        else if (baseReg == null)
+                        {
+                            baseReg = nextOperand;
+                        }
+                        else
+                        {
+                            index = nextOperand;
+                        }
+                    }
+                }
+                else
+                {
+                    // Must be displacement
+                    displacement = ParseOperand();
+                    if (op.Type == TokenType.Minus && displacement is LiteralExpression lit)
+                    {
+                        // Negate the displacement
+                        displacement = new LiteralExpression(
+                            CreateToken(TokenType.IntegerLiteral, (-Convert.ToInt64(lit.Value)).ToString(), -Convert.ToInt64(lit.Value))
+                        );
+                    }
+                }
+            }
+            
+            return new MemoryOperandExpression(baseReg, index, scale, displacement);
         }
         
         private string FormatOperand(Expression operand)
@@ -1316,6 +1545,141 @@ namespace Ouroboros.Syntaxes.Low
         {
             Type = type;
             Name = name;
+        }
+    }
+    
+    /// <summary>
+    /// Extended assembly statement with constraints
+    /// </summary>
+    public class ExtendedAssemblyStatement : Statement
+    {
+        public string AssemblyCode { get; }
+        public string Target { get; }
+        public string Dialect { get; }
+        public bool IsVolatile { get; }
+        public List<AsmOperand> Outputs { get; }
+        public List<AsmOperand> Inputs { get; }
+        public List<string> Clobbers { get; }
+        
+        public ExtendedAssemblyStatement(Token asmToken, string assemblyCode, string target, string dialect,
+            bool isVolatile, List<AsmOperand> outputs, List<AsmOperand> inputs, List<string> clobbers)
+            : base(asmToken)
+        {
+            AssemblyCode = assemblyCode;
+            Target = target;
+            Dialect = dialect;
+            IsVolatile = isVolatile;
+            Outputs = outputs;
+            Inputs = inputs;
+            Clobbers = clobbers;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            // Delegate to regular assembly statement for now
+            return visitor.VisitAssemblyStatement(new AssemblyStatement(Token, AssemblyCode));
+        }
+    }
+    
+    /// <summary>
+    /// Assembly operand with constraint
+    /// </summary>
+    public class AsmOperand
+    {
+        public string Constraint { get; }
+        public Expression Expression { get; }
+        
+        public AsmOperand(string constraint, Expression expression)
+        {
+            Constraint = constraint;
+            Expression = expression;
+        }
+    }
+    
+    /// <summary>
+    /// Assembly instruction statement with metadata
+    /// </summary>
+    public class AssemblyInstructionStatement : Statement
+    {
+        public string Mnemonic { get; }
+        public string AssemblyCode { get; }
+        public List<Expression> Operands { get; }
+        public string SizeSuffix { get; }
+        
+        public AssemblyInstructionStatement(Token mnemonic, string assemblyCode, 
+            List<Expression> operands, string sizeSuffix)
+            : base(mnemonic)
+        {
+            Mnemonic = mnemonic.Lexeme;
+            AssemblyCode = assemblyCode;
+            Operands = operands;
+            SizeSuffix = sizeSuffix;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            return visitor.VisitAssemblyStatement(new AssemblyStatement(Token, AssemblyCode));
+        }
+    }
+    
+    /// <summary>
+    /// Memory operand expression for complex addressing modes
+    /// </summary>
+    public class MemoryOperandExpression : Expression
+    {
+        public Expression BaseRegister { get; }
+        public Expression Index { get; }
+        public Expression Scale { get; }
+        public Expression Displacement { get; }
+        
+        public MemoryOperandExpression(Expression baseReg, Expression index, 
+            Expression scale, Expression displacement)
+            : base(baseReg?.Token ?? index?.Token ?? displacement?.Token)
+        {
+            BaseRegister = baseReg;
+            Index = index;
+            Scale = scale;
+            Displacement = displacement;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            // Format as string for now
+            var parts = new List<string>();
+            
+            if (BaseRegister != null)
+                parts.Add(FormatOperand(BaseRegister));
+                
+            if (Index != null)
+            {
+                var indexStr = FormatOperand(Index);
+                if (Scale != null)
+                    indexStr += "*" + FormatOperand(Scale);
+                parts.Add(indexStr);
+            }
+            
+            if (Displacement != null)
+                parts.Add(FormatOperand(Displacement));
+                
+            var formatted = "[" + string.Join("+", parts) + "]";
+            return visitor.VisitLiteralExpression(
+                new LiteralExpression(CreateToken(TokenType.StringLiteral, formatted, formatted))
+            );
+        }
+        
+        private string FormatOperand(Expression operand)
+        {
+            return operand switch
+            {
+                LiteralExpression lit => lit.Value.ToString(),
+                IdentifierExpression id => id.Name,
+                _ => operand.ToString()
+            };
+        }
+        
+        private Token CreateToken(TokenType type, string lexeme, object value)
+        {
+            return new Token(type, lexeme, value, 0, 0, 0, 0, "", SyntaxLevel.Low);
         }
     }
     
