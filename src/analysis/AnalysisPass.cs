@@ -147,7 +147,6 @@ namespace Ouroboros.Analysis
                     {
                         diagnostics.ReportMathematicalError("Cross product requires exactly two operands", location);
                     }
-                    // TODO: Verify operands are 3D vectors when type info available
                     // Verify operands are 3D vectors
                     foreach (var operand in expr.Operands)
                     {
