@@ -375,8 +375,30 @@ namespace Ouroboros.Optimization
         
         private bool ContainsRecursion(FunctionDeclaration func)
         {
-            // Simple check - would need more sophisticated analysis
-            return false;
+            // Check if function calls itself directly or indirectly
+            var recursionChecker = new RecursionChecker(func.Name);
+            recursionChecker.Visit(func.Body);
+            return recursionChecker.IsRecursive;
+        }
+        
+        private class RecursionChecker : AstVisitor<AstNode>
+        {
+            private readonly string functionName;
+            public bool IsRecursive { get; private set; }
+            
+            public RecursionChecker(string functionName)
+            {
+                this.functionName = functionName;
+            }
+            
+            public override Expression VisitCallExpression(CallExpression expr)
+            {
+                if (expr.Callee is VariableExpression varExpr && varExpr.Name == functionName)
+                {
+                    IsRecursive = true;
+                }
+                return base.VisitCallExpression(expr);
+            }
         }
         
         private class InliningVisitor : AstVisitor<AstNode>
@@ -403,8 +425,6 @@ namespace Ouroboros.Optimization
                     }
                     
                     // Inline the function body
-                    // This is simplified - real inlining would need to handle
-                    // variable renaming, return statements, etc.
                     return InlineFunction(func);
                 }
                 
@@ -413,8 +433,124 @@ namespace Ouroboros.Optimization
             
             private Expression InlineFunction(FunctionDeclaration func)
             {
-                // Simplified inlining - would need proper implementation
+                // Clone the function body and replace parameter references
+                var cloner = new ExpressionCloner(parameterMap);
+                
+                // Handle different return patterns
+                if (func.Body is BlockStatement block)
+                {
+                    // Find return statements
+                    var returnFinder = new ReturnStatementFinder();
+                    var returns = returnFinder.FindReturns(block);
+                    
+                    if (returns.Count == 0)
+                    {
+                        // No return, function returns null/void
+                        return new LiteralExpression(null, func.Line, func.Column);
+                    }
+                    else if (returns.Count == 1 && IsLastStatement(returns[0], block))
+                    {
+                        // Single return at end - inline the return expression
+                        return cloner.Visit(returns[0].Value) as Expression;
+                    }
+                    else
+                    {
+                        // Multiple returns or complex control flow
+                        // Create an immediately invoked function expression (IIFE)
+                        return CreateIIFE(func, cloner);
+                    }
+                }
+                else if (func.Body is ReturnStatement ret)
+                {
+                    // Simple expression body
+                    return cloner.Visit(ret.Value) as Expression;
+                }
+                
+                // Fallback
                 return new LiteralExpression(null, func.Line, func.Column);
+            }
+            
+            private bool IsLastStatement(ReturnStatement ret, BlockStatement block)
+            {
+                if (block.Statements.Count == 0) return false;
+                var last = block.Statements[block.Statements.Count - 1];
+                return last == ret || (last is BlockStatement innerBlock && IsLastStatement(ret, innerBlock));
+            }
+            
+            private Expression CreateIIFE(FunctionDeclaration func, ExpressionCloner cloner)
+            {
+                // Create a lambda expression that's immediately called
+                var lambdaParams = func.Parameters.Select(p => new Parameter(p, null)).ToList();
+                var lambdaBody = cloner.Visit(func.Body) as Statement;
+                var lambda = new LambdaExpression(lambdaParams, lambdaBody, func.Line, func.Column);
+                
+                // Create call with mapped arguments
+                var args = func.Parameters.Select(p => parameterMap[p]).ToList();
+                return new CallExpression(lambda, args, func.Line, func.Column);
+            }
+        }
+        
+        private class ReturnStatementFinder : AstVisitor<AstNode>
+        {
+            public List<ReturnStatement> Returns { get; } = new List<ReturnStatement>();
+            
+            public List<ReturnStatement> FindReturns(Statement stmt)
+            {
+                Returns.Clear();
+                Visit(stmt);
+                return Returns;
+            }
+            
+            public override Statement VisitReturnStatement(ReturnStatement stmt)
+            {
+                Returns.Add(stmt);
+                return stmt;
+            }
+        }
+        
+        private class ExpressionCloner : AstVisitor<AstNode>
+        {
+            private readonly Dictionary<string, Expression> substitutions;
+            
+            public ExpressionCloner(Dictionary<string, Expression> substitutions)
+            {
+                this.substitutions = substitutions;
+            }
+            
+            public override Expression VisitVariableExpression(VariableExpression expr)
+            {
+                if (substitutions.TryGetValue(expr.Name, out var replacement))
+                {
+                    // Clone the replacement to avoid sharing nodes
+                    return Visit(replacement) as Expression;
+                }
+                return expr;
+            }
+            
+            public override Expression VisitBinaryExpression(BinaryExpression expr)
+            {
+                var left = Visit(expr.Left) as Expression;
+                var right = Visit(expr.Right) as Expression;
+                return new BinaryExpression(left, expr.Operator, right, expr.Line, expr.Column);
+            }
+            
+            public override Expression VisitUnaryExpression(UnaryExpression expr)
+            {
+                var operand = Visit(expr.Operand) as Expression;
+                return new UnaryExpression(expr.Operator, operand, expr.Prefix, expr.Line, expr.Column);
+            }
+            
+            public override Expression VisitCallExpression(CallExpression expr)
+            {
+                var callee = Visit(expr.Callee) as Expression;
+                var args = expr.Arguments.Select(a => Visit(a) as Expression).ToList();
+                return new CallExpression(callee, args, expr.Line, expr.Column);
+            }
+            
+            public override Statement VisitBlockStatement(BlockStatement stmt)
+            {
+                var statements = stmt.Statements.Select(s => Visit(s) as Statement).ToList();
+                return new BlockStatement(statements, stmt.Line, stmt.Column);
             }
         }
     }

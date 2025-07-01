@@ -567,9 +567,174 @@ namespace Ouroboros.StdLib.ML
         
         private static Tensor<float> GenericEinsum(string equation, Tensor<float>[] tensors)
         {
-            // For unsupported patterns, throw exception with helpful message
-            throw new NotImplementedException($"Einsum pattern '{equation}' is not yet implemented. " +
-                "Please use one of the supported patterns or implement the generic einsum algorithm.");
+            // Generic einsum implementation for arbitrary contractions
+            var parts = equation.Split("->");
+            if (parts.Length != 2)
+                throw new ArgumentException("Einsum equation must contain '->'");
+            
+            var inputExpressions = parts[0].Split(',');
+            var outputExpression = parts[1].Trim();
+            
+            if (inputExpressions.Length != tensors.Length)
+                throw new ArgumentException("Number of input patterns must match number of tensors");
+            
+            // Identify all unique indices
+            var allIndices = new HashSet<char>();
+            foreach (var expr in inputExpressions)
+            {
+                foreach (char c in expr)
+                {
+                    if (char.IsLetter(c))
+                        allIndices.Add(c);
+                }
+            }
+            
+            // Determine index dimensions from tensors
+            var indexDimensions = new Dictionary<char, int>();
+            for (int i = 0; i < inputExpressions.Length; i++)
+            {
+                var expr = inputExpressions[i];
+                var tensor = tensors[i];
+                
+                if (expr.Length != tensor.Shape.Length)
+                    throw new ArgumentException($"Expression '{expr}' doesn't match tensor shape");
+                
+                for (int j = 0; j < expr.Length; j++)
+                {
+                    var idx = expr[j];
+                    if (indexDimensions.ContainsKey(idx))
+                    {
+                        if (indexDimensions[idx] != tensor.Shape[j])
+                            throw new ArgumentException($"Inconsistent dimensions for index '{idx}'");
+                    }
+                    else
+                    {
+                        indexDimensions[idx] = tensor.Shape[j];
+                    }
+                }
+            }
+            
+            // Determine output shape
+            var outputShape = new List<int>();
+            foreach (char idx in outputExpression)
+            {
+                if (!indexDimensions.ContainsKey(idx))
+                    throw new ArgumentException($"Output index '{idx}' not found in inputs");
+                outputShape.Add(indexDimensions[idx]);
+            }
+            
+            if (outputShape.Count == 0)
+                outputShape.Add(1); // Scalar output
+            
+            var result = new Tensor<float>(outputShape.ToArray());
+            
+            // Determine which indices to sum over
+            var sumIndices = new HashSet<char>();
+            foreach (var idx in allIndices)
+            {
+                if (!outputExpression.Contains(idx))
+                {
+                    sumIndices.Add(idx);
+                }
+            }
+            
+            // Create index iterators
+            var allIndexValues = new Dictionary<char, int>();
+            foreach (var idx in allIndices)
+            {
+                allIndexValues[idx] = 0;
+            }
+            
+            // Helper function to compute tensor indices
+            int ComputeTensorIndex(string expression, Dictionary<char, int> indexValues)
+            {
+                int index = 0;
+                int stride = 1;
+                
+                for (int i = expression.Length - 1; i >= 0; i--)
+                {
+                    index += indexValues[expression[i]] * stride;
+                    stride *= indexDimensions[expression[i]];
+                }
+                
+                return index;
+            }
+            
+            // Helper function to increment indices
+            bool IncrementIndices(Dictionary<char, int> indices, HashSet<char> activeIndices)
+            {
+                foreach (var idx in activeIndices.Reverse())
+                {
+                    indices[idx]++;
+                    if (indices[idx] < indexDimensions[idx])
+                        return true;
+                    indices[idx] = 0;
+                }
+                return false;
+            }
+            
+            // Main computation loop
+            var outputIndexValues = new Dictionary<char, int>();
+            foreach (char idx in outputExpression)
+            {
+                outputIndexValues[idx] = 0;
+            }
+            
+            do
+            {
+                // Compute output index
+                int outputIndex = 0;
+                int outputStride = 1;
+                for (int i = outputExpression.Length - 1; i >= 0; i--)
+                {
+                    outputIndex += outputIndexValues[outputExpression[i]] * outputStride;
+                    outputStride *= indexDimensions[outputExpression[i]];
+                }
+                
+                // Initialize sum for this output element
+                float sum = 0.0f;
+                
+                // Set up summation indices
+                var sumIndexValues = new Dictionary<char, int>();
+                foreach (var idx in sumIndices)
+                {
+                    sumIndexValues[idx] = 0;
+                    allIndexValues[idx] = 0;
+                }
+                
+                // Copy output indices to allIndexValues
+                foreach (var kvp in outputIndexValues)
+                {
+                    allIndexValues[kvp.Key] = kvp.Value;
+                }
+                
+                // Sum over contracted indices
+                do
+                {
+                    // Copy sum indices to allIndexValues
+                    foreach (var kvp in sumIndexValues)
+                    {
+                        allIndexValues[kvp.Key] = kvp.Value;
+                    }
+                    
+                    // Compute product for this configuration
+                    float product = 1.0f;
+                    
+                    for (int i = 0; i < tensors.Length; i++)
+                    {
+                        var tensorIndex = ComputeTensorIndex(inputExpressions[i], allIndexValues);
+                        product *= tensors[i].Data[tensorIndex];
+                    }
+                    
+                    sum += product;
+                    
+                } while (IncrementIndices(sumIndexValues, sumIndices));
+                
+                result.Data[outputIndex] = sum;
+                
+            } while (IncrementIndices(outputIndexValues, new HashSet<char>(outputExpression)));
+            
+            return result;
         }
         
         /// <summary>
@@ -1041,6 +1206,10 @@ namespace Ouroboros.StdLib.ML
         public float Beta2 { get; }
         public float Epsilon { get; }
         
+        private readonly Dictionary<Tensor<float>, Tensor<float>> firstMoments = new();
+        private readonly Dictionary<Tensor<float>, Tensor<float>> secondMoments = new();
+        private int timestep = 0;
+        
         public Adam(float lr = 0.001f, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1e-8f)
         {
             LearningRate = lr;
@@ -1051,15 +1220,39 @@ namespace Ouroboros.StdLib.ML
         
         public override void UpdateWeights(Dictionary<Tensor<float>, Tensor<float>> gradients)
         {
-            // Simplified Adam optimizer implementation
+            timestep++;
+            
+            // Compute bias-corrected learning rate
+            var biasCorrection1 = 1.0f - (float)global::System.Math.Pow(Beta1, timestep);
+            var biasCorrection2 = 1.0f - (float)global::System.Math.Pow(Beta2, timestep);
+            var stepSize = LearningRate * (float)global::System.Math.Sqrt(biasCorrection2) / biasCorrection1;
+            
             foreach (var kvp in gradients)
             {
                 var param = kvp.Key;
                 var grad = kvp.Value;
                 
+                // Initialize moments if not exists
+                if (!firstMoments.ContainsKey(param))
+                {
+                    firstMoments[param] = new Tensor<float>(param.Shape);
+                    secondMoments[param] = new Tensor<float>(param.Shape);
+                }
+                
+                var m = firstMoments[param];
+                var v = secondMoments[param];
+                
+                // Update biased first and second moments
                 for (int i = 0; i < param.Data.Length; i++)
                 {
-                    param.Data[i] -= LearningRate * grad.Data[i];
+                    // m_t = β1 * m_{t-1} + (1 - β1) * g_t
+                    m.Data[i] = Beta1 * m.Data[i] + (1 - Beta1) * grad.Data[i];
+                    
+                    // v_t = β2 * v_{t-1} + (1 - β2) * g_t^2
+                    v.Data[i] = Beta2 * v.Data[i] + (1 - Beta2) * grad.Data[i] * grad.Data[i];
+                    
+                    // θ_t = θ_{t-1} - α * m_t / (√v_t + ε)
+                    param.Data[i] -= stepSize * m.Data[i] / ((float)global::System.Math.Sqrt(v.Data[i]) + Epsilon);
                 }
             }
         }

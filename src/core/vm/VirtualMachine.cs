@@ -1491,17 +1491,61 @@ namespace Ouroboros.Core.VM
                     
                 // GPU operations
                 case Opcode.InitGPUContext:
-                    Console.WriteLine("[VM] Initializing GPU context");
-                    operandStack.Push("GPU context initialized");
+                    {
+                        // Initialize GPU context
+                        var gpuSystem = new Core.GPU.GPUSystem();
+                        
+                        // Query available GPU devices
+                        var deviceInfo = gpuSystem.GetType().GetField("deviceInfo", 
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                            ?.GetValue(gpuSystem);
+                        
+                        // Store GPU system in globals for later use
+                        environment.Globals["__gpu_system"] = gpuSystem;
+                        environment.Globals["__gpu_initialized"] = true;
+                        
+                        // Push success status
+                        operandStack.Push(true);
+                        
+                        Console.WriteLine($"[VM] GPU context initialized");
+                    }
                     break;
                     
                 case Opcode.BeginKernel:
-                    Console.WriteLine("[VM] Beginning GPU kernel execution");
+                    {
+                        // Begin GPU kernel execution
+                        var kernelName = constantPool[ReadInt32()] as string;
+                        var gridDimX = Convert.ToInt32(operandStack.Pop());
+                        var gridDimY = Convert.ToInt32(operandStack.Pop());
+                        var gridDimZ = Convert.ToInt32(operandStack.Pop());
+                        var blockDimX = Convert.ToInt32(operandStack.Pop());
+                        var blockDimY = Convert.ToInt32(operandStack.Pop());
+                        var blockDimZ = Convert.ToInt32(operandStack.Pop());
+                        
+                        // Store kernel launch parameters
+                        environment.Globals["__kernel_name"] = kernelName;
+                        environment.Globals["__grid_dim"] = new[] { gridDimX, gridDimY, gridDimZ };
+                        environment.Globals["__block_dim"] = new[] { blockDimX, blockDimY, blockDimZ };
+                        environment.Globals["__kernel_active"] = true;
+                        
+                        Console.WriteLine($"[VM] Beginning kernel '{kernelName}' with grid({gridDimX},{gridDimY},{gridDimZ}) block({blockDimX},{blockDimY},{blockDimZ})");
+                    }
                     break;
                     
                 case Opcode.EndKernel:
-                    Console.WriteLine("[VM] Ending GPU kernel execution");
+                    {
+                        // End GPU kernel execution
+                        var kernelName = environment.Globals.ContainsKey("__kernel_name") 
+                            ? environment.Globals["__kernel_name"] as string 
+                            : "unknown";
+                        
+                        environment.Globals["__kernel_active"] = false;
+                        
+                        Console.WriteLine($"[VM] Ending kernel '{kernelName}'");
+                    }
                     break;
+                    
+
                     
                 case Opcode.LoadThreadIdx:
                     Console.WriteLine("[VM] Loading thread index");
@@ -1770,15 +1814,77 @@ namespace Ouroboros.Core.VM
                     
                 // Domain operations
                 case Opcode.EnterDomain:
-                    Console.WriteLine("[VM] Entering domain scope");
+                    {
+                        // Enter domain scope
+                        var domainName = constantPool[ReadInt32()] as string;
+                        
+                        // Create domain context
+                        if (!environment.Globals.ContainsKey("__domain_stack"))
+                            environment.Globals["__domain_stack"] = new Stack<Dictionary<string, object>>();
+                            
+                        var domainStack = environment.Globals["__domain_stack"] as Stack<Dictionary<string, object>>;
+                        
+                        // Create new domain context
+                        var domainContext = new Dictionary<string, object>
+                        {
+                            ["name"] = domainName,
+                            ["operators"] = new Dictionary<string, Delegate>(),
+                            ["constants"] = new Dictionary<string, object>(),
+                            ["types"] = new Dictionary<string, Type>()
+                        };
+                        
+                        // Load domain-specific operators based on domain name
+                        LoadDomainOperators(domainName, domainContext);
+                        
+                        domainStack.Push(domainContext);
+                        
+                        Console.WriteLine($"[VM] Entered domain '{domainName}'");
+                    }
                     break;
                     
                 case Opcode.ExitDomain:
-                    Console.WriteLine("[VM] Exiting domain scope");
+                    {
+                        // Exit domain scope
+                        if (environment.Globals.ContainsKey("__domain_stack"))
+                        {
+                            var domainStack = environment.Globals["__domain_stack"] as Stack<Dictionary<string, object>>;
+                            if (domainStack.Count > 0)
+                            {
+                                var domain = domainStack.Pop();
+                                var domainName = domain["name"] as string;
+                                Console.WriteLine($"[VM] Exited domain '{domainName}'");
+                            }
+                        }
+                    }
                     break;
                     
                 case Opcode.RedefineOperator:
-                    Console.WriteLine("[VM] Redefining operator in domain scope");
+                    {
+                        // Redefine operator in domain scope
+                        var operatorSymbol = constantPool[ReadInt32()] as string;
+                        var functionName = constantPool[ReadInt32()] as string;
+                        var typeName = constantPool[ReadInt32()] as string;
+                        
+                        if (environment.Globals.ContainsKey("__domain_stack"))
+                        {
+                            var domainStack = environment.Globals["__domain_stack"] as Stack<Dictionary<string, object>>;
+                            if (domainStack.Count > 0)
+                            {
+                                var domain = domainStack.Peek();
+                                var operators = domain["operators"] as Dictionary<string, Delegate>;
+                                
+                                // Create operator key with type info
+                                var operatorKey = $"{operatorSymbol}_{typeName}";
+                                
+                                // Look up the function to bind
+                                if (environment.NativeFunctions.TryGetValue(functionName, out var function))
+                                {
+                                    operators[operatorKey] = function;
+                                    Console.WriteLine($"[VM] Redefined operator '{operatorSymbol}' for type '{typeName}' to function '{functionName}'");
+                                }
+                            }
+                        }
+                    }
                     break;
                     
                 // Array/Collection element access
@@ -3237,6 +3343,44 @@ namespace Ouroboros.Core.VM
         {
             if (debugMode)
                 Console.WriteLine($"[VM] {message}");
+        }
+
+        private void LoadDomainOperators(string domainName, Dictionary<string, object> domainContext)
+        {
+            var operators = domainContext["operators"] as Dictionary<string, Delegate>;
+            var constants = domainContext["constants"] as Dictionary<string, object>;
+            
+            switch (domainName)
+            {
+                case "Physics":
+                    // Physics domain operators
+                    operators["×_Vector3"] = new Func<Vector, Vector, Vector>(CrossProduct);
+                    operators["·_Vector3"] = new Func<Vector, Vector, double>(DotProduct);
+                    operators["∇"] = new Func<Func<double[], double>, double[], Vector>(Gradient);
+                    operators["∂"] = new Func<Func<double[], double>, double[], int, double>(PartialDerivative);
+                    
+                    // Physics constants
+                    constants["c"] = 299792458.0; // Speed of light
+                    constants["ε₀"] = 8.854e-12; // Permittivity of free space
+                    constants["μ₀"] = 4 * Math.PI * 1e-7; // Permeability of free space
+                    constants["ℏ"] = 1.054e-34; // Reduced Planck constant
+                    break;
+                    
+                case "Statistics":
+                    // Statistics domain operators
+                    operators["μ"] = new Func<double[], double>(Mean);
+                    operators["σ"] = new Func<double[], double>(StdDev);
+                    operators["σ²"] = new Func<double[], double>(Variance);
+                    
+                    // Statistics constants
+                    constants["normal_95_percentile"] = 1.96;
+                    constants["χ²_critical"] = 3.841;
+                    break;
+                    
+                default:
+                    Console.WriteLine($"[VM] Unknown domain: {domainName}");
+                    break;
+            }
         }
     }
     

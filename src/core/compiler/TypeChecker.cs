@@ -402,14 +402,126 @@ namespace Ouroboros.Core.Compiler
             }
         }
         
-        // Other visitor methods remain simplified for now
-        public TypeNode VisitMemberExpression(MemberExpression expr) { expr.Object.Accept(this); return typeRegistry.Unknown; }
-        public TypeNode VisitArrayExpression(ArrayExpression expr) { foreach (var e in expr.Elements) e.Accept(this); return typeRegistry.Unknown; }
-        public TypeNode VisitLambdaExpression(LambdaExpression expr) { expr.Body.Accept(this); return typeRegistry.Unknown; }
+        // Properly implemented visitor methods
+        public TypeNode VisitMemberExpression(MemberExpression expr) 
+        { 
+            var objectType = expr.Object.Accept(this);
+            
+            // Handle array/string length
+            if (expr.Member == "Length" || expr.Member == "length")
+            {
+                if (objectType is ArrayTypeNode || objectType?.Name == "string")
+                    return typeRegistry.Int;
+            }
+            
+            // Handle type member access
+            if (objectType is TypeNode type)
+            {
+                // Look up member in type
+                // This would require type metadata in a full implementation
+                return new TypeNode($"{type.Name}.{expr.Member}");
+            }
+            
+            return new TypeNode("dynamic");
+        }
+        
+        public TypeNode VisitArrayExpression(ArrayExpression expr) 
+        { 
+            if (expr.Elements.Count == 0)
+                return new ArrayTypeNode(typeRegistry.Unknown);
+                
+            // Infer element type from first element
+            var elementType = expr.Elements[0].Accept(this);
+            
+            // Check all elements have compatible types
+            foreach (var element in expr.Elements.Skip(1))
+            {
+                var elemType = element.Accept(this);
+                if (!AreTypesCompatible(elementType, elemType))
+                {
+                    AddError($"Array elements must have consistent types", expr.Line, expr.Column);
+                }
+            }
+            
+            return new ArrayTypeNode(elementType);
+        }
+        
+        public TypeNode VisitLambdaExpression(LambdaExpression expr) 
+        { 
+            EnterScope();
+            
+            // Define parameters
+            var paramTypes = new List<TypeNode>();
+            foreach (var param in expr.Parameters)
+            {
+                var paramType = param.Type ?? typeRegistry.Unknown;
+                DefineVariable(param.Name, paramType);
+                paramTypes.Add(paramType);
+            }
+            
+            // Infer return type from body
+            TypeNode returnType;
+            if (expr.Body is Expression bodyExpr)
+            {
+                returnType = bodyExpr.Accept(this);
+            }
+            else
+            {
+                // Statement body - need to analyze return statements
+                var previousReturnType = currentReturnType;
+                currentReturnType = null;
+                expr.Body.Accept(this);
+                returnType = currentReturnType ?? typeRegistry.Void;
+                currentReturnType = previousReturnType;
+            }
+            
+            ExitScope();
+            
+            return new FunctionTypeNode(paramTypes, returnType);
+        }
+        
+        public TypeNode VisitThisExpression(ThisExpression expr)
+        {
+            // Look up current class/struct type
+            var thisType = LookupVariable("this");
+            if (thisType == null)
+            {
+                AddError("'this' can only be used inside class/struct methods", expr.Line, expr.Column);
+                return typeRegistry.Unknown;
+            }
+            return thisType;
+        }
+        
+        public TypeNode VisitBaseExpression(BaseExpression expr)
+        {
+            // Look up base class type
+            var thisType = LookupVariable("this");
+            if (thisType == null)
+            {
+                AddError("'base' can only be used inside class methods", expr.Line, expr.Column);
+                return typeRegistry.Unknown;
+            }
+            // Would need to look up base type from class hierarchy
+            return new TypeNode($"{thisType.Name}.Base");
+        }
+        
+        public TypeNode VisitGenericIdentifierExpression(GenericIdentifierExpression expr)
+        {
+            // Handle generic type instantiation
+            var baseType = LookupVariable(expr.Name);
+            if (baseType == null)
+            {
+                // Try as type name
+                baseType = new TypeNode(expr.Name);
+            }
+            
+            // Build generic type name
+            var typeArgs = expr.TypeArguments.Select(t => t.Name).ToArray();
+            return new TypeNode($"{expr.Name}<{string.Join(", ", typeArgs)}>");
+        }
+        
         public TypeNode VisitNewExpression(NewExpression expr) { foreach (var a in expr.Arguments) a.Accept(this); return expr.Type; }
         public TypeNode VisitConditionalExpression(ConditionalExpression expr) { expr.Condition.Accept(this); var t1 = expr.TrueExpression.Accept(this); var t2 = expr.FalseExpression.Accept(this); return t1; }
-        public TypeNode VisitThisExpression(ThisExpression expr) => typeRegistry.Unknown;
-        public TypeNode VisitBaseExpression(BaseExpression expr) => typeRegistry.Unknown;
         public TypeNode VisitTypeofExpression(TypeofExpression expr) => typeRegistry.Type;
         public TypeNode VisitSizeofExpression(SizeofExpression expr) => typeRegistry.Int;
         public TypeNode VisitNameofExpression(NameofExpression expr) => typeRegistry.String;
@@ -453,12 +565,14 @@ namespace Ouroboros.Core.Compiler
         public TypeNode VisitNamespaceDeclaration(NamespaceDeclaration decl) { EnterScope(); foreach (var m in decl.Members) m.Accept(this); ExitScope(); return null; }
         public TypeNode VisitImportDeclaration(ImportDeclaration decl) => null;
         public TypeNode VisitTypeAliasDeclaration(TypeAliasDeclaration decl) => null;
-        public TypeNode VisitGenericIdentifierExpression(GenericIdentifierExpression expr) => typeRegistry.Unknown;
         public TypeNode VisitIsExpression(IsExpression expr) { expr.Left.Accept(this); return typeRegistry.Bool; }
         public TypeNode VisitCastExpression(CastExpression expr) { expr.Expression.Accept(this); return expr.TargetType; }
         public TypeNode VisitMatchExpression(MatchExpression expr) { expr.Target.Accept(this); TypeNode resultType = null; foreach (var arm in expr.Arms) { arm.Guard?.Accept(this); var armType = arm.Body.Accept(this); if (resultType == null) resultType = armType; } return resultType ?? typeRegistry.Unknown; }
         public TypeNode VisitThrowExpression(ThrowExpression expr) { expr.Expression?.Accept(this); return typeRegistry.Unknown; }
         public TypeNode VisitMatchArm(MatchArm arm) { arm.Guard?.Accept(this); return arm.Body.Accept(this); }
+        public TypeNode VisitMacroDeclaration(MacroDeclaration decl) => null;
+        public TypeNode VisitTraitDeclaration(TraitDeclaration decl) => null;
+        public TypeNode VisitImplementDeclaration(ImplementDeclaration decl) => null;
     
     public TypeNode VisitStructLiteral(StructLiteral expr) 
     { 
@@ -537,6 +651,20 @@ namespace Ouroboros.Core.Compiler
         {
             ParameterTypes = paramTypes;
             ReturnType = returnType;
+        }
+    }
+    
+    /// <summary>
+    /// Array type node for array types
+    /// </summary>
+    public class ArrayTypeNode : TypeNode
+    {
+        public TypeNode ElementType { get; }
+        
+        public ArrayTypeNode(TypeNode elementType)
+            : base($"{elementType.Name}[]")
+        {
+            ElementType = elementType;
         }
     }
 } 

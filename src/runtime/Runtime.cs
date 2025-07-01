@@ -252,7 +252,7 @@ namespace Ouroboros.Runtime
         {
             // This method is deprecated - use Execute(CompiledProgram) instead
             var bytecodeObj = new Compiler.Bytecode { Code = bytecode.ToList() };
-            var compiledProgram = new VM.CompiledProgram 
+            var compiledProgram = new Ouroboros.Core.VM.CompiledProgram 
             { 
                 Bytecode = bytecodeObj,
                 SymbolTable = new Compiler.SymbolTable()
@@ -263,7 +263,7 @@ namespace Ouroboros.Runtime
         /// <summary>
         /// Execute a compiled program
         /// </summary>
-        public object Execute(VM.CompiledProgram compiledProgram)
+        public object Execute(Ouroboros.Core.VM.CompiledProgram compiledProgram)
         {
             try
             {
@@ -431,21 +431,187 @@ namespace Ouroboros.Runtime
         private void MarkReachableObjects()
         {
             // Mark all reachable objects starting from roots
+            // This is a simplified mark phase implementation
+            var marked = new HashSet<object>();
+            var toMark = new Stack<object>();
+            
+            // Add GC roots
+            // 1. Global variables
+            foreach (var global in globals.Values)
+            {
+                if (global != null && !marked.Contains(global))
+                {
+                    toMark.Push(global);
+                }
+            }
+            
+            // 2. Stack values
+            foreach (var stackValue in stack)
+            {
+                if (stackValue != null && !marked.Contains(stackValue))
+                {
+                    toMark.Push(stackValue);
+                }
+            }
+            
+            // 3. Thread-local roots
+            // Would need thread enumeration in full implementation
+            
+            // Mark phase - traverse object graph
+            while (toMark.Count > 0)
+            {
+                var obj = toMark.Pop();
+                if (marked.Add(obj))
+                {
+                    // Mark children
+                    MarkChildren(obj, toMark, marked);
+                }
+            }
+            
+            // Update allocations list
+            lock (gcLock)
+            {
+                for (int i = allocations.Count - 1; i >= 0; i--)
+                {
+                    var weakRef = allocations[i];
+                    if (weakRef.IsAlive && !marked.Contains(weakRef.Target))
+                    {
+                        // This object is unreachable
+                        weakRef.Target = null;
+                    }
+                }
+            }
+        }
+        
+        private void MarkChildren(object obj, Stack<object> toMark, HashSet<object> marked)
+        {
+            // Mark all objects referenced by this object
+            var type = obj.GetType();
+            
+            // Handle arrays
+            if (type.IsArray)
+            {
+                var array = (Array)obj;
+                foreach (var element in array)
+                {
+                    if (element != null && !marked.Contains(element))
+                    {
+                        toMark.Push(element);
+                    }
+                }
+            }
+            // Handle collections
+            else if (obj is System.Collections.IEnumerable enumerable)
+            {
+                foreach (var item in enumerable)
+                {
+                    if (item != null && !marked.Contains(item))
+                    {
+                        toMark.Push(item);
+                    }
+                }
+            }
+            // Handle object fields
+            else
+            {
+                var fields = type.GetFields(System.Reflection.BindingFlags.Instance | 
+                                          System.Reflection.BindingFlags.Public | 
+                                          System.Reflection.BindingFlags.NonPublic);
+                
+                foreach (var field in fields)
+                {
+                    var value = field.GetValue(obj);
+                    if (value != null && !field.FieldType.IsValueType && !marked.Contains(value))
+                    {
+                        toMark.Push(value);
+                    }
+                }
+            }
         }
         
         private void SweepUnreachableObjects()
         {
             // Free unreachable objects
+            lock (gcLock)
+            {
+                var deadCount = 0;
+                var freedMemory = 0L;
+                
+                // Remove dead weak references
+                for (int i = allocations.Count - 1; i >= 0; i--)
+                {
+                    if (!allocations[i].IsAlive)
+                    {
+                        allocations.RemoveAt(i);
+                        deadCount++;
+                        
+                        // Estimate freed memory (would need actual size tracking)
+                        freedMemory += 1024; // Placeholder
+                    }
+                }
+                
+                // Update statistics
+                TrackDeallocation(freedMemory);
+                
+                if (deadCount > 0)
+                {
+                    Console.WriteLine($"[GC] Collected {deadCount} objects, freed ~{freedMemory / 1024}KB");
+                }
+            }
         }
         
         private void CompactHeap()
         {
             // Compact heap to reduce fragmentation
+            // This is a placeholder - real implementation would:
+            // 1. Move live objects to eliminate gaps
+            // 2. Update all references to moved objects
+            // 3. Coalesce free memory blocks
+            
+            lock (gcLock)
+            {
+                // Sort allocations by memory address (if we had addresses)
+                // Move objects to eliminate fragmentation
+                // Update references
+                
+                // For now, just remove null entries to compact the list
+                allocations.RemoveAll(wr => !wr.IsAlive);
+            }
         }
         
         private void UpdateStatistics()
         {
             // Update GC statistics
+            var liveObjects = 0;
+            var liveMemory = 0L;
+            
+            lock (gcLock)
+            {
+                foreach (var weakRef in allocations)
+                {
+                    if (weakRef.IsAlive)
+                    {
+                        liveObjects++;
+                        // Would need actual object size tracking
+                        liveMemory += 1024; // Placeholder
+                    }
+                }
+            }
+            
+            var gcStats = new
+            {
+                LiveObjects = liveObjects,
+                LiveMemory = liveMemory,
+                TotalAllocated = totalAllocated,
+                TotalFreed = totalFreed,
+                HeapSize = totalAllocated - totalFreed
+            };
+            
+            // Could emit GC events or update performance counters here
+            if (options.EnableProfiling)
+            {
+                Console.WriteLine($"[GC Stats] Live: {liveObjects} objects, {liveMemory / 1024}KB, Heap: {gcStats.HeapSize / 1024}KB");
+            }
         }
     }
     

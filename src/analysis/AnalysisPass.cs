@@ -136,21 +136,233 @@ namespace Ouroboros.Analysis
         private void ValidateMathematicalExpression(MathExpression expr)
         {
             // Validate mathematical expression semantics
+            // Check for valid operator usage
+            var location = new SourceLocation(expr.FileName, expr.Line, expr.Column);
+            
+            switch (expr.Operation)
+            {
+                case MathOperationType.CrossProduct:
+                    // Cross product requires 3D vectors
+                    if (expr.Operands.Count != 2)
+                    {
+                        diagnostics.ReportMathematicalError("Cross product requires exactly two operands", location);
+                    }
+                    // TODO: Verify operands are 3D vectors when type info available
+                    break;
+                    
+                case MathOperationType.DotProduct:
+                    // Dot product requires vectors of same dimension
+                    if (expr.Operands.Count != 2)
+                    {
+                        diagnostics.ReportMathematicalError("Dot product requires exactly two operands", location);
+                    }
+                    break;
+                    
+                case MathOperationType.Derivative:
+                case MathOperationType.PartialDerivative:
+                    // Derivative requires a function and variable
+                    if (expr.Operands.Count < 1)
+                    {
+                        diagnostics.ReportMathematicalError($"{expr.Operation} requires a function operand", location);
+                    }
+                    break;
+                    
+                case MathOperationType.Integral:
+                    // Integral requires integrand and bounds
+                    if (expr.Operands.Count < 1)
+                    {
+                        diagnostics.ReportMathematicalError("Integral requires an integrand expression", location);
+                    }
+                    break;
+                    
+                case MathOperationType.Summation:
+                case MathOperationType.Product:
+                    // Sum/Product require iteration bounds
+                    if (expr.Operands.Count < 1)
+                    {
+                        diagnostics.ReportMathematicalError($"{expr.Operation} requires an expression to iterate", location);
+                    }
+                    break;
+                    
+                // Additional mathematical operations
+                case MathOperationType.MatrixMultiply:
+                    if (expr.Operands.Count != 2)
+                    {
+                        diagnostics.ReportMathematicalError("Matrix multiplication requires exactly two operands", location);
+                    }
+                    break;
+                    
+                case MathOperationType.Transpose:
+                case MathOperationType.Determinant:
+                case MathOperationType.Inverse:
+                    if (expr.Operands.Count != 1)
+                    {
+                        diagnostics.ReportMathematicalError($"{expr.Operation} requires exactly one matrix operand", location);
+                    }
+                    break;
+            }
         }
         
         private void ValidatePartialDerivative(BinaryExpression expr)
         {
-            // Validate partial derivative notation
+            // Validate partial derivative notation ∂f/∂x
+            // Left side should be the function being differentiated
+            // Right side should be the variable of differentiation
+            var location = new SourceLocation(expr.FileName, expr.Line, expr.Column);
+            
+            if (expr.Left is IdentifierExpression leftId && expr.Right is IdentifierExpression rightId)
+            {
+                // Check if left is a function and right is a valid variable
+                // This would require symbol table lookup in full implementation
+                
+                // For now, just validate syntax
+                if (string.IsNullOrEmpty(leftId.Name))
+                {
+                    var leftLocation = new SourceLocation(leftId.FileName, leftId.Line, leftId.Column);
+                    diagnostics.ReportMathematicalError("Partial derivative requires a function name", leftLocation);
+                }
+                
+                if (string.IsNullOrEmpty(rightId.Name))
+                {
+                    var rightLocation = new SourceLocation(rightId.FileName, rightId.Line, rightId.Column);
+                    diagnostics.ReportMathematicalError("Partial derivative requires a variable name", rightLocation);
+                }
+            }
+            else
+            {
+                diagnostics.ReportMathematicalError("Invalid partial derivative syntax. Expected ∂f/∂x format", location);
+            }
         }
         
         private void ValidateIntegralExpression(Expression expr)
         {
-            // Validate integral notation
+            // Validate integral notation ∫[a to b] f(x) dx
+            var location = new SourceLocation(expr.FileName, expr.Line, expr.Column);
+            
+            if (expr is MathExpression mathExpr && mathExpr.Operation == MathOperationType.Integral)
+            {
+                // Check for integrand
+                if (mathExpr.Operands.Count == 0)
+                {
+                    diagnostics.ReportMathematicalError("Integral requires an integrand expression", location);
+                }
+                
+                // In a complete implementation, bounds and differential variable would be separate properties
+                // For now, we assume they're encoded in the operands
+                if (mathExpr.Operands.Count < 2)
+                {
+                    diagnostics.ReportInfo("Integral without bounds will be treated as indefinite integral", location);
+                }
+            }
+            else if (expr is CallExpression call && call.Callee is IdentifierExpression id && 
+                     (id.Name == "∫" || id.Name == "integral"))
+            {
+                // Validate function-style integral call
+                if (call.Arguments.Count < 1)
+                {
+                    diagnostics.ReportMathematicalError("Integral function requires at least an integrand argument", location);
+                }
+                
+                // First argument should be the integrand
+                // Optional second and third arguments are bounds
+                if (call.Arguments.Count >= 3)
+                {
+                    // Has bounds - validate they are numeric or symbolic expressions
+                    var lowerBound = call.Arguments[1];
+                    var upperBound = call.Arguments[2];
+                    
+                    // In full implementation, would check types here
+                }
+            }
         }
         
         private void ValidateLimitExpression(Expression expr)
         {
-            // Validate limit notation
+            // Validate limit notation lim[x→a] f(x)
+            var location = new SourceLocation(expr.FileName, expr.Line, expr.Column);
+            
+            if (expr is CallExpression call && call.Callee is IdentifierExpression id && 
+                (id.Name == "lim" || id.Name == "limit"))
+            {
+                // Should have at least 2 arguments: expression and limit point
+                if (call.Arguments.Count < 2)
+                {
+                    diagnostics.ReportMathematicalError("Limit requires an expression and a limit point", location);
+                    return;
+                }
+                
+                // First argument is the expression
+                var limitExpr = call.Arguments[0];
+                
+                // Second argument should specify the limit point (e.g., x→0)
+                var limitPoint = call.Arguments[1];
+                
+                // Validate limit point syntax
+                if (limitPoint is BinaryExpression binExpr && binExpr.Operator.Type == TokenType.Arrow)
+                {
+                    // Valid syntax: x→0
+                    var variable = binExpr.Left;
+                    var value = binExpr.Right;
+                    
+                    if (!(variable is IdentifierExpression))
+                    {
+                        var varLocation = new SourceLocation(variable.FileName, variable.Line, variable.Column);
+                        diagnostics.ReportMathematicalError("Limit variable must be an identifier", varLocation);
+                    }
+                    
+                    // Value can be numeric, infinity, or expression
+                    ValidateLimitValue(value);
+                }
+                else
+                {
+                    var limitPointLocation = new SourceLocation(limitPoint.FileName, limitPoint.Line, limitPoint.Column);
+                    diagnostics.ReportMathematicalError("Invalid limit syntax. Expected format: lim[x→a] f(x)", limitPointLocation);
+                }
+                
+                // Optional third argument for one-sided limits (+ or -)
+                if (call.Arguments.Count >= 3)
+                {
+                    var direction = call.Arguments[2];
+                    if (direction is LiteralExpression lit && lit.Value is string dir)
+                    {
+                        if (dir != "+" && dir != "-")
+                        {
+                            var dirLocation = new SourceLocation(direction.FileName, direction.Line, direction.Column);
+                            diagnostics.ReportMathematicalError("Limit direction must be '+' or '-' for one-sided limits", dirLocation);
+                        }
+                    }
+                }
+            }
+        }
+        
+        private void ValidateLimitValue(Expression value)
+        {
+            // Validate the limit point value
+            var location = new SourceLocation(value.FileName, value.Line, value.Column);
+            
+            if (value is IdentifierExpression id)
+            {
+                // Check for special values
+                var specialValues = new[] { "∞", "infinity", "-∞", "-infinity", "0+", "0-" };
+                if (!specialValues.Contains(id.Name) && !char.IsLetter(id.Name[0]))
+                {
+                    diagnostics.ReportInfo($"Unusual limit value: {id.Name}", location);
+                }
+            }
+            else if (value is UnaryExpression unary && unary.Operator.Type == TokenType.Minus)
+            {
+                // Handle negative infinity
+                if (unary.Operand is IdentifierExpression opId && (opId.Name == "∞" || opId.Name == "infinity"))
+                {
+                    // Valid: -∞
+                    return;
+                }
+            }
+            else if (!(value is LiteralExpression))
+            {
+                // Complex expressions are allowed but should be validated for convergence
+                diagnostics.ReportInfo("Complex limit value expression detected", location);
+            }
         }
         
         private bool ContainsIntegralNotation(Expression expr)
