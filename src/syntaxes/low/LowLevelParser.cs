@@ -599,19 +599,208 @@ namespace Ouroboros.Syntaxes.Low
         
         private Expression ParseExpression()
         {
-            // Simple expression parsing for low-level syntax
-            if (Check(TokenType.IntegerLiteral) || Check(TokenType.HexLiteral) ||
-                Check(TokenType.StringLiteral))
+            return ParseBinaryExpression();
+        }
+        
+        private Expression ParseBinaryExpression()
+        {
+            var expr = ParseUnaryExpression();
+            
+            while (IsOperator())
+            {
+                var op = Advance();
+                var right = ParseUnaryExpression();
+                expr = new BinaryExpression(expr, op, right);
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParseUnaryExpression()
+        {
+            // Handle unary operators
+            if (Match(TokenType.Multiply))
+            {
+                // Dereference operator *
+                var expr = ParseUnaryExpression();
+                return new DereferenceExpression(expr, Previous().Line, Previous().Column);
+            }
+            
+            if (Match(TokenType.BitwiseAnd))
+            {
+                // Address-of operator &
+                var expr = ParseUnaryExpression();
+                return new AddressOfExpression(expr, Previous().Line, Previous().Column);
+            }
+            
+            if (Match(TokenType.Plus, TokenType.Minus, TokenType.BitwiseNot, TokenType.LogicalNot))
+            {
+                var op = Previous();
+                var expr = ParseUnaryExpression();
+                return new UnaryExpression(op, expr);
+            }
+            
+            if (Match(TokenType.Increment, TokenType.Decrement))
+            {
+                // Prefix increment/decrement
+                var op = Previous();
+                var expr = ParseUnaryExpression();
+                return new UnaryExpression(op, expr);
+            }
+            
+            return ParsePostfixExpression();
+        }
+        
+        private Expression ParsePostfixExpression()
+        {
+            var expr = ParsePrimaryExpression();
+            
+            while (true)
+            {
+                if (Match(TokenType.LeftBracket))
+                {
+                    // Array indexing
+                    var index = ParseExpression();
+                    Consume(TokenType.RightBracket, "Expected ']' after array index");
+                    expr = new ArrayIndexExpression(expr, index, Previous().Line, Previous().Column);
+                }
+                else if (Match(TokenType.Dot))
+                {
+                    // Member access
+                    var member = Consume(TokenType.Identifier, "Expected member name");
+                    expr = new MemberAccessExpression(expr, member.Lexeme, member.Line, member.Column);
+                }
+                else if (Match(TokenType.Arrow))
+                {
+                    // Pointer member access (->)
+                    var member = Consume(TokenType.Identifier, "Expected member name");
+                    // Convert p->member to (*p).member
+                    var deref = new DereferenceExpression(expr, expr.Line, expr.Column);
+                    expr = new MemberAccessExpression(deref, member.Lexeme, member.Line, member.Column);
+                }
+                else if (Match(TokenType.Increment, TokenType.Decrement))
+                {
+                    // Postfix increment/decrement
+                    var op = Previous();
+                    expr = new PostfixExpression(expr, op);
+                }
+                else if (Match(TokenType.LeftParen))
+                {
+                    // Function call
+                    var args = new List<Expression>();
+                    
+                    if (!Check(TokenType.RightParen))
+                    {
+                        do
+                        {
+                            args.Add(ParseExpression());
+                        } while (Match(TokenType.Comma));
+                    }
+                    
+                    Consume(TokenType.RightParen, "Expected ')' after arguments");
+                    expr = new CallExpression(expr, args);
+                }
+                else
+                {
+                    break;
+                }
+            }
+            
+            return expr;
+        }
+        
+        private Expression ParsePrimaryExpression()
+        {
+            // Literals
+            if (Check(TokenType.IntegerLiteral) || Check(TokenType.HexLiteral) || 
+                Check(TokenType.OctalLiteral) || Check(TokenType.BinaryLiteral))
             {
                 return new LiteralExpression(Advance());
             }
             
+            if (Check(TokenType.FloatLiteral) || Check(TokenType.DoubleLiteral))
+            {
+                return new LiteralExpression(Advance());
+            }
+            
+            if (Check(TokenType.StringLiteral) || Check(TokenType.CharLiteral))
+            {
+                return new LiteralExpression(Advance());
+            }
+            
+            if (Match(TokenType.True, TokenType.False))
+            {
+                return new LiteralExpression(Previous());
+            }
+            
+            if (Match(TokenType.Null))
+            {
+                return new LiteralExpression(Previous());
+            }
+            
+            // Identifiers
             if (Check(TokenType.Identifier))
             {
                 return new IdentifierExpression(Advance());
             }
             
+            // Sizeof
+            if (Match(TokenType.Sizeof))
+            {
+                Consume(TokenType.LeftParen, "Expected '(' after sizeof");
+                var type = ParseType();
+                Consume(TokenType.RightParen, "Expected ')' after type");
+                return new SizeofExpression(type);
+            }
+            
+            // Type cast or parenthesized expression
+            if (Match(TokenType.LeftParen))
+            {
+                // Try to parse as cast
+                var checkpoint = current;
+                try
+                {
+                    var type = ParseType();
+                    if (Match(TokenType.RightParen))
+                    {
+                        // It's a cast
+                        var expr = ParseUnaryExpression();
+                        return new CastExpression(type, expr);
+                    }
+                }
+                catch { }
+                
+                // Not a cast, reset and parse as parenthesized expression
+                current = checkpoint;
+                var innerExpr = ParseExpression();
+                Consume(TokenType.RightParen, "Expected ')' after expression");
+                return innerExpr;
+            }
+            
+            // Assembly register reference
+            if (Match(TokenType.Modulo))
+            {
+                var reg = Consume(TokenType.Identifier, "Expected register name after %");
+                return new RegisterExpression(reg.Lexeme);
+            }
+            
             throw Error(Current(), "Expected expression");
+        }
+        
+        private bool IsOperator()
+        {
+            return Check(TokenType.Plus) || Check(TokenType.Minus) ||
+                   Check(TokenType.Multiply) || Check(TokenType.Divide) || Check(TokenType.Modulo) ||
+                   Check(TokenType.LeftShift) || Check(TokenType.RightShift) ||
+                   Check(TokenType.Less) || Check(TokenType.LessEqual) ||
+                   Check(TokenType.Greater) || Check(TokenType.GreaterEqual) ||
+                   Check(TokenType.Equal) || Check(TokenType.NotEqual) ||
+                   Check(TokenType.BitwiseAnd) || Check(TokenType.BitwiseOr) || Check(TokenType.BitwiseXor) ||
+                   Check(TokenType.LogicalAnd) || Check(TokenType.LogicalOr) ||
+                   Check(TokenType.Assign) || Check(TokenType.PlusAssign) || Check(TokenType.MinusAssign) ||
+                   Check(TokenType.MultiplyAssign) || Check(TokenType.DivideAssign) || Check(TokenType.ModuloAssign) ||
+                   Check(TokenType.BitwiseAndAssign) || Check(TokenType.BitwiseOrAssign) || Check(TokenType.BitwiseXorAssign) ||
+                   Check(TokenType.LeftShiftAssign) || Check(TokenType.RightShiftAssign);
         }
         
         private void SkipWhitespaceAndComments()
@@ -976,6 +1165,74 @@ namespace Ouroboros.Syntaxes.Low
         public override T Accept<T>(IVisitor<T> visitor)
         {
             return visitor.VisitMemberAccessExpression(this);
+        }
+    }
+    
+    public class RegisterExpression : Expression
+    {
+        public string RegisterName { get; }
+        
+        public RegisterExpression(string registerName)
+            : base(0, 0)
+        {
+            RegisterName = registerName;
+        }
+        
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitRegisterExpression(this);
+        }
+    }
+    
+    public class PostfixExpression : Expression
+    {
+        public Expression Operand { get; }
+        public Token Operator { get; }
+        
+        public PostfixExpression(Expression operand, Token op)
+            : base(op.Line, op.Column)
+        {
+            Operand = operand;
+            Operator = op;
+        }
+        
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitPostfixExpression(this);
+        }
+    }
+    
+    public class SizeofExpression : Expression
+    {
+        public TypeNode Type { get; }
+        
+        public SizeofExpression(TypeNode type)
+            : base(0, 0)
+        {
+            Type = type;
+        }
+        
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitSizeofExpression(this);
+        }
+    }
+    
+    public class CastExpression : Expression
+    {
+        public TypeNode TargetType { get; }
+        public Expression Expression { get; }
+        
+        public CastExpression(TypeNode targetType, Expression expression)
+            : base(expression.Line, expression.Column)
+        {
+            TargetType = targetType;
+            Expression = expression;
+        }
+        
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitCastExpression(this);
         }
     }
     
