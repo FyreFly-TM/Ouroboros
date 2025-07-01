@@ -24,5 +24,9 @@
     <Compile Include="src\syntaxes\high\HighLevelParser.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="LLVMSharp" Version="16.0.0" />
+  </ItemGroup>
+
 </Project>
  

@@ -1,9 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "f3ZOI6yRPA4=",
+  "dgSpecHash": "8+TPxqHgK4k=",
   "success": true,
   "projectFilePath": "H:\\Ouroboros\\Ouroboros.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\jacob\\.nuget\\packages\\libllvm\\16.0.6\\libllvm.16.0.6.nupkg.sha512",
+    "C:\\Users\\jacob\\.nuget\\packages\\llvmsharp\\16.0.0\\llvmsharp.16.0.0.nupkg.sha512",
+    "C:\\Users\\jacob\\.nuget\\packages\\llvmsharp.interop\\16.0.0\\llvmsharp.interop.16.0.0.nupkg.sha512",
     "C:\\Users\\jacob\\.nuget\\packages\\microsoft.netcore.app.ref\\6.0.36\\microsoft.netcore.app.ref.6.0.36.nupkg.sha512",
     "C:\\Users\\jacob\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\6.0.36\\microsoft.windowsdesktop.app.ref.6.0.36.nupkg.sha512",
     "C:\\Users\\jacob\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\6.0.36\\microsoft.aspnetcore.app.ref.6.0.36.nupkg.sha512",
