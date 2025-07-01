@@ -6,6 +6,9 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.IO.Compression;
+using System.CommandLine;
+using System.CommandLine.Invocation;
+using Ouroboros.Tools.Opm;
 
 namespace Ouroboros.PackageManager
 {

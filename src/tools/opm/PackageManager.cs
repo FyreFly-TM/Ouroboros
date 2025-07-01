@@ -496,9 +496,31 @@ namespace Ouroboros.Tools.Opm
 
         private List<string> GetDependents(string packageName, ProjectManifest manifest)
         {
-            // In a real implementation, this would check all installed packages
-            // to see which ones depend on the package being uninstalled
-            return new List<string>();
+            var dependents = new List<string>();
+            
+            // Check all installed packages
+            foreach (var dir in Directory.GetDirectories(packagesDirectory))
+            {
+                var packageInfoPath = Path.Combine(dir, "package.ouro.json");
+                if (File.Exists(packageInfoPath))
+                {
+                    try
+                    {
+                        var metadata = LoadPackageMetadataAsync(packageInfoPath).Result;
+                        if (metadata?.Dependencies != null && 
+                            metadata.Dependencies.ContainsKey(packageName))
+                        {
+                            dependents.Add(metadata.Name);
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore invalid packages
+                    }
+                }
+            }
+            
+            return dependents;
         }
 
         private bool IsNewerVersion(string version1, string version2)
@@ -582,8 +604,8 @@ namespace Ouroboros.Tools.Opm
     /// </summary>
     public class PackageRegistry
     {
-        private readonly string registryUrl;
-        private readonly HttpClient httpClient;
+        protected readonly string registryUrl;
+        protected readonly HttpClient httpClient;
 
         public PackageRegistry(string registryUrl = "https://packages.ouroboros-lang.org")
         {
@@ -591,7 +613,7 @@ namespace Ouroboros.Tools.Opm
             this.httpClient = new HttpClient();
         }
 
-        public async Task<PackageInfo?> GetPackageAsync(string name, string? version = null)
+        public virtual async Task<PackageInfo?> GetPackageAsync(string name, string? version = null)
         {
             var url = version != null 
                 ? $"{registryUrl}/api/packages/{name}/{version}"
@@ -640,7 +662,7 @@ namespace Ouroboros.Tools.Opm
             }
         }
 
-        public async Task<bool> PublishAsync(string archivePath, PackageMetadata metadata, string checksum)
+        public virtual async Task<bool> PublishAsync(string archivePath, PackageMetadata metadata, string checksum)
         {
             try
             {
@@ -764,6 +786,12 @@ namespace Ouroboros.Tools.Opm
         public Dictionary<string, string>? Dependencies { get; set; }
         public Dictionary<string, string>? DevDependencies { get; set; }
         public Dictionary<string, string>? Scripts { get; set; }
+        public bool Private { get; set; }
+        public string? Registry { get; set; }
+        public string? PublishedAt { get; set; }
+        public string? Checksum { get; set; }
+        public List<string>? Tags { get; set; }
+        public string? Main { get; set; }
     }
 
     public class ProjectManifest
