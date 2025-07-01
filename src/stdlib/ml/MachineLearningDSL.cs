@@ -39,11 +39,11 @@ namespace Ouroboros.StdLib.ML
                 LearningRate = learningRate
             };
         }
-    }
-    
-    /// <summary>
+        }
+        
+        /// <summary>
     /// Fluent model builder
-    /// </summary>
+        /// </summary>
     public class ModelBuilder
     {
         private readonly Sequential model = new();
@@ -197,11 +197,11 @@ namespace Ouroboros.StdLib.ML
             // TODO: Implement proper size tracking
             return 10; // Placeholder
         }
-    }
-    
-    /// <summary>
+        }
+        
+        /// <summary>
     /// Dataset wrapper
-    /// </summary>
+        /// </summary>
     public class Dataset
     {
         private readonly List<(Tensor, Tensor)> data = new();
@@ -281,11 +281,11 @@ namespace Ouroboros.StdLib.ML
                 Metrics[name] = new List<double>();
             Metrics[name].Add(value);
         }
-    }
-    
-    /// <summary>
+        }
+        
+        /// <summary>
     /// Dropout layer for regularization
-    /// </summary>
+        /// </summary>
     public class DropoutLayer : ILayer
     {
         private readonly double rate;
