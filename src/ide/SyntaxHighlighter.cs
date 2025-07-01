@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Ouroboros.Core.Lexer;
+using Ouroboros.Tokens;
 
 namespace Ouroboros.IDE
 {
@@ -11,7 +12,35 @@ namespace Ouroboros.IDE
     /// </summary>
     public class SyntaxHighlighter
     {
-        private readonly Dictionary<TokenType, string> tokenColors;
+        private readonly Dictionary<TokenType, ConsoleColor> tokenColors = new()
+        {
+            // Literals
+            { TokenType.StringLiteral, ConsoleColor.Green },
+            { TokenType.IntegerLiteral, ConsoleColor.Cyan },
+            { TokenType.FloatLiteral, ConsoleColor.Cyan },
+            { TokenType.DoubleLiteral, ConsoleColor.Cyan },
+            { TokenType.CharLiteral, ConsoleColor.Green },
+            
+            // Keywords - just a subset for now
+            { TokenType.If, ConsoleColor.Blue },
+            { TokenType.Else, ConsoleColor.Blue },
+            { TokenType.While, ConsoleColor.Blue },
+            { TokenType.For, ConsoleColor.Blue },
+            { TokenType.Function, ConsoleColor.Blue },
+            { TokenType.Return, ConsoleColor.Blue },
+            { TokenType.Class, ConsoleColor.Blue },
+            
+            // Identifiers
+            { TokenType.Identifier, ConsoleColor.White },
+            
+            // Operators
+            { TokenType.Plus, ConsoleColor.Yellow },
+            { TokenType.Minus, ConsoleColor.Yellow },
+            { TokenType.Multiply, ConsoleColor.Yellow },
+            { TokenType.Divide, ConsoleColor.Yellow },
+            { TokenType.Assign, ConsoleColor.Yellow },
+        };
+
         private readonly Dictionary<string, string> keywordColors;
 
         public SyntaxHighlighter()

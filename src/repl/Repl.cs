@@ -176,7 +176,14 @@ namespace Ouroboros.REPL
                         return input.ToString();
 
                     case ConsoleKey.Tab:
-                        await HandleTabCompletionAsync(input, ref cursorPosition, completions, ref completionIndex);
+                        var completionState = new CompletionState 
+                        { 
+                            CursorPosition = cursorPosition, 
+                            CompletionIndex = completionIndex 
+                        };
+                        await HandleTabCompletionAsync(input, completions, completionState);
+                        cursorPosition = completionState.CursorPosition;
+                        completionIndex = completionState.CompletionIndex;
                         break;
 
                     case ConsoleKey.Backspace:
@@ -266,35 +273,41 @@ namespace Ouroboros.REPL
             }
         }
 
-        private async Task HandleTabCompletionAsync(StringBuilder input, ref int cursorPosition,
-            List<string> completions, ref int completionIndex)
+        private class CompletionState
         {
-            if (completionIndex == -1)
+            public int CursorPosition { get; set; }
+            public int CompletionIndex { get; set; }
+        }
+
+        private async Task HandleTabCompletionAsync(StringBuilder input, 
+            List<string> completions, CompletionState state)
+        {
+            if (state.CompletionIndex == -1)
             {
                 // First tab - get completions
-                var partial = input.ToString().Substring(0, cursorPosition);
+                var partial = input.ToString().Substring(0, state.CursorPosition);
                 completions = await completionProvider.GetCompletionsAsync(partial);
-                completionIndex = 0;
+                state.CompletionIndex = 0;
             }
             else
             {
                 // Subsequent tabs - cycle through completions
-                completionIndex = (completionIndex + 1) % completions.Count;
+                state.CompletionIndex = (state.CompletionIndex + 1) % completions.Count;
             }
 
             if (completions.Any())
             {
                 // Apply completion
-                var completion = completions[completionIndex];
-                var lastWord = GetLastWord(input.ToString(), cursorPosition);
+                var completion = completions[state.CompletionIndex];
+                var lastWord = GetLastWord(input.ToString(), state.CursorPosition);
                 
                 // Replace last word with completion
-                var startPos = cursorPosition - lastWord.Length;
+                var startPos = state.CursorPosition - lastWord.Length;
                 input.Remove(startPos, lastWord.Length);
                 input.Insert(startPos, completion);
-                cursorPosition = startPos + completion.Length;
+                state.CursorPosition = startPos + completion.Length;
                 
-                RedrawLine(input.ToString(), cursorPosition);
+                RedrawLine(input.ToString(), state.CursorPosition);
             }
         }
 

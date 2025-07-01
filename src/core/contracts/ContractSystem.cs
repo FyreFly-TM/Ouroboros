@@ -211,10 +211,10 @@ namespace Ouroboros.Core.Contracts
     /// </summary>
     public abstract class ContractClause
     {
-        public Expression Condition { get; set; }
+        public AST.Expression Condition { get; set; }
         public string? Message { get; set; }
 
-        protected ContractClause(Expression condition, string? message = null)
+        protected ContractClause(AST.Expression condition, string? message = null)
         {
             Condition = condition;
             Message = message;
@@ -226,7 +226,7 @@ namespace Ouroboros.Core.Contracts
     /// </summary>
     public class RequiresClause : ContractClause
     {
-        public RequiresClause(Expression condition, string? message = null) : base(condition, message) { }
+        public RequiresClause(AST.Expression condition, string? message = null) : base(condition, message) { }
     }
 
     /// <summary>
@@ -237,7 +237,7 @@ namespace Ouroboros.Core.Contracts
         public bool UsesOldValues { get; set; }
         public Dictionary<string, object> OldValues { get; set; }
 
-        public EnsuresClause(Expression condition, string? message = null) : base(condition, message)
+        public EnsuresClause(AST.Expression condition, string? message = null) : base(condition, message)
         {
             OldValues = new Dictionary<string, object>();
         }
@@ -248,7 +248,7 @@ namespace Ouroboros.Core.Contracts
     /// </summary>
     public class InvariantClause : ContractClause
     {
-        public InvariantClause(Expression condition, string? message = null) : base(condition, message) { }
+        public InvariantClause(AST.Expression condition, string? message = null) : base(condition, message) { }
     }
 
     /// <summary>
@@ -269,9 +269,9 @@ namespace Ouroboros.Core.Contracts
     /// </summary>
     public class VariantClause : ContractClause
     {
-        public Expression VariantExpression { get; set; }
+        public AST.Expression VariantExpression { get; set; }
 
-        public VariantClause(Expression variant, Expression condition) : base(condition)
+        public VariantClause(AST.Expression variant, AST.Expression condition) : base(condition)
         {
             VariantExpression = variant;
         }
@@ -415,18 +415,18 @@ namespace Ouroboros.Core.Contracts
 
         // ... implement other visitor methods ...
 
-        public object VisitBinaryExpression(BinaryExpression expr) => null!;
-        public object VisitUnaryExpression(UnaryExpression expr) => null!;
+        public object VisitBinaryExpression(AST.BinaryExpression expr) => null!;
+        public object VisitUnaryExpression(AST.UnaryExpression expr) => null!;
         public object VisitLiteralExpression(LiteralExpression expr) => null!;
         public object VisitIdentifierExpression(IdentifierExpression expr) => null!;
         public object VisitGenericIdentifierExpression(GenericIdentifierExpression expr) => null!;
         public object VisitAssignmentExpression(AssignmentExpression expr) => null!;
         public object VisitCallExpression(CallExpression expr) => null!;
-        public object VisitMemberExpression(MemberExpression expr) => null!;
+        public object VisitMemberExpression(AST.MemberExpression expr) => null!;
         public object VisitArrayExpression(ArrayExpression expr) => null!;
-        public object VisitLambdaExpression(LambdaExpression expr) => null!;
-        public object VisitConditionalExpression(ConditionalExpression expr) => null!;
-        public object VisitNewExpression(NewExpression expr) => null!;
+        public object VisitLambdaExpression(AST.LambdaExpression expr) => null!;
+        public object VisitConditionalExpression(AST.ConditionalExpression expr) => null!;
+        public object VisitNewExpression(AST.NewExpression expr) => null!;
         public object VisitThisExpression(ThisExpression expr) => null!;
         public object VisitBaseExpression(BaseExpression expr) => null!;
         public object VisitTypeofExpression(TypeofExpression expr) => null!;
