@@ -498,34 +498,37 @@ namespace Ouroboros.Core
         private void ActivateSIMDVectorization(AstNode node)
         {
             Console.WriteLine("[SIMD] Activating SIMD vectorization");
-            attributeContext["simd"] = true;
+            attributeContext["simd_enabled"] = true;
             
-            // Enable SIMD optimization
-            builder.EmitInstruction(Opcode.EnableSIMDVectorization);
-            builder.EmitInstruction(Opcode.UseVectorInstructions);
-            builder.EmitInstruction(Opcode.OptimizeForSIMD);
+            // Enable SIMD optimizations
+            builder.EmitInstruction(Opcode.EnableSIMDOptimization);
+            builder.EmitInstruction(Opcode.EnableAutoVectorization);
+            builder.EmitInstruction(Opcode.SetVectorWidth, 256); // AVX2 by default
+            builder.EmitInstruction(Opcode.EnablePackedOperations);
         }
         
         private void ActivateParallelExecution(AstNode node)
         {
             Console.WriteLine("[PARALLEL] Activating parallel execution");
-            attributeContext["parallel"] = true;
+            attributeContext["parallel_enabled"] = true;
             
             // Enable parallel processing
-            builder.EmitInstruction(Opcode.EnableParallelExecution);
-            builder.EmitInstruction(Opcode.CreateThreadPool);
-            builder.EmitInstruction(Opcode.EnableWorkStealing);
+            builder.EmitInstruction(Opcode.EnableParallelization);
+            builder.EmitInstruction(Opcode.SetThreadPoolSize, Environment.ProcessorCount);
+            builder.EmitInstruction(Opcode.EnableTaskScheduling);
+            builder.EmitInstruction(Opcode.EnableDataParallelism);
         }
         
         private void ActivateDomainBlock(AstNode node)
         {
-            Console.WriteLine("[DOMAIN] Activating domain-specific programming");
-            attributeContext["domain"] = true;
+            Console.WriteLine("[DOMAIN] Activating domain-specific language block");
+            attributeContext["domain_active"] = true;
             
-            // Enable domain-specific operators
-            builder.EmitInstruction(Opcode.CreateDomainScope);
-            builder.EmitInstruction(Opcode.EnableOperatorRedefinition);
-            builder.EmitInstruction(Opcode.EnableMathematicalNotation);
+            // Activate domain-specific parsing and semantics
+            builder.EmitInstruction(Opcode.EnterDomainContext);
+            builder.EmitInstruction(Opcode.EnableDomainOperators);
+            builder.EmitInstruction(Opcode.LoadDomainLibrary);
+            builder.EmitInstruction(Opcode.EnableDomainOptimizations);
         }
         
         // ===== ADVANCED SYSTEM IMPLEMENTATIONS =====
@@ -533,295 +536,326 @@ namespace Ouroboros.Core
         private void ActivateActorModel(AstNode node)
         {
             Console.WriteLine("[ACTOR] Activating actor model");
-            attributeContext["actor"] = true;
+            attributeContext["actor_enabled"] = true;
             
-            // Enable actor system
-            builder.EmitInstruction(Opcode.CreateActorSystem);
+            // Configure actor system
+            builder.EmitInstruction(Opcode.InitializeActorSystem);
+            builder.EmitInstruction(Opcode.CreateActorMailbox);
             builder.EmitInstruction(Opcode.EnableMessagePassing);
-            builder.EmitInstruction(Opcode.EnableSupervision);
+            builder.EmitInstruction(Opcode.SetupActorScheduler);
         }
         
         private void ActivateSmartContract(AstNode node)
         {
-            Console.WriteLine("[BLOCKCHAIN] Activating smart contract");
-            attributeContext["contract"] = true;
+            Console.WriteLine("[CONTRACT] Activating smart contract");
+            attributeContext["contract_enabled"] = true;
             
-            // Enable blockchain features
-            builder.EmitInstruction(Opcode.EnableSmartContract);
+            // Setup smart contract environment
+            builder.EmitInstruction(Opcode.InitializeContractEnvironment);
             builder.EmitInstruction(Opcode.EnableGasMetering);
-            builder.EmitInstruction(Opcode.EnableEventEmission);
+            builder.EmitInstruction(Opcode.EnableStateManagement);
+            builder.EmitInstruction(Opcode.EnableEventLogging);
+            builder.EmitInstruction(Opcode.EnableCryptographicPrimitives);
         }
         
         private void ActivateFormalVerification(AstNode node)
         {
-            Console.WriteLine("[VERIFICATION] Activating formal verification");
-            attributeContext["verified"] = true;
+            Console.WriteLine("[VERIFIED] Activating formal verification");
+            attributeContext["formal_verification"] = true;
             
-            // Enable verification
+            // Enable formal verification checks
             builder.EmitInstruction(Opcode.EnableFormalVerification);
-            builder.EmitInstruction(Opcode.CheckPreconditions);
-            builder.EmitInstruction(Opcode.CheckPostconditions);
-            builder.EmitInstruction(Opcode.VerifyInvariants);
+            builder.EmitInstruction(Opcode.CollectVerificationConditions);
+            builder.EmitInstruction(Opcode.EnableInvariantChecking);
+            builder.EmitInstruction(Opcode.GenerateProofObligations);
         }
         
         private void ActivateRealTimeConstraints(AstNode node)
         {
-            Console.WriteLine("[REAL-TIME] Activating real-time constraints");
+            Console.WriteLine("[REALTIME] Activating real-time constraints");
             attributeContext["real_time"] = true;
             
-            // Enable real-time features
-            builder.EmitInstruction(Opcode.EnableRealTimeScheduling);
-            builder.EmitInstruction(Opcode.SetDeadlineConstraints);
-            builder.EmitInstruction(Opcode.EnablePriorityInheritance);
+            // Configure real-time execution
+            builder.EmitInstruction(Opcode.EnableRealTimeMode);
+            builder.EmitInstruction(Opcode.SetPriorityScheduling);
+            builder.EmitInstruction(Opcode.DisableGarbageCollection);
+            builder.EmitInstruction(Opcode.EnableDeadlineMonitoring);
+            builder.EmitInstruction(Opcode.PreallocateResources);
         }
         
         private void ActivateActorSupervisor(AstNode node)
         {
             Console.WriteLine("[SUPERVISOR] Activating actor supervisor");
-            attributeContext["supervisor"] = true;
+            attributeContext["supervisor_enabled"] = true;
             
-            // Enable supervision tree
-            builder.EmitInstruction(Opcode.CreateSupervisionTree);
-            builder.EmitInstruction(Opcode.EnableFaultTolerance);
+            // Setup supervision hierarchy
+            builder.EmitInstruction(Opcode.CreateSupervisorActor);
+            builder.EmitInstruction(Opcode.EnableSupervisionTree);
             builder.EmitInstruction(Opcode.SetRestartStrategy);
+            builder.EmitInstruction(Opcode.EnableActorMonitoring);
         }
         
         private void ActivateDatabaseTable(AstNode node)
         {
-            Console.WriteLine("[DATABASE] Activating database table");
-            attributeContext["table"] = true;
+            Console.WriteLine("[TABLE] Activating database table mapping");
+            attributeContext["database_table"] = true;
             
-            // Enable database features
-            builder.EmitInstruction(Opcode.CreateDatabaseTable);
-            builder.EmitInstruction(Opcode.EnableSQLGeneration);
-            builder.EmitInstruction(Opcode.EnableTypeChecking);
+            // Configure ORM mapping
+            builder.EmitInstruction(Opcode.EnableORMMapping);
+            builder.EmitInstruction(Opcode.GenerateTableSchema);
+            builder.EmitInstruction(Opcode.SetupDatabaseConnection);
+            builder.EmitInstruction(Opcode.EnableQueryGeneration);
         }
         
         private void ActivatePrimaryKey(AstNode node)
         {
-            Console.WriteLine("[DATABASE] Activating primary key");
+            Console.WriteLine("[PRIMARY_KEY] Activating primary key");
             attributeContext["primary_key"] = true;
             
-            // Set primary key constraint
-            builder.EmitInstruction(Opcode.SetPrimaryKey);
-            builder.EmitInstruction(Opcode.EnableUniqueConstraint);
+            // Mark field as primary key
+            builder.EmitInstruction(Opcode.MarkAsPrimaryKey);
+            builder.EmitInstruction(Opcode.EnableAutoIncrement);
+            builder.EmitInstruction(Opcode.AddUniqueConstraint);
         }
         
         private void ActivateDatabaseIndex(AstNode node)
         {
-            Console.WriteLine("[DATABASE] Activating database index");
-            attributeContext["index"] = true;
+            Console.WriteLine("[INDEX] Activating database index");
+            attributeContext["database_index"] = true;
             
             // Create database index
-            builder.EmitInstruction(Opcode.CreateIndex);
-            builder.EmitInstruction(Opcode.OptimizeQueries);
+            builder.EmitInstruction(Opcode.CreateDatabaseIndex);
+            builder.EmitInstruction(Opcode.OptimizeQueryPerformance);
         }
         
         private void ActivateForeignKey(AstNode node)
         {
-            Console.WriteLine("[DATABASE] Activating foreign key");
+            Console.WriteLine("[FOREIGN_KEY] Activating foreign key");
             attributeContext["foreign_key"] = true;
             
-            // Set foreign key constraint
-            builder.EmitInstruction(Opcode.SetForeignKey);
+            // Setup foreign key relationship
+            builder.EmitInstruction(Opcode.CreateForeignKeyConstraint);
             builder.EmitInstruction(Opcode.EnableReferentialIntegrity);
+            builder.EmitInstruction(Opcode.SetCascadeOptions);
         }
         
         // ===== SCIENTIFIC COMPUTING IMPLEMENTATIONS =====
         
         private void ActivateDNASequenceProcessing(AstNode node)
         {
-            Console.WriteLine("[BIOINFORMATICS] Activating DNA sequence processing");
-            attributeContext["dna"] = true;
+            Console.WriteLine("[DNA] Activating DNA sequence processing");
+            attributeContext["dna_processing"] = true;
             
-            // Enable bioinformatics features
+            // Enable DNA-specific operations
             builder.EmitInstruction(Opcode.EnableDNAProcessing);
+            builder.EmitInstruction(Opcode.LoadGeneticAlphabet);
             builder.EmitInstruction(Opcode.EnableSequenceAlignment);
-            builder.EmitInstruction(Opcode.EnableORFFinding);
+            builder.EmitInstruction(Opcode.EnablePatternMatching);
+            builder.EmitInstruction(Opcode.OptimizeForBioinformatics);
         }
         
         private void ActivateMolecularDynamics(AstNode node)
         {
-            Console.WriteLine("[SIMULATION] Activating molecular dynamics");
+            Console.WriteLine("[MOLECULAR] Activating molecular dynamics");
             attributeContext["molecular_dynamics"] = true;
             
-            // Enable MD simulation
-            builder.EmitInstruction(Opcode.EnableMolecularDynamics);
-            builder.EmitInstruction(Opcode.EnableForceCalculation);
-            builder.EmitInstruction(Opcode.EnableIntegration);
+            // Configure molecular simulation
+            builder.EmitInstruction(Opcode.EnableMolecularSimulation);
+            builder.EmitInstruction(Opcode.LoadForceFields);
+            builder.EmitInstruction(Opcode.EnableParticleInteractions);
+            builder.EmitInstruction(Opcode.SetupIntegrators);
+            builder.EmitInstruction(Opcode.EnablePeriodicBoundaries);
         }
         
         private void ActivateGenomicsSupport(AstNode node)
         {
             Console.WriteLine("[GENOMICS] Activating genomics support");
-            attributeContext["genomics"] = true;
+            attributeContext["genomics_enabled"] = true;
             
             // Enable genomics features
-            builder.EmitInstruction(Opcode.EnableGenomicsProcessing);
+            builder.EmitInstruction(Opcode.EnableGenomicsSupport);
+            builder.EmitInstruction(Opcode.LoadReferenceGenome);
             builder.EmitInstruction(Opcode.EnableVariantCalling);
-            builder.EmitInstruction(Opcode.EnableGenomeAssembly);
+            builder.EmitInstruction(Opcode.EnableGeneExpression);
         }
         
         private void ActivateSpatialDataStructures(AstNode node)
         {
             Console.WriteLine("[SPATIAL] Activating spatial data structures");
-            attributeContext["spatial"] = true;
+            attributeContext["spatial_enabled"] = true;
             
-            // Enable spatial processing
-            builder.EmitInstruction(Opcode.EnableSpatialDataStructures);
-            builder.EmitInstruction(Opcode.EnableGeospatialQueries);
+            // Enable spatial computing
+            builder.EmitInstruction(Opcode.EnableSpatialComputing);
+            builder.EmitInstruction(Opcode.CreateSpatialIndex);
+            builder.EmitInstruction(Opcode.EnableGeometricOperations);
+            builder.EmitInstruction(Opcode.OptimizeNeighborSearch);
         }
         
         private void ActivateSpatialIndexing(AstNode node)
         {
-            Console.WriteLine("[SPATIAL-INDEX] Activating spatial indexing");
+            Console.WriteLine("[SPATIAL_INDEX] Activating spatial indexing");
             attributeContext["spatial_index"] = true;
             
-            // Enable spatial indexing
-            builder.EmitInstruction(Opcode.CreateSpatialIndex);
-            builder.EmitInstruction(Opcode.EnableSpatialOptimization);
+            // Create spatial index structure
+            builder.EmitInstruction(Opcode.CreateRTree);
+            builder.EmitInstruction(Opcode.EnableSpatialQueries);
+            builder.EmitInstruction(Opcode.OptimizeBoundingBoxes);
         }
         
         private void ActivateFixedPointArithmetic(AstNode node)
         {
-            Console.WriteLine("[FIXED-POINT] Activating fixed-point arithmetic");
+            Console.WriteLine("[FIXED_POINT] Activating fixed-point arithmetic");
             attributeContext["fixed_point"] = true;
             
             // Enable fixed-point math
             builder.EmitInstruction(Opcode.EnableFixedPointArithmetic);
             builder.EmitInstruction(Opcode.SetFixedPointPrecision);
+            builder.EmitInstruction(Opcode.EnableOverflowProtection);
         }
         
         // ===== GRAPHICS AND RENDERING IMPLEMENTATIONS =====
         
         private void ActivateShaderProgram(AstNode node)
         {
-            Console.WriteLine("[GRAPHICS] Activating shader program");
-            attributeContext["shader"] = true;
+            Console.WriteLine("[SHADER] Activating shader program");
+            attributeContext["shader_enabled"] = true;
             
-            // Enable shader compilation
+            // Configure shader compilation
             builder.EmitInstruction(Opcode.EnableShaderCompilation);
-            builder.EmitInstruction(Opcode.GenerateShaderCode);
+            builder.EmitInstruction(Opcode.SetShaderStage);
+            builder.EmitInstruction(Opcode.EnableGPUOptimizations);
         }
         
         private void ActivateSharedMemory(AstNode node)
         {
-            Console.WriteLine("[MEMORY] Activating shared memory");
-            attributeContext["shared"] = true;
+            Console.WriteLine("[SHARED] Activating shared memory");
+            attributeContext["shared_memory"] = true;
             
-            // Enable shared memory
-            builder.EmitInstruction(Opcode.AllocateSharedMemory);
-            builder.EmitInstruction(Opcode.EnableMemorySharing);
+            // Enable shared memory access
+            builder.EmitInstruction(Opcode.EnableSharedMemory);
+            builder.EmitInstruction(Opcode.AllocateSharedBuffer);
+            builder.EmitInstruction(Opcode.EnableMemorySynchronization);
         }
         
         // ===== SECURITY IMPLEMENTATIONS =====
         
         private void ActivateSecurityFeatures(AstNode node)
         {
-            Console.WriteLine("[SECURITY] Activating security features");
-            attributeContext["secure"] = true;
+            Console.WriteLine("[SECURE] Activating security features");
+            attributeContext["secure_enabled"] = true;
             
-            // Enable security features
-            builder.EmitInstruction(Opcode.EnableSecureMemory);
-            builder.EmitInstruction(Opcode.EnableCryptography);
-            builder.EmitInstruction(Opcode.ZeroizeOnDestruct);
+            // Enable security hardening
+            builder.EmitInstruction(Opcode.EnableSecurityHardening);
+            builder.EmitInstruction(Opcode.ClearSensitiveMemory);
+            builder.EmitInstruction(Opcode.EnableStackProtection);
+            builder.EmitInstruction(Opcode.DisableDebugInfo);
         }
         
         private void ActivateConstantTimeOperations(AstNode node)
         {
-            Console.WriteLine("[SECURITY] Activating constant-time operations");
+            Console.WriteLine("[CONSTANT_TIME] Activating constant-time operations");
             attributeContext["constant_time"] = true;
             
-            // Enable constant-time execution
-            builder.EmitInstruction(Opcode.ForceConstantTime);
-            builder.EmitInstruction(Opcode.PreventTimingAttacks);
+            // Ensure timing-attack resistance
+            builder.EmitInstruction(Opcode.EnableConstantTimeMode);
+            builder.EmitInstruction(Opcode.DisableBranchPrediction);
+            builder.EmitInstruction(Opcode.UseConstantTimeAlgorithms);
         }
         
         private void ActivateZeroKnowledgeProofs(AstNode node)
         {
-            Console.WriteLine("[CRYPTO] Activating zero-knowledge proofs");
-            attributeContext["zkp"] = true;
+            Console.WriteLine("[ZKP] Activating zero-knowledge proofs");
+            attributeContext["zkp_enabled"] = true;
             
-            // Enable ZKP features
-            builder.EmitInstruction(Opcode.EnableZKProofs);
-            builder.EmitInstruction(Opcode.CreateCircuit);
+            // Setup ZKP system
+            builder.EmitInstruction(Opcode.InitializeZKPSystem);
+            builder.EmitInstruction(Opcode.LoadCircuitDefinition);
+            builder.EmitInstruction(Opcode.EnableProofGeneration);
+            builder.EmitInstruction(Opcode.EnableProofVerification);
         }
         
         private void ActivateSecureMultipartyComputation(AstNode node)
         {
-            Console.WriteLine("[CRYPTO] Activating secure multiparty computation");
-            attributeContext["mpc"] = true;
+            Console.WriteLine("[MPC] Activating secure multiparty computation");
+            attributeContext["mpc_enabled"] = true;
             
-            // Enable MPC features
-            builder.EmitInstruction(Opcode.EnableMPC);
-            builder.EmitInstruction(Opcode.CreateSecretShares);
+            // Configure MPC protocol
+            builder.EmitInstruction(Opcode.InitializeMPCProtocol);
+            builder.EmitInstruction(Opcode.EnableSecretSharing);
+            builder.EmitInstruction(Opcode.SetupCommunicationChannels);
+            builder.EmitInstruction(Opcode.EnableObliviousTransfer);
         }
         
         // ===== BLOCKCHAIN IMPLEMENTATIONS =====
         
         private void ActivateBlockchainOracle(AstNode node)
         {
-            Console.WriteLine("[BLOCKCHAIN] Activating blockchain oracle");
-            attributeContext["oracle"] = true;
+            Console.WriteLine("[ORACLE] Activating blockchain oracle");
+            attributeContext["oracle_enabled"] = true;
             
-            // Enable oracle features
-            builder.EmitInstruction(Opcode.CreateOracle);
+            // Setup oracle functionality
+            builder.EmitInstruction(Opcode.InitializeOracle);
             builder.EmitInstruction(Opcode.EnableDataFeeds);
+            builder.EmitInstruction(Opcode.SetupPriceAggregation);
         }
         
         private void ActivateStateChannel(AstNode node)
         {
-            Console.WriteLine("[BLOCKCHAIN] Activating state channel");
+            Console.WriteLine("[STATE_CHANNEL] Activating state channel");
             attributeContext["state_channel"] = true;
             
-            // Enable state channel features
-            builder.EmitInstruction(Opcode.CreateStateChannel);
-            builder.EmitInstruction(Opcode.EnableOffChainComputation);
+            // Configure off-chain scaling
+            builder.EmitInstruction(Opcode.InitializeStateChannel);
+            builder.EmitInstruction(Opcode.EnableOffChainTransactions);
+            builder.EmitInstruction(Opcode.SetupChannelManagement);
         }
         
         // ===== MACHINE LEARNING IMPLEMENTATIONS =====
         
         private void ActivateMLModel(AstNode node)
         {
-            Console.WriteLine("[ML] Activating machine learning model");
-            attributeContext["model"] = true;
+            Console.WriteLine("[MODEL] Activating ML model");
+            attributeContext["ml_model"] = true;
             
-            // Enable ML features
-            builder.EmitInstruction(Opcode.CreateMLModel);
-            builder.EmitInstruction(Opcode.EnableTraining);
+            // Configure ML environment
+            builder.EmitInstruction(Opcode.InitializeMLEnvironment);
+            builder.EmitInstruction(Opcode.EnableTensorOperations);
+            builder.EmitInstruction(Opcode.LoadModelWeights);
             builder.EmitInstruction(Opcode.EnableInference);
+            builder.EmitInstruction(Opcode.OptimizeForInference);
         }
         
         // ===== COMPONENT SYSTEM IMPLEMENTATIONS =====
         
         private void ActivateComponentSystem(AstNode node)
         {
-            Console.WriteLine("[ECS] Activating component system");
-            attributeContext["component"] = true;
+            Console.WriteLine("[COMPONENT] Activating component system");
+            attributeContext["component_enabled"] = true;
             
-            // Enable ECS features
-            builder.EmitInstruction(Opcode.CreateComponent);
-            builder.EmitInstruction(Opcode.EnableECS);
+            // Setup ECS component
+            builder.EmitInstruction(Opcode.RegisterComponent);
+            builder.EmitInstruction(Opcode.EnableComponentSerialization);
         }
         
         private void ActivateEntitySystem(AstNode node)
         {
-            Console.WriteLine("[ECS] Activating entity system");
-            attributeContext["system"] = true;
+            Console.WriteLine("[SYSTEM] Activating entity system");
+            attributeContext["system_enabled"] = true;
             
-            // Enable system processing
-            builder.EmitInstruction(Opcode.CreateSystem);
-            builder.EmitInstruction(Opcode.EnableEntityProcessing);
+            // Configure ECS system
+            builder.EmitInstruction(Opcode.RegisterSystem);
+            builder.EmitInstruction(Opcode.SetSystemUpdateOrder);
+            builder.EmitInstruction(Opcode.EnableSystemScheduling);
         }
         
         private void ActivateEntityDefinition(AstNode node)
         {
-            Console.WriteLine("[ECS] Activating entity definition");
-            attributeContext["entity"] = true;
+            Console.WriteLine("[ENTITY] Activating entity definition");
+            attributeContext["entity_enabled"] = true;
             
-            // Enable entity creation
-            builder.EmitInstruction(Opcode.CreateEntity);
-            builder.EmitInstruction(Opcode.AttachComponents);
+            // Define ECS entity
+            builder.EmitInstruction(Opcode.CreateEntityArchetype);
+            builder.EmitInstruction(Opcode.EnableEntityManagement);
         }
         
         // ===== QUANTUM COMPUTING IMPLEMENTATIONS =====
@@ -829,24 +863,26 @@ namespace Ouroboros.Core
         private void ActivateQuantumCircuit(AstNode node)
         {
             Console.WriteLine("[QUANTUM] Activating quantum circuit");
-            attributeContext["quantum"] = true;
+            attributeContext["quantum_enabled"] = true;
             
-            // Enable quantum features
-            builder.EmitInstruction(Opcode.CreateQuantumCircuit);
+            // Initialize quantum computing
+            builder.EmitInstruction(Opcode.InitializeQuantumSimulator);
+            builder.EmitInstruction(Opcode.CreateQuantumRegister);
             builder.EmitInstruction(Opcode.EnableQuantumGates);
-            builder.EmitInstruction(Opcode.EnableQuantumMeasurement);
+            builder.EmitInstruction(Opcode.SetupMeasurement);
+            builder.EmitInstruction(Opcode.EnableQuantumEntanglement);
         }
         
-        // ===== GENERIC ATTRIBUTE IMPLEMENTATION =====
+        // ===== GENERIC ATTRIBUTE HANDLER =====
         
         private void ActivateGenericAttribute(string attribute, AstNode node)
         {
-            Console.WriteLine($"[GENERIC] Activating generic functionality for @{attribute}");
-            attributeContext[attribute] = true;
+            Console.WriteLine($"[GENERIC] Processing custom attribute @{attribute}");
+            attributeContext[$"custom_{attribute}"] = true;
             
-            // Provide basic attribute functionality
-            builder.EmitInstruction(Opcode.MarkWithAttribute, attribute);
-            builder.EmitInstruction(Opcode.EnableAttributeMetadata, attribute);
+            // Store custom attribute for later processing
+            builder.EmitInstruction(Opcode.StoreCustomAttribute, attribute);
+            builder.EmitInstruction(Opcode.EnableCustomProcessing);
         }
         
         // ===== UTILITY METHODS =====
@@ -858,9 +894,9 @@ namespace Ouroboros.Core
         
         public T GetAttributeContext<T>(string key)
         {
-            if (attributeContext.ContainsKey(key))
+            if (attributeContext.TryGetValue(key, out var value))
             {
-                return (T)attributeContext[key];
+                return (T)value;
             }
             return default(T);
         }
@@ -877,14 +913,13 @@ namespace Ouroboros.Core
         
         public void GenerateAttributeReport()
         {
-            Console.WriteLine("\n=== ATTRIBUTE PROCESSING REPORT ===");
-            Console.WriteLine($"Total attributes processed: {activeFeatures.Count}");
-            Console.WriteLine("Active features:");
-            foreach (var feature in activeFeatures)
+            Console.WriteLine("=== ATTRIBUTE ACTIVATION REPORT ===");
+            Console.WriteLine($"Active Features: {string.Join(", ", activeFeatures)}");
+            Console.WriteLine($"Context Values: {attributeContext.Count} entries");
+            foreach (var kvp in attributeContext)
             {
-                Console.WriteLine($"  ✓ @{feature}");
+                Console.WriteLine($"  {kvp.Key}: {kvp.Value}");
             }
-            Console.WriteLine("===================================\n");
         }
     }
 } 
