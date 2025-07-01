@@ -320,6 +320,63 @@ namespace Ouroboros.Tools.DocGen
                 }
             }
             
+            // Generate JavaScript for code highlighting
+            html.AppendLine(@"
+<script>
+// Syntax highlighting for Ouroboros code blocks
+document.addEventListener('DOMContentLoaded', function() {
+    // Find all code blocks
+    const codeBlocks = document.querySelectorAll('pre code');
+    
+    codeBlocks.forEach(block => {
+        // Apply basic syntax highlighting
+        let code = block.innerHTML;
+        
+        // Keywords
+        const keywords = ['function', 'class', 'interface', 'struct', 'enum', 'if', 'else', 'while', 'for', 
+                         'return', 'break', 'continue', 'switch', 'case', 'default', 'new', 'typeof', 
+                         'var', 'let', 'const', 'public', 'private', 'protected', 'static', 'virtual',
+                         'override', 'abstract', 'sealed', 'async', 'await', 'try', 'catch', 'finally',
+                         'throw', 'import', 'export', 'namespace', 'using'];
+        
+        keywords.forEach(keyword => {
+            const regex = new RegExp('\\b' + keyword + '\\b', 'g');
+            code = code.replace(regex, '<span class=""keyword"">' + keyword + '</span>');
+        });
+        
+        // Types
+        const types = ['int', 'float', 'double', 'string', 'bool', 'void', 'any', 'object'];
+        types.forEach(type => {
+            const regex = new RegExp('\\b' + type + '\\b', 'g');
+            code = code.replace(regex, '<span class=""type"">' + type + '</span>');
+        });
+        
+        // Strings (simple regex, doesn't handle escapes properly)
+        code = code.replace(/(""[^""]*"")/g, '<span class=""string"">$1</span>');
+        code = code.replace(/('[^']*')/g, '<span class=""string"">$1</span>');
+        
+        // Comments
+        code = code.replace(/(\/\/[^\n]*)/g, '<span class=""comment"">$1</span>');
+        code = code.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class=""comment"">$1</span>');
+        
+        // Numbers
+        code = code.replace(/\b(\d+(\.\d+)?)\b/g, '<span class=""number"">$1</span>');
+        
+        // Update the block
+        block.innerHTML = code;
+    });
+    
+    // Add line numbers
+    document.querySelectorAll('pre.line-numbers code').forEach(block => {
+        const lines = block.innerHTML.split('\n');
+        const numberedLines = lines.map((line, index) => 
+            `<span class=""line-number"">${index + 1}</span>${line}`
+        ).join('\n');
+        block.innerHTML = numberedLines;
+    });
+});
+</script>");
+            
             html.AppendLine("</body>");
             html.AppendLine("</html>");
             
@@ -539,13 +596,53 @@ dl dd {
 ";
             await File.WriteAllTextAsync(Path.Combine(assetsDir, "style.css"), css);
 
-            // Generate JavaScript for code highlighting (placeholder)
+            // Generate JavaScript for code highlighting
             var js = @"
-// Code highlighting would go here
+// Ouroboros syntax highlighting
 document.addEventListener('DOMContentLoaded', function() {
-    // Placeholder for syntax highlighting
-    console.log('Documentation loaded');
+    highlightAllCode();
+    console.log('Documentation loaded with syntax highlighting');
 });
+
+function highlightAllCode() {
+    document.querySelectorAll('pre code').forEach(block => {
+        highlightOuroborosCode(block);
+    });
+}
+
+function highlightOuroborosCode(element) {
+    let code = element.textContent;
+    
+    // Keywords
+    code = code.replace(/\b(class|interface|struct|enum|function|if|else|while|for|return|break|continue|switch|case|default|new|typeof|var|let|const|public|private|protected|static|virtual|override|abstract|sealed|async|await|try|catch|finally|throw|import|export|namespace|using|@low|@medium|@high|@asm)\b/g, '<span class=""keyword"">$1</span>');
+    
+    // Types
+    code = code.replace(/\b(int|float|double|string|bool|void|any|object|vector|matrix|quaternion|byte|short|long|decimal)\b/g, '<span class=""type"">$1</span>');
+    
+    // Strings
+    code = code.replace(/(""[^""]*"")/g, '<span class=""string"">$1</span>');
+    code = code.replace(/('[^']*')/g, '<span class=""string"">$1</span>');
+    
+    // Comments
+    code = code.replace(/(\/\/[^\n]*)/g, '<span class=""comment"">$1</span>');
+    code = code.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class=""comment"">$1</span>');
+    
+    // Numbers
+    code = code.replace(/\b(\d+(\.\d+)?)\b/g, '<span class=""number"">$1</span>');
+    
+    element.innerHTML = code;
+}
+
+// Add CSS for syntax highlighting
+var style = document.createElement('style');
+style.textContent = `
+    .keyword { color: #0000ff; font-weight: bold; }
+    .type { color: #2b91af; }
+    .string { color: #a31515; }
+    .comment { color: #008000; font-style: italic; }
+    .number { color: #098658; }
+`;
+document.head.appendChild(style);
 ";
             await File.WriteAllTextAsync(Path.Combine(assetsDir, "script.js"), js);
         }
