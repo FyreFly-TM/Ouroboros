@@ -501,49 +501,80 @@ namespace Ouroboros.Syntaxes.Medium
                 return new ConstantPattern(new LiteralExpression(Previous()));
             }
             
+            // Type pattern with optional variable binding
+            if (Check(TokenType.Identifier))
+            {
+                var checkpoint = current;
+                var type = ParseType();
+                
+                // Check for variable binding
+                if (Check(TokenType.Identifier))
+                {
+                    var variable = Advance();
+                    return new TypePattern(type, variable.Lexeme);
+                }
+                else
+                {
+                    return new TypePattern(type, null);
+                }
+            }
+            
+            // Wildcard pattern
             if (Match(TokenType.Underscore))
             {
                 return new WildcardPattern();
             }
             
-            if (Check(TokenType.Identifier))
+            // Tuple pattern
+            if (Match(TokenType.LeftParen))
             {
-                var start = current;
-                var type = ParseType();
+                var patterns = new List<Pattern>();
                 
-                if (Check(TokenType.Identifier))
+                if (!Check(TokenType.RightParen))
                 {
-                    // Type pattern with variable binding
-                    var varName = Advance();
-                    return new TypePattern { Type = type, VariableName = varName.Lexeme };
+                    do
+                    {
+                        patterns.Add(ParsePattern());
+                    } while (Match(TokenType.Comma));
+                }
+                
+                Consume(TokenType.RightParen, "Expected ')' after tuple pattern");
+                return new TuplePattern(patterns);
+            }
+            
+            // Array/List pattern
+            if (Match(TokenType.LeftBracket))
+            {
+                var patterns = new List<Pattern>();
+                
+                if (!Check(TokenType.RightBracket))
+                {
+                    do
+                    {
+                        patterns.Add(ParsePattern());
+                    } while (Match(TokenType.Comma));
+                }
+                
+                Consume(TokenType.RightBracket, "Expected ']' after array pattern");
+                return new ArrayPattern(patterns);
+            }
+            
+            // Range pattern
+            if (IsNumber(Current().Lexeme))
+            {
+                var start = ParseExpression();
+                if (Match(TokenType.DotDot))
+                {
+                    var end = ParseExpression();
+                    return new RangePattern(start, end);
                 }
                 else
                 {
-                    // Reset and parse as identifier pattern
-                    current = start;
-                    var identifier = Advance();
-                    return new IdentifierPattern(identifier);
+                    return new ConstantPattern(start);
                 }
             }
-                
-                if (Match(TokenType.LeftParen))
-                {
-                // Tuple pattern
-                var patterns = new List<Pattern>();
-                    
-                if (!Check(TokenType.RightParen))
-                    {
-                        do
-                        {
-                        patterns.Add(ParsePattern());
-                        } while (Match(TokenType.Comma));
-                    }
-                    
-                Consume(TokenType.RightParen, "Expected ')' after tuple pattern");
-                return new TupleMatchPattern(patterns);
-            }
             
-                throw Error(Current(), "Invalid pattern");
+            throw Error(Current(), "Invalid pattern");
         }
 
         #region Helper Methods
@@ -602,21 +633,32 @@ namespace Ouroboros.Syntaxes.Medium
 
         private void Synchronize()
         {
-            Advance();
-            
+            // Improved error recovery - synchronize to next statement
             while (!IsAtEnd())
             {
-                if (Previous().Type == TokenType.Semicolon) return;
-                
+                if (Previous().Type == TokenType.Semicolon)
+                    return;
+                    
                 switch (Current().Type)
                 {
                     case TokenType.Class:
+                    case TokenType.Struct:
+                    case TokenType.Interface:
+                    case TokenType.Enum:
+                    case TokenType.UnionKeyword:
                     case TokenType.Function:
-                    case TokenType.Var:
-                    case TokenType.For:
                     case TokenType.If:
                     case TokenType.While:
+                    case TokenType.For:
+                    case TokenType.Do:
+                    case TokenType.Switch:
                     case TokenType.Return:
+                    case TokenType.Break:
+                    case TokenType.Continue:
+                    case TokenType.Try:
+                    case TokenType.Throw:
+                    case TokenType.Var:
+                    case TokenType.Const:
                         return;
                 }
                 
@@ -1505,14 +1547,24 @@ namespace Ouroboros.Syntaxes.Medium
         {
             var expr = ParseConditional();
             
-            if (Match(TokenType.Assign, TokenType.PlusAssign, TokenType.MinusAssign,
-                     TokenType.MultiplyAssign, TokenType.DivideAssign, TokenType.ModuloAssign,
-                     TokenType.BitwiseAndAssign, TokenType.BitwiseOrAssign, TokenType.BitwiseXorAssign,
-                     TokenType.LeftShiftAssign, TokenType.RightShiftAssign))
+            // Handle all assignment operators
+            if (Match(TokenType.Assign, TokenType.PlusEqual, TokenType.MinusEqual,
+                     TokenType.MultiplyEqual, TokenType.DivideEqual, TokenType.ModuloEqual,
+                     TokenType.AndEqual, TokenType.OrEqual, TokenType.XorEqual,
+                     TokenType.LeftShiftEqual, TokenType.RightShiftEqual,
+                     TokenType.NullCoalescingEqual))
             {
                 var op = Previous();
                 var right = ParseAssignment();
-                return new AssignmentExpression(expr, op, right);
+                
+                if (expr is IdentifierExpression || 
+                    expr is MemberAccessExpression || 
+                    expr is IndexExpression)
+                {
+                    return new AssignmentExpression(expr, op, right);
+                }
+                
+                throw Error(op, "Invalid assignment target");
             }
             
             return expr;
@@ -1520,27 +1572,284 @@ namespace Ouroboros.Syntaxes.Medium
         
         private Expression ParseAnonymousObject()
         {
-            Consume(TokenType.LeftBrace, "Expected '{'");
+            Consume(TokenType.LeftBrace, "Expected '{' to start anonymous object");
             
-            var properties = new Dictionary<string, Expression>();
+            var properties = new List<(string name, Expression value)>();
             
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
-                var name = Consume(TokenType.Identifier, "Expected property name");
-                Consume(TokenType.Assign, "Expected '=' after property name");
-                var value = ParseExpression();
+                // Property name
+                string propName;
+                if (Check(TokenType.Identifier))
+                {
+                    propName = Advance().Lexeme;
+                }
+                else if (Check(TokenType.StringLiteral))
+                {
+                    propName = Advance().Lexeme.Trim('"');
+                }
+                else
+                {
+                    throw Error(Current(), "Expected property name");
+                }
                 
-                properties[name.Lexeme] = value;
+                Expression propValue;
+                if (Match(TokenType.Colon))
+                {
+                    // Explicit property value
+                    propValue = ParseExpression();
+                }
+                else
+                {
+                    // Property shorthand (use identifier as value)
+                    propValue = new IdentifierExpression(Previous());
+                }
+                
+                properties.Add((propName, propValue));
                 
                 if (!Match(TokenType.Comma))
+                {
                     break;
+                }
             }
             
-            Consume(TokenType.RightBrace, "Expected '}' after properties");
+            Consume(TokenType.RightBrace, "Expected '}' after anonymous object");
             
             return new AnonymousObjectExpression(properties);
         }
 
         #endregion
     }
+
+    // Pattern classes for pattern matching
+    public class TypePattern : Pattern
+    {
+        public TypeNode Type { get; }
+        public string? VariableName { get; }
+        
+        public TypePattern(TypeNode type, string? variableName)
+        {
+            Type = type;
+            VariableName = variableName;
+        }
+    }
+
+    public class WildcardPattern : Pattern
+    {
+    }
+
+    public class TuplePattern : Pattern
+    {
+        public List<Pattern> Patterns { get; }
+        
+        public TuplePattern(List<Pattern> patterns)
+        {
+            Patterns = patterns;
+        }
+    }
+
+    public class ArrayPattern : Pattern
+    {
+        public List<Pattern> Patterns { get; }
+        
+        public ArrayPattern(List<Pattern> patterns)
+        {
+            Patterns = patterns;
+        }
+    }
+
+    public class RangePattern : Pattern
+    {
+        public Expression Start { get; }
+        public Expression End { get; }
+        
+        public RangePattern(Expression start, Expression end)
+        {
+            Start = start;
+            End = end;
+        }
+    }
+
+    public enum Variance
+    {
+        Invariant,
+        Covariant,
+        Contravariant
+    }
+
+    public class TypeParameter
+    {
+        public string Name { get; }
+        public Variance Variance { get; }
+        public List<TypeNode>? Constraints { get; }
+        
+        public TypeParameter(string name, Variance variance, List<TypeNode>? constraints)
+        {
+            Name = name;
+            Variance = variance;
+            Constraints = constraints;
+        }
+    }
+
+    public class GenericConstraint
+    {
+        public string TypeParameterName { get; }
+        public List<TypeNode> ConstraintTypes { get; }
+        
+        public GenericConstraint(string typeParameterName, List<TypeNode> constraintTypes)
+        {
+            TypeParameterName = typeParameterName;
+            ConstraintTypes = constraintTypes;
+        }
+    }
+
+    public class PatternCase
+    {
+        public Pattern Pattern { get; }
+        public Expression? Guard { get; }
+        public Expression Result { get; }
+        
+        public PatternCase(Pattern pattern, Expression? guard, Expression result)
+        {
+            Pattern = pattern;
+            Guard = guard;
+            Result = result;
+        }
+    }
+
+    public class PatternMatchExpression : Expression
+    {
+        public Expression Target { get; }
+        public List<PatternCase> Cases { get; }
+        public Expression? DefaultCase { get; }
+        
+        public PatternMatchExpression(Expression target, List<PatternCase> cases, Expression? defaultCase)
+            : base(target.Token)
+        {
+            Target = target;
+            Cases = cases;
+            DefaultCase = defaultCase;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            return visitor.VisitMatchExpression(new MatchExpression(Target, 
+                Cases.Select(c => new MatchArm(c.Pattern, c.Guard, c.Result)).ToList()));
+        }
+    }
+
+    public class AnonymousObjectExpression : Expression
+    {
+        public List<(string name, Expression value)> Properties { get; }
+        
+        public AnonymousObjectExpression(List<(string name, Expression value)> properties)
+            : base(new Token(TokenType.LeftBrace, "{", null, 0, 0, 0, 0, "", SyntaxLevel.Medium))
+        {
+            Properties = properties;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            // Convert to struct literal for visitor
+            var fields = Properties.ToDictionary(p => p.name, p => p.value);
+            return visitor.VisitStructLiteral(new StructLiteral(Token, fields));
+        }
+    }
+
+    public class IdentifierPattern : Pattern
+    {
+        public Token Identifier { get; }
+        
+        public IdentifierPattern(Token identifier)
+        {
+            Identifier = identifier;
+        }
+    }
+
+    // Additional Expression types for enhanced medium-level syntax
+    public class ConditionalAccessExpression : Expression
+    {
+        public Expression Object { get; }
+        public string MemberName { get; }
+        
+        public ConditionalAccessExpression(Expression obj, string memberName)
+            : base(obj.Token)
+        {
+            Object = obj;
+            MemberName = memberName;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            // Convert to conditional expression for visitor
+            return visitor.VisitConditionalExpression(
+                new ConditionalExpression(
+                    new BinaryExpression(Object, 
+                        new Token(TokenType.NotEqual, "!=", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
+                        new LiteralExpression(new Token(TokenType.Null, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))),
+                    new MemberExpression(Object, MemberName),
+                    new LiteralExpression(new Token(TokenType.Null, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))));
+        }
+    }
+
+    public class NullCoalescingExpression : Expression
+    {
+        public Expression Left { get; }
+        public Expression Right { get; }
+        
+        public NullCoalescingExpression(Expression left, Expression right)
+            : base(left.Token)
+        {
+            Left = left;
+            Right = right;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            // Convert to conditional expression for visitor
+            return visitor.VisitConditionalExpression(
+                new ConditionalExpression(
+                    new BinaryExpression(Left,
+                        new Token(TokenType.NotEqual, "!=", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
+                        new LiteralExpression(new Token(TokenType.Null, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))),
+                    Left,
+                    Right));
+        }
+    }
+
+    public class RangeExpression : Expression
+    {
+        public Expression? Start { get; }
+        public Expression? End { get; }
+        public bool IsInclusive { get; }
+        
+        public RangeExpression(Expression? start, Expression? end, bool isInclusive)
+            : base(new Token(TokenType.DotDot, "..", null, 0, 0, 0, 0, "", SyntaxLevel.Medium))
+        {
+            Start = start;
+            End = end;
+            IsInclusive = isInclusive;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            // For now, treat as a binary expression
+            var startExpr = Start ?? new LiteralExpression(new Token(TokenType.IntegerLiteral, "0", 0, Line, Column, 0, 0, "", SyntaxLevel.Medium));
+            var endExpr = End ?? new LiteralExpression(new Token(TokenType.IntegerLiteral, "int.MaxValue", int.MaxValue, Line, Column, 0, 0, "", SyntaxLevel.Medium));
+            return visitor.VisitBinaryExpression(new BinaryExpression(startExpr, Token, endExpr));
+        }
+    }
+
+    // Placeholder for ConstantPattern if not defined elsewhere
+    public class ConstantPattern : Pattern
+    {
+        public Expression Value { get; }
+        
+        public ConstantPattern(Expression value)
+        {
+            Value = value;
+        }
+    }
+
+    // End of file
 } 
