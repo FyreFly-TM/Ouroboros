@@ -251,11 +251,11 @@ namespace Ouroboros.Runtime
         public object Execute(byte[] bytecode)
         {
             // This method is deprecated - use Execute(CompiledProgram) instead
-            var bytecodeObj = new Bytecode { Code = bytecode.ToList() };
-            var compiledProgram = new CompiledProgram 
+            var bytecodeObj = new Compiler.Bytecode { Code = bytecode.ToList() };
+            var compiledProgram = new VM.CompiledProgram 
             { 
                 Bytecode = bytecodeObj,
-                SymbolTable = new SymbolTable()
+                SymbolTable = new Compiler.SymbolTable()
             };
             return vm.Execute(compiledProgram);
         }
@@ -263,7 +263,7 @@ namespace Ouroboros.Runtime
         /// <summary>
         /// Execute a compiled program
         /// </summary>
-        public object Execute(CompiledProgram compiledProgram)
+        public object Execute(VM.CompiledProgram compiledProgram)
         {
             try
             {
@@ -886,9 +886,10 @@ namespace Ouroboros.Runtime
         
         public byte[] Optimize(byte[] bytecode)
         {
-            // Profile method execution
+            // Profile method execution to identify hot spots
             var hotMethods = profiler.GetHotMethods();
             
+            // JIT compile hot methods
             foreach (var method in hotMethods)
             {
                 if (!compiledMethods.ContainsKey(method.Name))
@@ -897,8 +898,62 @@ namespace Ouroboros.Runtime
                 }
             }
             
-            // Replace bytecode with optimized versions
-            return ReplaceBytecode(bytecode, compiledMethods);
+            // Apply optimizations to bytecode
+            var optimizedBytecode = ApplyOptimizations(bytecode);
+            
+            // Replace bytecode with JIT compiled versions
+            return ReplaceBytecode(optimizedBytecode, compiledMethods);
+        }
+        
+        private byte[] ApplyOptimizations(byte[] bytecode)
+        {
+            var optimized = new List<byte>(bytecode);
+            
+            // Peephole optimizations
+            for (int i = 0; i < optimized.Count - 1; i++)
+            {
+                var opcode = (Opcode)BitConverter.ToUInt16(optimized.ToArray(), i);
+                
+                // Remove redundant push/pop pairs
+                if (i < optimized.Count - 3)
+                {
+                    var nextOpcode = (Opcode)BitConverter.ToUInt16(optimized.ToArray(), i + 2);
+                    if (opcode == Opcode.PUSH && nextOpcode == Opcode.POP)
+                    {
+                        // Remove both instructions
+                        optimized.RemoveRange(i, 4);
+                        i -= 2; // Adjust position
+                        continue;
+                    }
+                }
+                
+                // Combine consecutive loads
+                if (opcode == Opcode.LoadLocal && i < optimized.Count - 5)
+                {
+                    var nextOpcode = (Opcode)BitConverter.ToUInt16(optimized.ToArray(), i + 3);
+                    if (nextOpcode == Opcode.LoadLocal)
+                    {
+                        // Can potentially combine into a single instruction
+                        // This would require extending the instruction set
+                    }
+                }
+                
+                // Replace common patterns with specialized instructions
+                if (opcode == Opcode.PUSH)
+                {
+                    // Check for push 0, push 1 patterns
+                    var value = optimized[i + 2];
+                    if (value == 0)
+                    {
+                        // Replace with NOP (could be replaced with PUSH_ZERO if available)
+                        var nopValue = (ushort)Opcode.Nop;
+                        optimized[i] = (byte)(nopValue & 0xFF);
+                        optimized[i + 1] = (byte)(nopValue >> 8);
+                    }
+                }
+            }
+            
+            return optimized.ToArray();
         }
         
         private void CompileMethod(MethodInfo method)
@@ -915,8 +970,99 @@ namespace Ouroboros.Runtime
         
         private byte[] GenerateNativeCode(MethodInfo method)
         {
-            // Generate optimized native code
-            return new byte[0];
+            // Generate optimized native code for x86-64
+            var nativeCode = new List<byte>();
+            
+            // Function prologue
+            nativeCode.AddRange(new byte[] { 0x55 }); // push rbp
+            nativeCode.AddRange(new byte[] { 0x48, 0x89, 0xE5 }); // mov rbp, rsp
+            
+            // Allocate stack space for locals
+            if (method.LocalCount > 0)
+            {
+                var stackSize = method.LocalCount * 8; // 8 bytes per local
+                nativeCode.AddRange(new byte[] { 0x48, 0x83, 0xEC, (byte)stackSize }); // sub rsp, stackSize
+            }
+            
+            // Generate code for method body
+            if (method.Bytecode != null)
+            {
+                GenerateMethodBody(nativeCode, method.Bytecode);
+            }
+            
+            // Function epilogue
+            if (method.LocalCount > 0)
+            {
+                var stackSize = method.LocalCount * 8;
+                nativeCode.AddRange(new byte[] { 0x48, 0x83, 0xC4, (byte)stackSize }); // add rsp, stackSize
+            }
+            nativeCode.AddRange(new byte[] { 0x5D }); // pop rbp
+            nativeCode.AddRange(new byte[] { 0xC3 }); // ret
+            
+            return nativeCode.ToArray();
+        }
+        
+        private void GenerateMethodBody(List<byte> nativeCode, byte[] bytecode)
+        {
+            // Simple bytecode to native code translation
+            for (int i = 0; i < bytecode.Length;)
+            {
+                var opcode = (Opcode)BitConverter.ToUInt16(bytecode, i);
+                i += 2;
+                
+                switch (opcode)
+                {
+                    case Opcode.PUSH:
+                        // Push immediate value onto stack
+                        var value = BitConverter.ToInt32(bytecode, i);
+                        i += 4;
+                        nativeCode.AddRange(new byte[] { 0x68 }); // push imm32
+                        nativeCode.AddRange(BitConverter.GetBytes(value));
+                        break;
+                        
+                    case Opcode.Add:
+                        // Pop two values, add them, push result
+                        nativeCode.AddRange(new byte[] { 0x58 }); // pop rax
+                        nativeCode.AddRange(new byte[] { 0x5B }); // pop rbx
+                        nativeCode.AddRange(new byte[] { 0x48, 0x01, 0xD8 }); // add rax, rbx
+                        nativeCode.AddRange(new byte[] { 0x50 }); // push rax
+                        break;
+                        
+                    case Opcode.Return:
+                        // Return value is already on stack
+                        nativeCode.AddRange(new byte[] { 0x58 }); // pop rax (return value)
+                        break;
+                        
+                    case Opcode.LoadLocal:
+                        var localIndex = bytecode[i++];
+                        // Load local variable
+                        nativeCode.AddRange(new byte[] { 0x48, 0x8B, 0x45, (byte)(0xF8 - localIndex * 8) }); // mov rax, [rbp-offset]
+                        nativeCode.AddRange(new byte[] { 0x50 }); // push rax
+                        break;
+                        
+                    case Opcode.StoreLocal:
+                        var storeIndex = bytecode[i++];
+                        // Store to local variable
+                        nativeCode.AddRange(new byte[] { 0x58 }); // pop rax
+                        nativeCode.AddRange(new byte[] { 0x48, 0x89, 0x45, (byte)(0xF8 - storeIndex * 8) }); // mov [rbp-offset], rax
+                        break;
+                        
+                    default:
+                        // For unsupported opcodes, generate a call to the interpreter
+                        // This allows partial JIT compilation
+                        GenerateInterpreterCall(nativeCode, opcode);
+                        break;
+                }
+            }
+        }
+        
+        private void GenerateInterpreterCall(List<byte> nativeCode, Opcode opcode)
+        {
+            // Generate a call to the interpreter for complex opcodes
+            // This is a fallback mechanism
+            nativeCode.AddRange(new byte[] { 0x48, 0xB8 }); // mov rax, imm64
+            nativeCode.AddRange(BitConverter.GetBytes((long)opcode)); // opcode value
+            nativeCode.AddRange(new byte[] { 0xFF, 0xD0 }); // call rax
         }
         
         private byte[] ReplaceBytecode(byte[] original, Dictionary<string, CompiledMethod> compiled)
@@ -967,6 +1113,7 @@ namespace Ouroboros.Runtime
         public string Name { get; set; } = "";
         public int CallCount { get; set; }
         public byte[]? Bytecode { get; set; }
+        public int LocalCount { get; set; }
     }
     
     /// <summary>
