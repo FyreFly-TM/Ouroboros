@@ -310,6 +310,236 @@ namespace Ouroboros.Core.Compiler
             };
         }
         
+        /// <summary>
+        /// Build the final bytecode array
+        /// </summary>
+        public byte[] Build()
+        {
+            // Verify all jumps are patched
+            if (pendingJumps.Count > 0)
+            {
+                throw new InvalidOperationException($"Unpatched jumps at positions: {string.Join(", ", pendingJumps)}");
+            }
+            
+            return bytecode.ToArray();
+        }
+        
+        /// <summary>
+        /// Enter a new scope for variable tracking
+        /// </summary>
+        public void EnterScope()
+        {
+            // For now, scopes are tracked at compile time
+            // No need to emit a specific instruction
+        }
+        
+        /// <summary>
+        /// Exit current scope
+        /// </summary>
+        public void ExitScope()
+        {
+            // For now, scopes are tracked at compile time
+            // No need to emit a specific instruction
+        }
+        
+        /// <summary>
+        /// Declare a local variable in current scope
+        /// </summary>
+        public void DeclareLocal(string name, TypeNode type)
+        {
+            // Variables are tracked at compile time
+            // Just ensure the name is in the constant pool for later reference
+            AddConstant(name);
+            AddConstant(type?.Name ?? "any");
+        }
+        
+        /// <summary>
+        /// Check if there's a return instruction at the end
+        /// </summary>
+        public bool HasReturn()
+        {
+            if (bytecode.Count == 0) return false;
+            
+            // Check if last instruction is a return
+            for (int i = bytecode.Count - 1; i >= 0; i--)
+            {
+                var opcode = (Opcode)bytecode[i];
+                
+                // Skip over any NOPs
+                if (opcode == Opcode.Nop)
+                    continue;
+                    
+                return opcode == Opcode.Return;
+            }
+            
+            return false;
+        }
+        
+        /// <summary>
+        /// Emit return instruction
+        /// </summary>
+        public void EmitReturn()
+        {
+            Emit(Opcode.Return);
+        }
+        
+        /// <summary>
+        /// Emit load null instruction
+        /// </summary>
+        public void EmitLoadNull()
+        {
+            Emit(Opcode.LoadConstant, AddConstant(null));
+        }
+        
+        /// <summary>
+        /// Emit load constant instruction
+        /// </summary>
+        public void EmitLoadConst(object value)
+        {
+            Emit(Opcode.LoadConstant, AddConstant(value));
+        }
+        
+        /// <summary>
+        /// Emit load variable instruction
+        /// </summary>
+        public void EmitLoadVar(string name)
+        {
+            Emit(Opcode.LoadLocal, AddConstant(name));
+        }
+        
+        /// <summary>
+        /// Emit store variable instruction
+        /// </summary>
+        public void EmitStoreVar(string name)
+        {
+            Emit(Opcode.StoreLocal, AddConstant(name));
+        }
+        
+        /// <summary>
+        /// Emit pop instruction
+        /// </summary>
+        public void EmitPop()
+        {
+            Emit(Opcode.Pop);
+        }
+        
+        /// <summary>
+        /// Emit duplicate instruction
+        /// </summary>
+        public void EmitDup()
+        {
+            Emit(Opcode.Duplicate);
+        }
+        
+        /// <summary>
+        /// Create a label for jumps
+        /// </summary>
+        public int CreateLabel()
+        {
+            return bytecode.Count;
+        }
+        
+        /// <summary>
+        /// Mark a label position
+        /// </summary>
+        public void MarkLabel(int label)
+        {
+            // Labels are just positions, nothing to emit
+            if (jumpTargets.ContainsKey(label))
+            {
+                jumpTargets[label] = bytecode.Count;
+            }
+        }
+        
+        /// <summary>
+        /// Emit jump if false instruction
+        /// </summary>
+        public void EmitJumpIfFalse(int label)
+        {
+            EmitJump(Opcode.JumpIfFalse, label);
+        }
+        
+        /// <summary>
+        /// Emit unconditional jump
+        /// </summary>
+        public void EmitJump(int label)
+        {
+            EmitJump(Opcode.Jump, label);
+        }
+        
+        /// <summary>
+        /// Emit add instruction
+        /// </summary>
+        public void EmitAdd()
+        {
+            Emit(Opcode.Add);
+        }
+        
+        /// <summary>
+        /// Emit subtract instruction
+        /// </summary>
+        public void EmitSubtract()
+        {
+            Emit(Opcode.Subtract);
+        }
+        
+        /// <summary>
+        /// Emit multiply instruction
+        /// </summary>
+        public void EmitMultiply()
+        {
+            Emit(Opcode.Multiply);
+        }
+        
+        /// <summary>
+        /// Emit divide instruction
+        /// </summary>
+        public void EmitDivide()
+        {
+            Emit(Opcode.Divide);
+        }
+        
+        /// <summary>
+        /// Emit less than comparison
+        /// </summary>
+        public void EmitLess()
+        {
+            Emit(Opcode.Less);
+        }
+        
+        /// <summary>
+        /// Emit greater than comparison
+        /// </summary>
+        public void EmitGreater()
+        {
+            Emit(Opcode.Greater);
+        }
+        
+        /// <summary>
+        /// Emit equal comparison
+        /// </summary>
+        public void EmitEqual()
+        {
+            Emit(Opcode.Equal);
+        }
+        
+        /// <summary>
+        /// Emit not equal comparison
+        /// </summary>
+        public void EmitNotEqual()
+        {
+            Emit(Opcode.NotEqual);
+        }
+        
+        /// <summary>
+        /// Emit function call
+        /// </summary>
+        public void EmitCall(string functionName, int argCount)
+        {
+            var funcIndex = AddConstant(functionName);
+            Emit(Opcode.Call, funcIndex, argCount);
+        }
+        
         #region Helper Methods
         
         private void EmitInt32(int value)

@@ -311,7 +311,7 @@ namespace Ouroboros.StdLib.Data.Providers
             currentTransaction?.Dispose();
             connection?.Dispose();
         }
-        
+
         public async ValueTask DisposeAsync()
         {
             if (currentTransaction != null)
