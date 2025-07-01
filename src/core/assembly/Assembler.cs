@@ -45,6 +45,15 @@ namespace Ouroboros.Core.Assembly
             map["mod"] = (ushort)Opcode.MOD;
             map["neg"] = (ushort)Opcode.NEG;
             
+            // Extended arithmetic
+            map["imul"] = (ushort)ExtendedOpcode.IMUL;
+            map["idiv"] = (ushort)ExtendedOpcode.IDIV;
+            map["shl"] = (ushort)Opcode.SHL;
+            map["shr"] = (ushort)Opcode.SHR;
+            map["sar"] = (ushort)ExtendedOpcode.SAR;
+            map["rol"] = (ushort)ExtendedOpcode.ROL;
+            map["ror"] = (ushort)ExtendedOpcode.ROR;
+            
             // Bitwise
             map["and"] = (ushort)Opcode.AND;
             map["or"] = (ushort)Opcode.OR;
@@ -81,6 +90,12 @@ namespace Ouroboros.Core.Assembly
             map["movl"] = (ushort)Opcode.LOAD_DWORD;
             map["movq"] = (ushort)Opcode.LOAD_QWORD;
             
+            // x86 store variants
+            map["movb.s"] = (ushort)ExtendedOpcode.STORE_BYTE;
+            map["movw.s"] = (ushort)ExtendedOpcode.STORE_WORD;
+            map["movl.s"] = (ushort)ExtendedOpcode.STORE_DWORD;
+            map["movq.s"] = (ushort)ExtendedOpcode.STORE_QWORD;
+            
             map["inc"] = (ushort)Opcode.INC;
             map["dec"] = (ushort)Opcode.DEC;
             
@@ -94,8 +109,32 @@ namespace Ouroboros.Core.Assembly
             map["jle"] = (ushort)Opcode.JLE;
             map["jge"] = (ushort)Opcode.JGE;
             
+            // Additional x86 jumps
+            map["ja"] = (ushort)ExtendedOpcode.JA;    // Jump if above
+            map["jae"] = (ushort)ExtendedOpcode.JAE;  // Jump if above or equal
+            map["jb"] = (ushort)ExtendedOpcode.JB;    // Jump if below
+            map["jbe"] = (ushort)ExtendedOpcode.JBE;  // Jump if below or equal
+            map["jo"] = (ushort)ExtendedOpcode.JO;    // Jump if overflow
+            map["jno"] = (ushort)ExtendedOpcode.JNO;  // Jump if not overflow
+            map["js"] = (ushort)ExtendedOpcode.JS;    // Jump if sign
+            map["jns"] = (ushort)ExtendedOpcode.JNS;  // Jump if not sign
+            
+            // String operations
+            map["movsb"] = (ushort)ExtendedOpcode.MOVSB;
+            map["movsw"] = (ushort)ExtendedOpcode.MOVSW;
+            map["movsd"] = (ushort)ExtendedOpcode.MOVSD;
+            map["rep"] = (ushort)ExtendedOpcode.REP;
+            
+            // Stack frame
+            map["enter"] = (ushort)ExtendedOpcode.ENTER;
+            map["leave"] = (ushort)ExtendedOpcode.LEAVE;
+            
+            // Other
             map["nop"] = (ushort)Opcode.NOP;
             map["halt"] = (ushort)Opcode.HALT;
+            map["hlt"] = (ushort)Opcode.HALT;
+            map["int"] = (ushort)ExtendedOpcode.INT;
+            map["syscall"] = (ushort)ExtendedOpcode.SYSCALL;
             
             return map;
         }
@@ -392,84 +431,90 @@ namespace Ouroboros.Core.Assembly
             }
             else
             {
-                // Parse complex addressing modes using state machine
-                // Try to parse [base+offset] form
-                if (operand.Contains('+'))
+                // Enhanced parsing for complex addressing modes
+                var parts = new List<string>();
+                var current = new StringBuilder();
+                bool inBrackets = false;
+                
+                for (int i = 0; i < operand.Length; i++)
                 {
-                    var parts = operand.Split('+');
-                    if (parts.Length == 2)
+                    char c = operand[i];
+                    
+                    if (c == '[')
                     {
-                        // Check if first part is register
-                        if (IsRegister(parts[0]))
+                        inBrackets = true;
+                    }
+                    else if (c == ']')
+                    {
+                        inBrackets = false;
+                    }
+                    else if ((c == '+' || c == '-') && !inBrackets)
+                    {
+                        if (current.Length > 0)
                         {
-                            mem.BaseRegister = ParseRegister(parts[0], lineNumber);
+                            parts.Add(current.ToString());
+                            current.Clear();
+                        }
+                        if (c == '-')
+                        {
+                            current.Append(c);
+                        }
+                    }
+                    else
+                    {
+                        current.Append(c);
+                    }
+                }
+                
+                if (current.Length > 0)
+                {
+                    parts.Add(current.ToString());
+                }
+                
+                // Parse each part
+                foreach (var part in parts)
+                {
+                    if (part.Contains('*'))
+                    {
+                        // Index*Scale
+                        var scaleParts = part.Split('*');
+                        if (scaleParts.Length == 2)
+                        {
+                            mem.IndexRegister = ParseRegister(scaleParts[0], lineNumber);
+                            mem.Scale = (int)ParseNumber(scaleParts[1], lineNumber);
                             
-                            // Check if second part is number (displacement)
-                            if (IsNumber(parts[1]))
+                            // Validate scale
+                            if (mem.Scale != 1 && mem.Scale != 2 && mem.Scale != 4 && mem.Scale != 8)
                             {
-                                mem.Displacement = ParseNumber(parts[1], lineNumber);
+                                throw new AssemblerException($"Invalid scale factor: {mem.Scale}. Must be 1, 2, 4, or 8", lineNumber);
                             }
-                            // Check if second part is register*scale
-                            else if (parts[1].Contains('*'))
-                            {
-                                var scaleParts = parts[1].Split('*');
-                                if (scaleParts.Length == 2 && IsRegister(scaleParts[0]) && IsNumber(scaleParts[1]))
-                                {
-                                    mem.IndexRegister = ParseRegister(scaleParts[0], lineNumber);
-                                    mem.Scale = (int)ParseNumber(scaleParts[1], lineNumber);
-                                }
-                                else
-                                {
-                                    throw new AssemblerException($"Invalid scale format in memory operand: [{operand}]", lineNumber);
-                                }
-                            }
-                            else
-                            {
-                                throw new AssemblerException($"Invalid displacement in memory operand: [{operand}]", lineNumber);
-                            }
+                        }
+                    }
+                    else if (IsRegister(part))
+                    {
+                        if (mem.BaseRegister == null)
+                        {
+                            mem.BaseRegister = ParseRegister(part, lineNumber);
+                        }
+                        else if (mem.IndexRegister == null)
+                        {
+                            mem.IndexRegister = ParseRegister(part, lineNumber);
+                            mem.Scale = 1;
                         }
                         else
                         {
-                            throw new AssemblerException($"Base must be a register in memory operand: [{operand}]", lineNumber);
+                            throw new AssemblerException($"Too many registers in memory operand: [{operand}]", lineNumber);
                         }
                     }
-                    else if (parts.Length == 3)
+                    else if (IsNumber(part))
                     {
-                        // [base+index*scale+displacement] form
-                        // For simplicity, we'll just support [base+index+displacement] without scale
-                        if (IsRegister(parts[0]) && IsRegister(parts[1]) && IsNumber(parts[2]))
-                        {
-                            mem.BaseRegister = ParseRegister(parts[0], lineNumber);
-                            mem.IndexRegister = ParseRegister(parts[1], lineNumber);
-                            mem.Displacement = ParseNumber(parts[2], lineNumber);
-                        }
-                        else
-                        {
-                            throw new AssemblerException($"Complex memory operand format not supported: [{operand}]", lineNumber);
-                        }
+                        mem.Displacement = ParseNumber(part, lineNumber);
                     }
                     else
                     {
-                        throw new AssemblerException($"Too many components in memory operand: [{operand}]", lineNumber);
+                        // Might be a label
+                        mem.Displacement = 0; // Will be resolved later
                     }
-                }
-                else if (operand.Contains('-'))
-                {
-                    // Handle negative displacement
-                    var parts = operand.Split('-');
-                    if (parts.Length == 2 && IsRegister(parts[0]))
-                    {
-                        mem.BaseRegister = ParseRegister(parts[0], lineNumber);
-                        mem.Displacement = -ParseNumber(parts[1], lineNumber);
-                    }
-                    else
-                    {
-                        throw new AssemblerException($"Invalid negative displacement format: [{operand}]", lineNumber);
-                    }
-                }
-                else
-                {
-                    throw new AssemblerException($"Unsupported memory operand format: [{operand}]", lineNumber);
                 }
             }
             
@@ -666,7 +711,6 @@ namespace Ouroboros.Core.Assembly
             {
                 case OperandType.Register:
                     output.Add((byte)operand.Register);
-                    currentAddress++;
                     break;
                 
                 case OperandType.Immediate:
@@ -674,11 +718,23 @@ namespace Ouroboros.Core.Assembly
                     break;
                 
                 case OperandType.Label:
-                    if (!labelMap.TryGetValue(operand.Label, out int address))
+                    if (labelMap.TryGetValue(operand.Label, out int address))
+                    {
+                        // Calculate relative offset for jumps/calls
+                        if (IsJumpInstruction(instruction.Mnemonic))
+                        {
+                            int offset = address - (currentAddress + GetInstructionSize(instruction));
+                            GenerateImmediate(offset);
+                        }
+                        else
+                        {
+                            GenerateAddress(address);
+                        }
+                    }
+                    else
                     {
                         throw new AssemblerException($"Undefined label: {operand.Label}", instruction.LineNumber);
                     }
-                    GenerateAddress(address);
                     break;
                 
                 case OperandType.Memory:
@@ -815,6 +871,12 @@ namespace Ouroboros.Core.Assembly
             else
                 return 8;
         }
+        
+        private bool IsJumpInstruction(string mnemonic)
+        {
+            var lower = mnemonic.ToLower();
+            return lower.StartsWith("j") || lower == "call" || lower == "loop";
+        }
     }
     
     /// <summary>
@@ -931,7 +993,40 @@ namespace Ouroboros.Core.Assembly
         JL = 0x8E,   // Jump if less
         JG = 0x8F,   // Jump if greater
         JLE = 0x90,  // Jump if less or equal
-        JGE = 0x91   // Jump if greater or equal
+        JGE = 0x91,  // Jump if greater or equal
+        
+        // Additional x86 jumps
+        JA = 0x92,    // Jump if above
+        JAE = 0x93,   // Jump if above or equal
+        JB = 0x94,    // Jump if below
+        JBE = 0x95,   // Jump if below or equal
+        JO = 0x96,    // Jump if overflow
+        JNO = 0x97,   // Jump if not overflow
+        JS = 0x98,    // Jump if sign
+        JNS = 0x99,   // Jump if not sign
+        
+        // Extended arithmetic
+        IMUL = 0x9A,  // Signed multiply
+        IDIV = 0x9B,  // Signed divide
+        SAR = 0x9C,   // Shift arithmetic right
+        ROL = 0x9D,   // Rotate left
+        ROR = 0x9E,   // Rotate right
+        
+        // String operations
+        MOVSB = 0xA0,
+        MOVSW = 0xA1,
+        MOVSD = 0xA2,
+        REP = 0xA3,
+        
+        // Stack frame
+        ENTER = 0xC8,
+        LEAVE = 0xC9,
+        
+        // Other
+        NOP = 0x90,
+        HALT = 0xF4,
+        INT = 0xCD,
+        SYSCALL = 0x05
     }
     
     /// <summary>
