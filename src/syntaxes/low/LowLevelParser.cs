@@ -4,6 +4,7 @@ using System.Linq;
 using Ouroboros.Core;
 using Ouroboros.Core.AST;
 using Ouroboros.Core.Lexer;
+using Ouroboros.Tokens;
 
 namespace Ouroboros.Syntaxes.Low
 {
@@ -15,11 +16,15 @@ namespace Ouroboros.Syntaxes.Low
     {
         private readonly List<Token> tokens;
         private int current;
+        private readonly Dictionary<string, int> labels;
+        private readonly List<AsmInstruction> instructions;
         
         public LowLevelParser(List<Token> tokens)
         {
             this.tokens = tokens;
             current = 0;
+            this.labels = new Dictionary<string, int>();
+            this.instructions = new List<AsmInstruction>();
         }
         
         public void SetCurrentPosition(int position)
@@ -43,17 +48,13 @@ namespace Ouroboros.Syntaxes.Low
             
             while (!IsAtEnd())
             {
-                try
+                SkipWhitespaceAndComments();
+                if (IsAtEnd()) break;
+                
+                var stmt = ParseStatement();
+                if (stmt != null)
                 {
-                    var stmt = ParseStatement();
-                    if (stmt != null)
-                        statements.Add(stmt);
-                }
-                catch (ParseException ex)
-                {
-                    // Report error and synchronize
-                    ReportError(ex);
-                    Synchronize();
+                    statements.Add(stmt);
                 }
             }
             
@@ -62,675 +63,329 @@ namespace Ouroboros.Syntaxes.Low
         
         public Statement ParseStatement()
         {
-            // Check for inline assembly
-            if (Match(TokenType.At) && Check(TokenType.Asm))
+            // Check for labels
+            if (Check(TokenType.Identifier) && Peek(1)?.Type == TokenType.Colon)
             {
-                Advance(); // consume 'asm'
-                return ParseInlineAssembly();
+                var label = Advance();
+                Advance(); // consume colon
+                labels[label.Lexeme] = instructions.Count;
+                return null; // Labels don't generate statements
             }
             
-            // Memory management
-            if (Match(TokenType.Allocate))
-                return ParseAllocate();
-            
-            if (Match(TokenType.Free))
-                return ParseFree();
-            
-            if (Match(TokenType.Stackalloc))
-                return ParseStackAlloc();
-            
-            // Atomic operations
-            if (Match(TokenType.Atomic))
-                return ParseAtomic();
-            
-            // Pointer operations
-            if (CheckPointerDeclaration())
-                return ParsePointerDeclaration();
-            
-            // Unsafe block
-            if (Match(TokenType.Unsafe))
-                return ParseUnsafeBlock();
-            
-            // Fixed statement
-            if (Match(TokenType.Fixed))
-                return ParseFixedStatement();
-            
-            // Regular statements
-            if (Match(TokenType.Struct))
-                return ParseStructDeclaration();
-            
-            if (Match(TokenType.UnionKeyword))
-                return ParseUnionDeclaration();
-            
-            if (Match(TokenType.Typedef))
-                return ParseTypedef();
-            
-            // Fall back to standard statements
-            return ParseStandardStatement();
-        }
-        
-        private Statement ParseInlineAssembly()
-        {
-            Consume(TokenType.LeftBrace, "Expected '{' after '@asm'");
-            
-            var instructions = new List<string>();
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
-            
-            // Collect assembly instructions until '}'
-            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            // Check for assembly block
+            if (Match(TokenType.Assembly) || (Match(TokenType.At) && Match(TokenType.Assembly)))
             {
-                var line = new List<Token>();
-                
-                // Collect tokens until newline or semicolon
-                while (!Check(TokenType.Newline) && !Check(TokenType.Semicolon) && 
-                       !Check(TokenType.RightBrace) && !IsAtEnd())
-                {
-                    line.Add(Advance());
-                }
-                
-                if (line.Count > 0)
-                {
-                    var instruction = string.Join(" ", line.Select(t => t.Lexeme));
-                    instructions.Add(instruction);
-                }
-                
-                // Skip newline or semicolon
-                if (Match(TokenType.Newline, TokenType.Semicolon))
-                {
-                    // Continue
-                }
+                return ParseAssemblyBlock();
             }
             
-            Consume(TokenType.RightBrace, "Expected '}' after assembly instructions");
-            
-            return new InlineAssemblyStatement(instructions, startLine, startColumn);
-        }
-        
-        private Statement ParseAllocate()
-        {
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
-            
-            Consume(TokenType.Less, "Expected '<' after 'allocate'");
-            var type = ParseType();
-            Consume(TokenType.Greater, "Expected '>' after type");
-            
-            Consume(TokenType.LeftParen, "Expected '(' after type");
-            var size = ParseExpression();
-            Consume(TokenType.RightParen, "Expected ')' after size");
-            
-            return new AllocateStatement(type, size, startLine, startColumn);
-        }
-        
-        private Statement ParseFree()
-        {
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
-            
-            Consume(TokenType.LeftParen, "Expected '(' after 'free'");
-            var pointer = ParseExpression();
-            Consume(TokenType.RightParen, "Expected ')' after pointer");
-            
-            ConsumeSemicolon();
-            
-            return new FreeStatement(pointer, startLine, startColumn);
-        }
-        
-        private Statement ParseStackAlloc()
-        {
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
-            
-            var type = ParseType();
-            
-            Consume(TokenType.LeftBracket, "Expected '[' after type");
-            var size = ParseExpression();
-            Consume(TokenType.RightBracket, "Expected ']' after size");
-            
-            var name = Consume(TokenType.Identifier, "Expected variable name").Lexeme;
-            
-            ConsumeSemicolon();
-            
-            return new StackAllocStatement(type, name, size, startLine, startColumn);
-        }
-        
-        private Statement ParseAtomic()
-        {
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
-            
-            Consume(TokenType.LeftBrace, "Expected '{' after 'atomic'");
-            
-            var statements = new List<Statement>();
-            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            // Check for function declaration
+            if (Match(TokenType.Function))
             {
-                statements.Add(ParseStatement());
+                return ParseLowLevelFunction();
             }
             
-            Consume(TokenType.RightBrace, "Expected '}' after atomic block");
+            // Check for data declarations
+            if (Match(TokenType.Data))
+            {
+                return ParseDataDeclaration();
+            }
             
-            return new AtomicBlock(statements, startLine, startColumn);
+            // Check for directives
+            if (Current().Type == TokenType.Dot)
+            {
+                return ParseDirective();
+            }
+            
+            // Parse as assembly instruction
+            return ParseInstruction();
         }
         
-        private bool CheckPointerDeclaration()
+        private Statement ParseAssemblyBlock()
         {
-            // Look for patterns like: int* ptr or char** argv
-            int savepoint = current;
+            var asmStatements = new List<string>();
             
-            // Try to parse a type
-            if (CheckType())
-            {
-                // Skip the type
-                while (current < tokens.Count && 
-                       (Check(TokenType.Identifier) || Check(TokenType.Dot)))
-                {
-                    Advance();
-                }
-                
-                // Check for pointer markers
-                bool hasPointer = false;
-                while (Match(TokenType.Star))
-                {
-                    hasPointer = true;
-                }
-                
-                // Restore position
-                current = savepoint;
-                return hasPointer;
-            }
-            
-            current = savepoint;
-            return false;
-        }
-        
-        private Statement ParsePointerDeclaration()
-        {
-            var startLine = Peek().Line;
-            var startColumn = Peek().Column;
-            
-            var baseType = ParseType();
-            
-            // Count pointer levels
-            int pointerLevel = 0;
-            while (Match(TokenType.Star))
-            {
-                pointerLevel++;
-            }
-            
-            var type = new PointerType(baseType, pointerLevel);
-            
-            var name = Consume(TokenType.Identifier, "Expected variable name").Lexeme;
-            
-            Expression initializer = null;
-            if (Match(TokenType.Equal))
-            {
-                initializer = ParseExpression();
-            }
-            
-            ConsumeSemicolon();
-            
-            return new PointerDeclaration(type, name, initializer, startLine, startColumn);
-        }
-        
-        private Statement ParseUnsafeBlock()
-        {
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
-            
-            Consume(TokenType.LeftBrace, "Expected '{' after 'unsafe'");
-            
-            var statements = new List<Statement>();
-            while (!Check(TokenType.RightBrace) && !IsAtEnd())
-            {
-                statements.Add(ParseStatement());
-            }
-            
-            Consume(TokenType.RightBrace, "Expected '}' after unsafe block");
-            
-            return new UnsafeBlock(statements, startLine, startColumn);
-        }
-        
-        private Statement ParseFixedStatement()
-        {
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
-            
-            Consume(TokenType.LeftParen, "Expected '(' after 'fixed'");
-            
-            // Parse pinned variable declaration
-            var type = ParseType();
-            while (Match(TokenType.Star))
-            {
-                type = new PointerType(type, 1);
-            }
-            
-            var name = Consume(TokenType.Identifier, "Expected variable name").Lexeme;
-            
-            Consume(TokenType.Equal, "Expected '=' in fixed statement");
-            
-            var target = ParseExpression();
-            
-            Consume(TokenType.RightParen, "Expected ')' after fixed declaration");
-            
-            var body = ParseStatement();
-            
-            return new FixedStatement(type, name, target, body, startLine, startColumn);
-        }
-        
-        private Statement ParseStructDeclaration()
-        {
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
-            
-            var name = Consume(TokenType.Identifier, "Expected struct name").Lexeme;
-            
-            // Optional: packed attribute
-            bool isPacked = false;
-            if (Match(TokenType.Packed))
-            {
-                isPacked = true;
-            }
-            
-            Consume(TokenType.LeftBrace, "Expected '{' before struct body");
-            
-            var fields = new List<StructField>();
-            
-            while (!Check(TokenType.RightBrace) && !IsAtEnd())
-            {
-                var field = ParseStructField();
-                fields.Add(field);
-            }
-            
-            Consume(TokenType.RightBrace, "Expected '}' after struct body");
-            
-            return new StructDeclaration(name, fields, isPacked, startLine, startColumn);
-        }
-        
-        private StructField ParseStructField()
-        {
-            // Check if we're using compact syntax (name: type;) or traditional syntax (type name;)
-            // Look ahead to see if there's a colon after the first identifier
-            bool isCompactSyntax = false;
-            
+            // Optional target specifier
+            string target = "x86_64";
             if (Check(TokenType.Identifier))
             {
-                // Look ahead one token to see if there's a colon
-                if (current + 1 < tokens.Count && tokens[current + 1].Type == TokenType.Colon)
-                {
-                    isCompactSyntax = true;
-                }
+                target = Advance().Lexeme;
             }
             
-            if (isCompactSyntax)
-            {
-                // Parse compact syntax: name: type;
-                var name = Consume(TokenType.Identifier, "Expected field name").Lexeme;
-                Consume(TokenType.Colon, "Expected ':' after field name");
-                var type = ParseType();
-                
-                // Handle array fields in compact syntax
-                Expression arraySize = null;
-                if (Match(TokenType.LeftBracket))
-                {
-                    arraySize = ParseExpression();
-                    Consume(TokenType.RightBracket, "Expected ']' after array size");
-                }
-                
-                ConsumeSemicolon();
-                
-                return new StructField(type, name, null, arraySize);
-            }
-            else
-            {
-                // Parse traditional syntax: type name;
-                var type = ParseType();
-                
-                // Handle pointer fields
-                int pointerLevel = 0;
-                while (Match(TokenType.Star))
-                {
-                    pointerLevel++;
-                }
-                
-                if (pointerLevel > 0)
-                {
-                    type = new PointerType(type, pointerLevel);
-                }
-                
-                var name = Consume(TokenType.Identifier, "Expected field name").Lexeme;
-                
-                // Handle bit fields
-                int? bitWidth = null;
-                if (Match(TokenType.Colon))
-                {
-                    var widthToken = Consume(TokenType.Number, "Expected bit width");
-                    bitWidth = int.Parse(widthToken.Lexeme);
-                }
-                
-                // Handle array fields
-                Expression arraySize = null;
-                if (Match(TokenType.LeftBracket))
-                {
-                    arraySize = ParseExpression();
-                    Consume(TokenType.RightBracket, "Expected ']' after array size");
-                }
-                
-                ConsumeSemicolon();
-                
-                return new StructField(type, name, bitWidth, arraySize);
-            }
-        }
-        
-        private Statement ParseUnionDeclaration()
-        {
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
-            
-            var name = Consume(TokenType.Identifier, "Expected union name").Lexeme;
-            
-            Consume(TokenType.LeftBrace, "Expected '{' before union body");
-            
-            var members = new List<StructField>();
+            Consume(TokenType.LeftBrace, "Expected '{' after @asm");
             
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
-                var member = ParseStructField();
-                members.Add(member);
+                var line = ParseAsmLine();
+                if (!string.IsNullOrWhiteSpace(line))
+                {
+                    asmStatements.Add(line);
+                }
             }
             
-            Consume(TokenType.RightBrace, "Expected '}' after union body");
+            Consume(TokenType.RightBrace, "Expected '}' to close assembly block");
             
-            return new UnionDeclaration(name, members, startLine, startColumn);
+            var asmCode = string.Join("\n", asmStatements);
+            return new AssemblyStatement(
+                CreateToken(TokenType.Assembly, "@asm", null),
+                asmCode
+            );
         }
         
-        private Statement ParseTypedef()
+        private string ParseAsmLine()
         {
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
+            var parts = new List<string>();
             
-            var type = ParseType();
+            while (!Check(TokenType.NewLine) && !Check(TokenType.Semicolon) && 
+                   !Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                var token = Advance();
+                parts.Add(token.Lexeme);
+            }
             
-            // Handle function pointer typedefs
+            if (Match(TokenType.NewLine) || Match(TokenType.Semicolon))
+            {
+                // Consume line ending
+            }
+            
+            return string.Join(" ", parts);
+        }
+        
+        private Statement ParseLowLevelFunction()
+        {
+            var name = Consume(TokenType.Identifier, "Expected function name");
+            
+            // Parse parameters
+            var parameters = new List<Parameter>();
             if (Match(TokenType.LeftParen))
             {
-                Consume(TokenType.Star, "Expected '*' in function pointer typedef");
-                var name = Consume(TokenType.Identifier, "Expected typedef name").Lexeme;
-                Consume(TokenType.RightParen, "Expected ')' after typedef name");
-                
-                // Parse function parameters
-                Consume(TokenType.LeftParen, "Expected '(' for function parameters");
-                var parameters = ParseParameterList();
-                Consume(TokenType.RightParen, "Expected ')' after parameters");
-                
-                ConsumeSemicolon();
-                
-                return new TypedefStatement(
-                    name, 
-                    new FunctionPointerType(type, parameters), 
-                    startLine, 
-                    startColumn
-                );
-            }
-            
-            // Regular typedef
-            var alias = Consume(TokenType.Identifier, "Expected typedef name").Lexeme;
-            ConsumeSemicolon();
-            
-            return new TypedefStatement(alias, type, startLine, startColumn);
-        }
-        
-        private Statement ParseStandardStatement()
-        {
-            // Handle pointer dereference in expressions
-            if (Match(TokenType.Star))
-            {
-                var expr = ParseDereferenceExpression();
-                
-                // Could be assignment
-                if (Match(TokenType.Equal))
+                if (!Check(TokenType.RightParen))
                 {
-                    var value = ParseExpression();
-                    ConsumeSemicolon();
-                    return new ExpressionStatement(
-                        new AssignmentExpression(expr, value, expr.Line, expr.Column),
-                        expr.Line,
-                        expr.Column
-                    );
-                }
-                
-                // Just an expression
-                ConsumeSemicolon();
-                return new ExpressionStatement(expr, expr.Line, expr.Column);
-            }
-            
-            // Handle address-of operator
-            if (Match(TokenType.Ampersand))
-            {
-                var expr = ParseAddressOfExpression();
-                ConsumeSemicolon();
-                return new ExpressionStatement(expr, expr.Line, expr.Column);
-            }
-            
-            // Fall back to regular statement parsing
-            // This would delegate to the main parser
-            return ParseRegularStatement();
-        }
-        
-        private Expression ParseDereferenceExpression()
-        {
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
-            
-            var operand = ParseUnaryExpression();
-            
-            return new DereferenceExpression(operand, startLine, startColumn);
-        }
-        
-        private Expression ParseAddressOfExpression()
-        {
-            var startLine = Previous().Line;
-            var startColumn = Previous().Column;
-            
-            var operand = ParseUnaryExpression();
-            
-            return new AddressOfExpression(operand, startLine, startColumn);
-        }
-        
-        #region Helper Methods
-        
-        private bool CheckType()
-        {
-            return Check(TokenType.Int) || Check(TokenType.Float) || 
-                   Check(TokenType.Double) || Check(TokenType.Char) ||
-                   Check(TokenType.Bool) || Check(TokenType.Void) ||
-                   Check(TokenType.String) || Check(TokenType.Identifier);
-        }
-        
-        private TypeNode ParseType()
-        {
-            if (Match(TokenType.Int)) return new TypeNode("int");
-            if (Match(TokenType.Float)) return new TypeNode("float");
-            if (Match(TokenType.Double)) return new TypeNode("double");
-            if (Match(TokenType.Char)) return new TypeNode("char");
-            if (Match(TokenType.Bool)) return new TypeNode("bool");
-            if (Match(TokenType.Void)) return new TypeNode("void");
-            if (Match(TokenType.String)) return new TypeNode("string");
-            
-            if (Check(TokenType.Identifier))
-            {
-                var name = Advance().Lexeme;
-                
-                // Handle generic types
-                if (Match(TokenType.Less))
-                {
-                    var args = new List<TypeNode>();
-                    
                     do
                     {
-                        args.Add(ParseType());
+                        var paramType = ParseType();
+                        var paramName = Consume(TokenType.Identifier, "Expected parameter name");
+                        parameters.Add(new Parameter(paramType, paramName.Lexeme));
                     } while (Match(TokenType.Comma));
-                    
-                    Consume(TokenType.Greater, "Expected '>' after generic arguments");
-                    
-                    return new GenericTypeNode(name, args);
                 }
+                Consume(TokenType.RightParen, "Expected ')' after parameters");
+            }
+            
+            // Parse return type
+            var returnType = new TypeNode("void");
+            if (Match(TokenType.Arrow))
+            {
+                returnType = ParseType();
+            }
+            
+            // Parse body
+            Consume(TokenType.LeftBrace, "Expected '{' before function body");
+            var body = ParseLowLevelBlock();
+            Consume(TokenType.RightBrace, "Expected '}' after function body");
+            
+            return new FunctionDeclaration(
+                name,
+                returnType,
+                parameters,
+                body,
+                isAsync: false
+            );
+        }
+        
+        private BlockStatement ParseLowLevelBlock()
+        {
+            var statements = new List<Statement>();
+            
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                SkipWhitespaceAndComments();
+                var stmt = ParseStatement();
+                if (stmt != null)
+                {
+                    statements.Add(stmt);
+                }
+            }
+            
+            return new BlockStatement(statements);
+        }
+        
+        private Statement ParseInstruction()
+        {
+            if (!Check(TokenType.Identifier))
+            {
+                throw Error(Current(), "Expected instruction mnemonic");
+            }
+            
+            var mnemonic = Advance();
+            var operands = new List<Expression>();
+            
+            // Parse operands
+            while (!Check(TokenType.NewLine) && !Check(TokenType.Semicolon) && 
+                   !IsAtEnd() && !Check(TokenType.RightBrace))
+            {
+                operands.Add(ParseOperand());
                 
-                return new TypeNode(name);
-            }
-            
-            throw Error("Expected type");
-        }
-        
-        private List<Parameter> ParseParameterList()
-        {
-            var parameters = new List<Parameter>();
-            
-            if (!Check(TokenType.RightParen))
-            {
-                do
-                {
-                    var type = ParseType();
-                    string name = null;
-                    
-                    if (Check(TokenType.Identifier))
-                    {
-                        name = Advance().Lexeme;
-                    }
-                    
-                    parameters.Add(new Parameter(type, name));
-                    
-                } while (Match(TokenType.Comma));
-            }
-            
-            return parameters;
-        }
-        
-        private Expression ParseExpression()
-        {
-            // Enhanced expression parsing with postfix operations
-            return ParsePostfixExpression();
-        }
-        
-        private Expression ParseUnaryExpression()
-        {
-            // Handle unary operators
-            if (Match(TokenType.Star))
-            {
-                return ParseDereferenceExpression();
-            }
-            
-            if (Match(TokenType.Ampersand))
-            {
-                return ParseAddressOfExpression();
-            }
-            
-            return ParsePrimaryExpression();
-        }
-        
-        private Expression ParsePostfixExpression()
-        {
-            var expr = ParseUnaryExpression();
-            
-            while (true)
-            {
-                if (Match(TokenType.LeftBracket))
-                {
-                    // Array indexing: expr[index]
-                    var index = ParseExpression();
-                    Consume(TokenType.RightBracket, "Expected ']' after index");
-                    
-                    var bracketToken = Previous();
-                    expr = new ArrayIndexExpression(expr, index, bracketToken.Line, bracketToken.Column);
-                }
-                else if (Match(TokenType.Dot))
-                {
-                    // Member access: expr.member
-                    var memberName = Consume(TokenType.Identifier, "Expected member name after '.'");
-                    expr = new MemberAccessExpression(expr, memberName.Lexeme, memberName.Line, memberName.Column);
-                }
-                else if (Match(TokenType.Arrow))
-                {
-                    // Pointer member access: expr->member
-                    var memberName = Consume(TokenType.Identifier, "Expected member name after '->'");
-                    // Convert to (*expr).member
-                    var deref = new DereferenceExpression(expr, expr.Line, expr.Column);
-                    expr = new MemberAccessExpression(deref, memberName.Lexeme, memberName.Line, memberName.Column);
-                }
-                else
+                if (!Match(TokenType.Comma))
                 {
                     break;
                 }
             }
             
-            return expr;
+            // Create assembly instruction
+            var asmText = mnemonic.Lexeme;
+            if (operands.Count > 0)
+            {
+                asmText += " " + string.Join(", ", operands.Select(FormatOperand));
+            }
+            
+            return new AssemblyStatement(mnemonic, asmText);
         }
         
-        private Expression ParsePrimaryExpression()
+        private Expression ParseOperand()
         {
-            if (Match(TokenType.Number))
+            // Register
+            if (Check(TokenType.Modulo))
             {
-                var value = Previous().Value;
-                return new LiteralExpression(value, Previous().Line, Previous().Column);
+                Advance(); // consume %
+                var reg = Consume(TokenType.Identifier, "Expected register name");
+                return new IdentifierExpression(reg);
             }
             
-            if (Match(TokenType.String))
+            // Immediate value
+            if (Check(TokenType.IntegerLiteral) || Check(TokenType.HexLiteral))
             {
-                var value = Previous().Value;
-                return new LiteralExpression(value, Previous().Line, Previous().Column);
+                return new LiteralExpression(Advance());
             }
             
-            if (Match(TokenType.True))
+            // Memory reference [base + index*scale + disp]
+            if (Match(TokenType.LeftBracket))
             {
-                return new LiteralExpression(true, Previous().Line, Previous().Column);
+                var memExpr = ParseMemoryOperand();
+                Consume(TokenType.RightBracket, "Expected ']'");
+                return memExpr;
             }
             
-            if (Match(TokenType.False))
+            // Label reference
+            if (Check(TokenType.Identifier))
             {
-                return new LiteralExpression(false, Previous().Line, Previous().Column);
+                return new IdentifierExpression(Advance());
             }
             
-            if (Match(TokenType.Null))
-            {
-                return new LiteralExpression(null, Previous().Line, Previous().Column);
-            }
-            
-            if (Match(TokenType.Identifier))
-            {
-                var name = Previous().Lexeme;
-                return new VariableExpression(name, Previous().Line, Previous().Column);
-            }
-            
-            if (Match(TokenType.LeftParen))
-            {
-                var expr = ParseExpression();
-                Consume(TokenType.RightParen, "Expected ')' after expression");
-                return expr;
-            }
-            
-            throw Error("Expected expression");
+            throw Error(Current(), "Invalid operand");
         }
         
-        private Statement ParseRegularStatement()
+        private Expression ParseMemoryOperand()
         {
-            // This would integrate with the main parser for regular statements
-            // For now, just parse expression statements
-            var expr = ParseExpression();
-            ConsumeSemicolon();
-            return new ExpressionStatement(expr, expr.Line, expr.Column);
+            // Simplified memory operand parsing
+            // Real implementation would handle full x86 addressing modes
+            var baseReg = ParseOperand();
+            
+            if (Match(TokenType.Plus))
+            {
+                var offset = ParseOperand();
+                return new BinaryExpression(
+                    baseReg,
+                    CreateToken(TokenType.Plus, "+", null),
+                    offset
+                );
+            }
+            
+            return baseReg;
         }
         
-        private void ConsumeSemicolon()
+        private string FormatOperand(Expression operand)
         {
-            if (!Match(TokenType.Semicolon) && !Check(TokenType.RightBrace))
+            return operand switch
             {
-                throw Error("Expected ';'");
+                LiteralExpression lit => lit.Value.ToString(),
+                IdentifierExpression id => id.Name,
+                BinaryExpression bin => $"[{FormatOperand(bin.Left)} + {FormatOperand(bin.Right)}]",
+                _ => operand.ToString()
+            };
+        }
+        
+        private Statement ParseDataDeclaration()
+        {
+            var name = Consume(TokenType.Identifier, "Expected data name");
+            
+            TypeNode dataType = new TypeNode("byte");
+            if (Match(TokenType.Colon))
+            {
+                dataType = ParseType();
+            }
+            
+            Expression initializer = null;
+            if (Match(TokenType.Assign))
+            {
+                initializer = ParseExpression();
+            }
+            
+            return new FieldDeclaration(name, dataType, initializer);
+        }
+        
+        private Statement ParseDirective()
+        {
+            Advance(); // consume '.'
+            var directive = Consume(TokenType.Identifier, "Expected directive name");
+            
+            var args = new List<string>();
+            while (!Check(TokenType.NewLine) && !IsAtEnd())
+            {
+                args.Add(Advance().Lexeme);
+            }
+            
+            // Convert directive to comment for now
+            var directiveText = $".{directive.Lexeme} {string.Join(" ", args)}";
+            return new ExpressionStatement(
+                new LiteralExpression(
+                    CreateToken(TokenType.Comment, directiveText, null)
+                )
+            );
+        }
+        
+        private TypeNode ParseType()
+        {
+            if (Match(TokenType.Byte)) return new TypeNode("byte");
+            if (Match(TokenType.Short)) return new TypeNode("short");
+            if (Match(TokenType.Int)) return new TypeNode("int");
+            if (Match(TokenType.Long)) return new TypeNode("long");
+            if (Match(TokenType.Float)) return new TypeNode("float");
+            if (Match(TokenType.Double)) return new TypeNode("double");
+            if (Match(TokenType.Void)) return new TypeNode("void");
+            
+            if (Check(TokenType.Identifier))
+            {
+                var typeName = Advance();
+                return new TypeNode(typeName.Lexeme);
+            }
+            
+            throw Error(Current(), "Expected type");
+        }
+        
+        private Expression ParseExpression()
+        {
+            // Simple expression parsing for low-level syntax
+            if (Check(TokenType.IntegerLiteral) || Check(TokenType.HexLiteral) ||
+                Check(TokenType.StringLiteral))
+            {
+                return new LiteralExpression(Advance());
+            }
+            
+            if (Check(TokenType.Identifier))
+            {
+                return new IdentifierExpression(Advance());
+            }
+            
+            throw Error(Current(), "Expected expression");
+        }
+        
+        private void SkipWhitespaceAndComments()
+        {
+            while (Match(TokenType.Whitespace) || Match(TokenType.NewLine) || 
+                   Match(TokenType.Comment) || Match(TokenType.MultiLineComment))
+            {
+                // Skip
             }
         }
-        
-        #endregion
-        
-        #region Token Management
         
         private bool Match(params TokenType[] types)
         {
@@ -748,7 +403,7 @@ namespace Ouroboros.Syntaxes.Low
         private bool Check(TokenType type)
         {
             if (IsAtEnd()) return false;
-            return Peek().Type == type;
+            return Current().Type == type;
         }
         
         private Token Advance()
@@ -759,12 +414,13 @@ namespace Ouroboros.Syntaxes.Low
         
         private bool IsAtEnd()
         {
-            return current >= tokens.Count || Peek().Type == TokenType.Eof;
+            return current >= tokens.Count || Current().Type == TokenType.EndOfFile;
         }
         
-        private Token Peek()
+        private Token Current()
         {
-            return tokens[current];
+            return current < tokens.Count ? tokens[current] : 
+                CreateToken(TokenType.EndOfFile, "", null);
         }
         
         private Token Previous()
@@ -772,53 +428,34 @@ namespace Ouroboros.Syntaxes.Low
             return tokens[current - 1];
         }
         
+        private Token? Peek(int offset)
+        {
+            var index = current + offset;
+            return index < tokens.Count ? tokens[index] : null;
+        }
+        
         private Token Consume(TokenType type, string message)
         {
             if (Check(type)) return Advance();
-            throw Error(message);
+            throw Error(Current(), message);
         }
         
-        #endregion
-        
-        #region Error Handling
-        
-        private ParseException Error(string message)
+        private ParseException Error(Token token, string message)
         {
-            var token = Peek();
             return new ParseException(message, token.Line, token.Column);
         }
         
-        private void ReportError(ParseException error)
+        private Token CreateToken(TokenType type, string lexeme, object literal)
         {
-            Console.WriteLine($"Parse error at {error.Line}:{error.Column}: {error.Message}");
+            return new Token(type, lexeme, literal, 0, 0, 0, 0, "", SyntaxLevel.Low);
         }
         
-        private void Synchronize()
+        private class AsmInstruction
         {
-            Advance();
-            
-            while (!IsAtEnd())
-            {
-                if (Previous().Type == TokenType.Semicolon) return;
-                
-                switch (Peek().Type)
-                {
-                    case TokenType.Class:
-                    case TokenType.Function:
-                    case TokenType.Var:
-                    case TokenType.Let:
-                    case TokenType.For:
-                    case TokenType.If:
-                    case TokenType.While:
-                    case TokenType.Return:
-                        return;
-                }
-                
-                Advance();
-            }
+            public string Mnemonic { get; set; }
+            public List<string> Operands { get; set; }
+            public int Address { get; set; }
         }
-        
-        #endregion
     }
     
     #region AST Node Extensions for Low-Level
