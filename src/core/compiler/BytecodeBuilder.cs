@@ -571,8 +571,6 @@ namespace Ouroboros.Core.Compiler
                 case "RDTSC":
                     return new byte[] { 0x0F, 0x31 };
                     
-                // TODO: Add more x86-64 instructions as needed
-                
                 // Additional arithmetic instructions
                 case "IDIV":
                     return new byte[] { 0xF7, 0xF8 }; // idiv rax/eax
