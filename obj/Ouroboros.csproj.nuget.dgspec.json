@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "H:\\Downloads\\Ouroboros\\Ouroboros.csproj": {}
+    "H:\\Ouroboros\\Ouroboros.csproj": {}
   },
   "projects": {
-    "H:\\Downloads\\Ouroboros\\Ouroboros.csproj": {
+    "H:\\Ouroboros\\Ouroboros.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "H:\\Downloads\\Ouroboros\\Ouroboros.csproj",
+        "projectUniqueName": "H:\\Ouroboros\\Ouroboros.csproj",
         "projectName": "ouroboros",
-        "projectPath": "H:\\Downloads\\Ouroboros\\Ouroboros.csproj",
+        "projectPath": "H:\\Ouroboros\\Ouroboros.csproj",
         "packagesPath": "C:\\Users\\jacob\\.nuget\\packages\\",
-        "outputPath": "H:\\Downloads\\Ouroboros\\obj\\",
+        "outputPath": "H:\\Ouroboros\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
