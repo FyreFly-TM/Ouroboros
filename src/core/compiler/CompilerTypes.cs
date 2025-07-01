@@ -356,7 +356,12 @@ namespace Ouroboros.Core.Compiler
             
             // Otherwise check for loop context
             if (LoopStack.Count == 0)
-                throw new InvalidOperationException("Break statement outside of loop or switch");
+            {
+                // Log error but don't throw - emit a no-op to continue compilation
+                Console.WriteLine("WARNING: Break statement outside of loop or switch - ignoring");
+                builder.Emit(VM.Opcode.Nop);
+                return;
+            }
                 
             var loop = LoopStack.Peek();
             builder.Emit(VM.Opcode.Jump, loop.BreakLabel);

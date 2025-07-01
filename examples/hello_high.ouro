@@ -1,0 +1,44 @@
+// Hello World - High-Level Natural Language Syntax
+// This demonstrates OUROBOROS's natural language programming capabilities
+
+using Ouroboros.StdLib.System;
+
+namespace Examples
+{
+    @high
+    class HelloHigh
+    {
+        public static function Main taking arguments
+            print $"Hello World from OUROBOROS Natural Language!"
+            
+            // Natural language variable assignment
+            greeting := "Welcome to the future of programming"
+            name := "OUROBOROS"
+            version := 2.0
+            
+            // Natural language conditionals
+            if version is greater than 1.0 then
+                print $"{greeting}"
+                print $"This is {name} version {version}"
+            end if
+            
+            // Natural language loops
+            print $"\nCounting in natural language:"
+            iterate counter from 1 through 5
+                print $"  Iteration {counter}: Hello!"
+            end iterate
+            
+            // Natural language collections
+            languages := ["C", "C++", "Rust", "Python", "Java"]
+            print $"\nLanguages that OUROBOROS replaces:"
+            for each language in languages
+                print $"  - {language}"
+            end for
+            
+            // Natural language aggregation
+            numbers := [1, 2, 3, 4, 5]
+            total := sum of all numbers
+            print $"\nSum of {numbers} = {total}"
+        end function
+    }
+} 

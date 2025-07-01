@@ -1,0 +1,143 @@
+// Hello World - Assembly Integration Syntax
+// This demonstrates OUROBOROS's type-safe assembly integration
+
+using Ouroboros.StdLib.System;
+
+namespace Examples
+{
+    @asm
+    class HelloAsm
+    {
+        public static void Main(string[] args)
+        {
+            print $"Hello World from OUROBOROS Assembly Integration!"
+            
+            // Type-safe assembly with variable binding
+            var x: i32 = 42;
+            var y: i32 = 8;
+            var result: i32 = 0;
+            
+            // x86-64 assembly integration
+            assembly {
+                mov eax, [&x]       // Load x into EAX
+                add eax, [&y]       // Add y to EAX
+                mov [&result], eax  // Store result
+            }
+            
+            print $"\nBasic assembly math:"
+            print $"  {x} + {y} = {result}"
+            
+            // SIMD assembly for vector operations
+            var vec_a: [f32; 4] = [1.0, 2.0, 3.0, 4.0];
+            var vec_b: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
+            var vec_result: [f32; 4] = [0.0; 4];
+            
+            assembly {
+                movaps xmm0, [&vec_a]      // Load aligned packed singles
+                movaps xmm1, [&vec_b]      // Load second vector
+                addps xmm0, xmm1           // Add packed singles
+                movaps [&vec_result], xmm0 // Store result
+            }
+            
+            print $"\nSIMD vector addition:"
+            print $"  {vec_a} + {vec_b} = {vec_result}"
+            
+            // CPU feature detection
+            var cpu_vendor: [char; 12] = [' '; 12];
+            var cpu_features: u32 = 0;
+            
+            assembly {
+                // Get CPU vendor string
+                mov eax, 0
+                cpuid
+                mov [&cpu_vendor + 0], ebx
+                mov [&cpu_vendor + 4], edx
+                mov [&cpu_vendor + 8], ecx
+                
+                // Get CPU features
+                mov eax, 1
+                cpuid
+                mov [&cpu_features], ecx
+            }
+            
+            print $"\nCPU Information:"
+            print $"  Vendor: {cpu_vendor}"
+            print $"  Features: 0x{cpu_features:X}"
+            
+            // Bit manipulation with assembly
+            var value: u64 = 0xDEADBEEF_CAFEBABE;
+            var bit_count: u64 = 0;
+            var leading_zeros: u64 = 0;
+            
+            assembly {
+                mov rax, [&value]
+                
+                // Population count (number of set bits)
+                popcnt rbx, rax
+                mov [&bit_count], rbx
+                
+                // Count leading zeros
+                lzcnt rcx, rax
+                mov [&leading_zeros], rcx
+            }
+            
+            print $"\nBit analysis of 0x{value:X}:"
+            print $"  Set bits: {bit_count}"
+            print $"  Leading zeros: {leading_zeros}"
+            
+            // String operations with REP instructions
+            var src_string: [u8; 16] = "Hello, Assembly!";
+            var dst_string: [u8; 16] = [0; 16];
+            var str_len: usize = 16;
+            
+            assembly {
+                mov rsi, [&src_string]  // Source
+                mov rdi, [&dst_string]  // Destination
+                mov rcx, [&str_len]     // Count
+                cld                     // Clear direction flag
+                rep movsb               // Repeat move string byte
+            }
+            
+            print $"\nString copy with assembly:"
+            print $"  Source: {src_string}"
+            print $"  Copied: {dst_string}"
+            
+            // Atomic operations in assembly
+            var counter: i64 = 100;
+            var increment: i64 = 42;
+            
+            assembly {
+                mov rax, [&increment]
+                lock xadd [&counter], rax  // Atomic exchange and add
+            }
+            
+            print $"\nAtomic operation:"
+            print $"  Counter after atomic add: {counter}"
+            
+            // Custom calling convention example
+            var a: i32 = 10;
+            var b: i32 = 20;
+            var custom_result: i32 = 0;
+            
+            assembly {
+                // Custom calling convention: pass in EBX, ECX, return in EDX
+                mov ebx, [&a]
+                mov ecx, [&b]
+                call custom_multiply
+                mov [&custom_result], edx
+                jmp skip_function
+                
+            custom_multiply:
+                mov eax, ebx
+                imul eax, ecx
+                mov edx, eax
+                ret
+                
+            skip_function:
+            }
+            
+            print $"\nCustom calling convention:"
+            print $"  {a} * {b} = {custom_result}"
+        }
+    }
+} 

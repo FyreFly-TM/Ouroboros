@@ -1,0 +1,114 @@
+// Hello World - Low-Level Systems Programming Syntax
+// This demonstrates OUROBOROS's systems programming capabilities
+
+using Ouroboros.StdLib.System;
+
+namespace Examples
+{
+    @low
+    class HelloLow
+    {
+        public static void Main(string[] args)
+        {
+            print $"Hello World from OUROBOROS Systems Programming!"
+            
+            // Zero-cost abstractions
+            @inline(always)
+            @zero_cost
+            struct Vector3 {
+                x, y, z: f32;
+                
+                // Operator overloading with no overhead
+                operator +(other: Vector3) -> Vector3 {
+                    return Vector3 { x + other.x, y + other.y, z + other.z };
+                }
+                
+                operator *(scalar: f32) -> Vector3 {
+                    return Vector3 { x * scalar, y * scalar, z * scalar };
+                }
+                
+                // Direct memory access
+                operator [](index: i32) -> f32 {
+                    return (&x)[index];  // Pointer arithmetic
+                }
+            }
+            
+            // Stack allocation
+            var v1 = Vector3 { 1.0, 2.0, 3.0 };
+            var v2 = Vector3 { 4.0, 5.0, 6.0 };
+            var v3 = v1 + v2;
+            
+            print $"\nVector operations (zero-cost):"
+            print $"  v1 = ({v1.x}, {v1.y}, {v1.z})"
+            print $"  v2 = ({v2.x}, {v2.y}, {v2.z})"
+            print $"  v1 + v2 = ({v3.x}, {v3.y}, {v3.z})"
+            
+            // Bit manipulation
+            var flags: u32 = 0b1010_1010;
+            flags |= 1u << 3;    // Set bit 3
+            flags &= ~(1u << 5); // Clear bit 5
+            flags ^= 1u << 7;    // Toggle bit 7
+            print $"\nBit operations:"
+            print $"  Flags: 0b{flags:b} (0x{flags:X})"
+            
+            // Fixed-size arrays (stack allocated)
+            var buffer: [u8; 16] = [0; 16];
+            for i in 0..16 {
+                buffer[i] = (i * 17) as u8;  // Fill with pattern
+            }
+            
+            print $"\nBuffer contents:"
+            print $"  ";
+            for i in 0..16 {
+                print $"{buffer[i]:X2} ";
+            }
+            print $""
+            
+            // Function pointers
+            type BinaryOp = (i32, i32) -> i32;
+            
+            function add(a: i32, b: i32) -> i32 { return a + b; }
+            function mul(a: i32, b: i32) -> i32 { return a * b; }
+            
+            var operations: [BinaryOp; 2] = [add, mul];
+            var op_names = ["add", "multiply"];
+            
+            print $"\nFunction pointers:"
+            for i in 0..2 {
+                var result = operations[i](10, 5);
+                print $"  {op_names[i]}(10, 5) = {result}"
+            }
+            
+            // Memory-efficient union
+            union IntFloat {
+                i: i32;
+                f: f32;
+                
+                function as_hex() -> string {
+                    return $"0x{i:X8}";
+                }
+            }
+            
+            var u = IntFloat { f: 3.14159 };
+            print $"\nUnion demonstration:"
+            print $"  Float value: {u.f}"
+            print $"  As integer: {u.i}"
+            print $"  As hex: {u.as_hex()}"
+            
+            // SIMD hint for auto-vectorization
+            @simd
+            function dot_product(a: &[f32], b: &[f32], len: usize) -> f32 {
+                var sum = 0.0f32;
+                for i in 0..len {
+                    sum += a[i] * b[i];
+                }
+                return sum;
+            }
+            
+            var vec_a: [f32; 4] = [1.0, 2.0, 3.0, 4.0];
+            var vec_b: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
+            var dot = dot_product(&vec_a, &vec_b, 4);
+            print $"\nSIMD dot product: {vec_a} · {vec_b} = {dot}"
+        }
+    }
+} 

@@ -1,0 +1,69 @@
+// Hello World - Medium-Level Modern Syntax
+// This demonstrates OUROBOROS's modern programming features
+
+using Ouroboros.StdLib.System;
+using Ouroboros.StdLib.Math;
+
+namespace Examples
+{
+    @medium
+    class HelloMedium
+    {
+        public static void Main(string[] args)
+        {
+            print $"Hello World from OUROBOROS Modern Syntax!"
+            
+            // Modern operators
+            var base_val = 2;
+            var power = base_val ** 10;  // Power operator
+            print $"\n{base_val}^10 = {power}"
+            
+            // Integer division
+            var result = 17 // 3;  // Integer division operator
+            print $"17 // 3 = {result}"
+            
+            // Three-way comparison (spaceship operator)
+            var cmp = 10 <=> 20;
+            print $"10 <=> 20 = {cmp}"
+            
+            // Null-aware operators
+            string? nullable = null;
+            var safe = nullable ?? "default value";
+            var length = nullable?.Length ?? 0;
+            print $"\nNull-safe operations:"
+            print $"  Safe string: {safe}"
+            print $"  Safe length: {length}"
+            
+            // Range operators
+            var range1 = 1..5;   // Inclusive range
+            var range2 = 1...5;  // Exclusive range
+            print $"\nRanges:"
+            print $"  Inclusive 1..5: {range1}"
+            print $"  Exclusive 1...5: {range2}"
+            
+            // Pattern matching
+            var value = (3, 4);
+            var description = value match {
+                (0, 0) => "Origin",
+                (x, 0) => $"On X-axis at {x}",
+                (0, y) => $"On Y-axis at {y}",
+                (x, y) when x == y => $"On diagonal at ({x}, {y})",
+                (x, y) => $"Point at ({x}, {y})"
+            };
+            print $"\nPattern match result: {description}"
+            
+            // Spread operator
+            var list1 = [1, 2, 3];
+            var list2 = [4, 5, 6];
+            var combined = [...list1, ...list2, 7, 8];
+            print $"\nSpread operator: {combined}"
+            
+            // Lambda expressions and LINQ-style operations
+            var numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            var evens = numbers.Where(n => n % 2 == 0)
+                              .Select(n => n * n)
+                              .ToList();
+            print $"Even squares: {evens}"
+        }
+    }
+} 

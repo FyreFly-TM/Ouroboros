@@ -577,12 +577,20 @@ namespace Ouroboros.Core.Compiler
                 return null;
             }
             
-            // CRITICAL: This should NOT happen if SymbolTable.Lookup succeeded!
-            Console.WriteLine($"DEBUG: CRITICAL MISMATCH - SymbolTable.Lookup succeeded but symbol is null!");
-            Console.WriteLine($"DEBUG: Failed to find symbol '{expr.Name}' - treating as potential function call");
+            // Symbol is null - auto-define it
+            Console.WriteLine($"DEBUG: Symbol '{expr.Name}' not found - auto-defining as local variable");
             
             // Auto-define undefined variables as local variables with inferred type
             var newSymbol = symbols.Define(expr.Name, "var");
+            
+            // Initialize with null value
+            builder.Emit(Opcode.LoadNull);
+            if (newSymbol.IsGlobal)
+                builder.Emit(Opcode.StoreGlobal, newSymbol.Index);
+            else
+                builder.Emit(Opcode.StoreLocal, newSymbol.Index);
+            
+            // Now load it
             if (newSymbol.IsGlobal)
                 builder.Emit(Opcode.LoadGlobal, newSymbol.Index);
             else

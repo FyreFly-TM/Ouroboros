@@ -126,7 +126,34 @@ namespace Ouroboros.Core.Lexer
                     }
                     else if (IsDigit(Peek()))
                     {
-                        HandleNumber();
+                        // Check if this is tuple element access (e.g., a.1, tuple.0)
+                        if (_tokens.Count > 0)
+                        {
+                            var lastToken = _tokens[_tokens.Count - 1];
+                            // If the last token could be part of a tuple/member access expression
+                            if (lastToken.Type == TokenType.Identifier || 
+                                lastToken.Type == TokenType.RightParen ||
+                                lastToken.Type == TokenType.RightBracket ||
+                                lastToken.Type == TokenType.RightBrace ||
+                                lastToken.Type == TokenType.IntegerLiteral ||
+                                lastToken.Type == TokenType.FloatLiteral ||
+                                lastToken.Type == TokenType.DoubleLiteral ||
+                                lastToken.Type == TokenType.StringLiteral)
+                            {
+                                // This is member access with numeric field (tuple element)
+                                AddToken(TokenType.Dot);
+                            }
+                            else
+                            {
+                                // This is a floating point number starting with dot
+                                HandleNumber();
+                            }
+                        }
+                        else
+                        {
+                            // No previous token, must be a float
+                            HandleNumber();
+                        }
                     }
                     else
                     {
@@ -1099,6 +1126,100 @@ namespace Ouroboros.Core.Lexer
 
         private void HandleNumber()
         {
+
+            // Handle hex, octal, and binary literals
+            if (Peek() == '0' && !IsAtEnd())
+            {
+                char nextChar = PeekNext();
+                if (nextChar == 'x' || nextChar == 'X')
+                {
+                    // Hexadecimal
+                    Advance(); // consume '0'
+                    Advance(); // consume 'x'
+                    
+                    if (!IsHexDigit(Peek()))
+                    {
+                        ReportError("Invalid hexadecimal literal");
+                        return;
+                    }
+                    
+                    while (IsHexDigit(Peek())) Advance();
+                    
+                    string hexText = _source.Substring(_start + 2, _current - _start - 2);
+                    try
+                    {
+                        long hexValue = Convert.ToInt64(hexText, 16);
+                        AddToken(TokenType.IntegerLiteral, hexValue);
+                    }
+                    catch (Exception)
+                    {
+                        ReportError($"Invalid hexadecimal number: 0x{hexText}");
+                        AddToken(TokenType.IntegerLiteral, 0L);
+                    }
+                    return;
+                }
+                else if (nextChar == 'o' || nextChar == 'O')
+                {
+                    // Octal
+                    Advance(); // consume '0'
+                    Advance(); // consume 'o'
+                    
+                    if (!IsOctalDigit(Peek()))
+                    {
+                        ReportError("Invalid octal literal");
+                        return;
+                    }
+                    
+                    while (IsOctalDigit(Peek())) Advance();
+                    
+                    string octalText = _source.Substring(_start + 2, _current - _start - 2);
+                    try
+                    {
+                        long octalValue = Convert.ToInt64(octalText, 8);
+                        AddToken(TokenType.IntegerLiteral, octalValue);
+                    }
+                    catch (Exception)
+                    {
+                        ReportError($"Invalid octal number: 0o{octalText}");
+                        AddToken(TokenType.IntegerLiteral, 0L);
+                    }
+                    return;
+                }
+                else if (nextChar == 'b' || nextChar == 'B')
+                {
+                    // Binary
+                    Advance(); // consume '0'
+                    Advance(); // consume 'b'
+                    
+                    if (Peek() != '0' && Peek() != '1')
+                    {
+                        ReportError("Invalid binary literal");
+                        return;
+                    }
+                    
+                    while (Peek() == '0' || Peek() == '1' || Peek() == '_') 
+                    {
+                        if (Peek() != '_') // Skip underscores in number literals
+                            Advance();
+                        else
+                            Advance();
+                    }
+                    
+                    string binaryText = _source.Substring(_start + 2, _current - _start - 2).Replace("_", "");
+                    try
+                    {
+                        long binaryValue = Convert.ToInt64(binaryText, 2);
+                        AddToken(TokenType.IntegerLiteral, binaryValue);
+                    }
+                    catch (Exception)
+                    {
+                        ReportError($"Invalid binary number: 0b{binaryText}");
+                        AddToken(TokenType.IntegerLiteral, 0L);
+                    }
+                    return;
+                }
+            }
+
             bool isFloat = false;
             bool isHex = false;
             bool isBinary = false;
