@@ -1,246 +1,255 @@
 # Getting Started with Ouroboros
 
-Welcome to Ouroboros! This tutorial will guide you through installing Ouroboros, writing your first program, and understanding the core concepts of the language.
+Welcome to Ouroboros! This guide will help you get up and running with the Ouroboros programming language.
 
 ## Table of Contents
 1. [Installation](#installation)
 2. [Your First Program](#your-first-program)
-3. [Understanding Syntax Levels](#understanding-syntax-levels)
-4. [Variables and Types](#variables-and-types)
-5. [Functions](#functions)
-6. [Control Flow](#control-flow)
-7. [Collections](#collections)
-8. [Next Steps](#next-steps)
+3. [Basic Concepts](#basic-concepts)
+4. [Syntax Levels](#syntax-levels)
+5. [Variables and Types](#variables-and-types)
+6. [Functions](#functions)
+7. [Control Flow](#control-flow)
+8. [Classes and Objects](#classes-and-objects)
+9. [Error Handling](#error-handling)
+10. [Next Steps](#next-steps)
 
 ## Installation
 
-### Windows
+### Prerequisites
+- .NET 6.0 SDK or later
+- A text editor or IDE (VS Code recommended)
+- Git (optional, for cloning the repository)
 
-1. Download the latest Ouroboros installer from the releases page
-2. Run the installer and follow the prompts
-3. Add Ouroboros to your PATH:
-   ```powershell
-   $env:Path += ";C:\Program Files\Ouroboros\bin"
-   ```
-4. Verify installation:
-   ```powershell
-   ouro --version
-   ```
+### Installing Ouroboros
 
-### macOS
-
+#### From Source
 ```bash
-# Using Homebrew
-brew tap ouroboros-lang/tap
-brew install ouroboros
-
-# Verify installation
-ouro --version
-```
-
-### Linux
-
-```bash
-# Ubuntu/Debian
-wget https://github.com/ouroboros-lang/releases/latest/ouroboros-linux-x64.tar.gz
-tar -xzf ouroboros-linux-x64.tar.gz
-sudo mv ouroboros /usr/local/bin/
-
-# Verify installation
-ouro --version
-```
-
-### Building from Source
-
-```bash
+# Clone the repository
 git clone https://github.com/ouroboros-lang/ouroboros.git
 cd ouroboros
-./build.sh  # or build.ps1 on Windows
+
+# Build the project
+dotnet build
+
+# Run the REPL
+dotnet run
 ```
+
+#### Using Package Manager
+```bash
+# Install globally
+dotnet tool install -g ouroboros
+
+# Verify installation
+ouro --version
+```
+
+### Setting up VS Code
+1. Install the Ouroboros extension from the marketplace
+2. Open a `.ouro` file
+3. The extension provides:
+   - Syntax highlighting
+   - IntelliSense
+   - Error checking
+   - Debugging support
 
 ## Your First Program
 
-Create a file named `hello.ouro`:
+Create a file called `hello.ouro`:
 
 ```ouro
-// hello.ouro
+// Traditional syntax
 function main() {
-    console.WriteLine("Hello, Ouroboros!");
+    print("Hello, Ouroboros!");
 }
 ```
 
-Run the program:
+Run it:
 ```bash
 ouro hello.ouro
 ```
 
-Output:
-```
-Hello, Ouroboros!
-```
-
-## Understanding Syntax Levels
-
-Ouroboros unique feature is its three syntax levels. Let's explore each:
-
-### High-Level Syntax (@high)
-
-Natural language-like syntax for beginners and rapid prototyping:
+You can also use the natural language syntax:
 
 ```ouro
 @high
-define function greet taking name returning nothing as
-    print "Hello, " plus name plus "!" to console;
+create a function called main that
+    prints "Hello, Ouroboros!" to the console.
 end function
-
-let userName equals "Alice";
-call greet with userName;
 ```
 
-### Medium-Level Syntax (@medium)
+## Basic Concepts
 
-Traditional C-like syntax for general programming:
+### Comments
+```ouro
+// Single-line comment
+
+/* 
+   Multi-line comment
+   Can span multiple lines
+*/
+
+/// Documentation comment
+/// Used for generating API docs
+```
+
+### Program Structure
+Every Ouroboros program needs a `main` function as the entry point:
 
 ```ouro
-@medium
-function greet(name: string) {
-    console.WriteLine($"Hello, {name}!");
+function main() {
+    // Your program starts here
 }
-
-let userName = "Alice";
-greet(userName);
 ```
 
-### Low-Level Syntax (@low)
-
-System programming with manual memory control:
+For larger programs, you can organize code into modules:
 
 ```ouro
-@low
-function greet(name: char*) {
-    write(1, "Hello, ", 7);
-    write(1, name, strlen(name));
-    write(1, "!\n", 2);
+// math_utils.ouro
+export function add(a: int, b: int): int {
+    return a + b;
 }
 
-char* userName = "Alice";
-greet(userName);
+// main.ouro
+import { add } from "./math_utils";
+
+function main() {
+    let result = add(5, 3);
+    print($"5 + 3 = {result}");
+}
 ```
 
-### Mixing Syntax Levels
+## Syntax Levels
 
-You can switch between levels within the same file:
+Ouroboros supports multiple syntax levels that can be mixed in the same file:
 
+### High-Level (Natural Language)
 ```ouro
 @high
-let message equals "Starting program";
-print message to console;
+let age equal 25.
+if age is greater than or equal to 18 then
+    print "You are an adult" to console.
+else
+    print "You are a minor" to console.
+end if
+```
 
+### Medium-Level (Traditional)
+```ouro
 @medium
-for (int i = 0; i < 5; i++) {
-    console.WriteLine($"Iteration {i}");
+let age = 25;
+if (age >= 18) {
+    console.WriteLine("You are an adult");
+} else {
+    console.WriteLine("You are a minor");
 }
+```
 
+### Low-Level (System Programming)
+```ouro
 @low
-int* ptr = allocate<int>(1);
-*ptr = 42;
-console.WriteLine($"Value: {*ptr}");
-free(ptr);
+int* age_ptr = allocate<int>(1);
+*age_ptr = 25;
+if (*age_ptr >= 18) {
+    write(1, "You are an adult\n", 17);
+} else {
+    write(1, "You are a minor\n", 16);
+}
+free(age_ptr);
+```
+
+### Assembly
+```ouro
+@asm {
+    mov eax, 25      ; age = 25
+    cmp eax, 18      ; compare with 18
+    jge adult        ; jump if greater or equal
+    ; minor code here
+    jmp end
+adult:
+    ; adult code here
+end:
+}
 ```
 
 ## Variables and Types
 
 ### Variable Declaration
-
 ```ouro
 // Type inference
-let age = 25;              // int
-let name = "Bob";          // string
-let pi = 3.14159;         // double
-let isReady = true;       // bool
+let name = "Alice";          // string
+let age = 25;                // int
+let height = 5.7;            // double
+let isStudent = true;        // bool
 
 // Explicit types
-int count = 0;
-string message = "Hello";
-double temperature = 98.6;
-bool isActive = false;
+string city = "New York";
+int population = 8_000_000;
+double temperature = 72.5;
+bool isRaining = false;
 
 // Constants
-const int MAX_USERS = 100;
-const string VERSION = "1.0.0";
+const double PI = 3.14159;
+const string APP_NAME = "MyApp";
+
+// Multiple declarations
+let x = 1, y = 2, z = 3;
 ```
 
-### Greek Variables
+### Basic Types
+- `bool`: true or false
+- `int`: 32-bit integer
+- `long`: 64-bit integer
+- `float`: 32-bit floating point
+- `double`: 64-bit floating point
+- `string`: text
+- `char`: single character
 
-Ouroboros supports Greek letters as identifiers:
-
+### Collections
 ```ouro
-let π = 3.14159;
-let θ = π / 4;
-let Σ = 0;
+// Arrays
+int[] numbers = [1, 2, 3, 4, 5];
+string[] names = ["Alice", "Bob", "Charlie"];
 
-for (int i = 1; i <= 10; i++) {
-    Σ += i;  // Sum from 1 to 10
-}
-```
+// Lists (dynamic arrays)
+List<int> scores = new List<int>();
+scores.Add(95);
+scores.Add(87);
 
-### Type Conversion
+// Dictionaries
+Dictionary<string, int> ages = new Dictionary<string, int>();
+ages["Alice"] = 25;
+ages["Bob"] = 30;
 
-```ouro
-// Implicit conversion
-int x = 10;
-double y = x;  // int to double
-
-// Explicit conversion
-double pi = 3.14159;
-int rounded = (int)pi;  // 3
-
-// String conversion
-string text = x.ToString();
-int parsed = int.Parse("123");
-
-// Safe parsing
-if (int.TryParse("123", out number)) {
-    console.WriteLine($"Parsed: {number}");
-}
+// Tuples
+(string name, int age) person = ("Alice", 25);
+print($"{person.name} is {person.age} years old");
 ```
 
 ## Functions
 
 ### Basic Functions
-
 ```ouro
+// Simple function
+function greet(name: string) {
+    print($"Hello, {name}!");
+}
+
 // Function with return value
 function add(a: int, b: int): int {
     return a + b;
 }
 
-// Void function
-function printSum(a: int, b: int) {
-    console.WriteLine($"{a} + {b} = {a + b}");
-}
-
 // Expression body
 function square(x: int): int => x * x;
 
-// Usage
-let result = add(5, 3);
-printSum(10, 20);
-let squared = square(7);
-```
-
-### Parameters
-
-```ouro
 // Optional parameters
-function greet(name: string, greeting: string = "Hello") {
-    console.WriteLine($"{greeting}, {name}!");
+function createUser(name: string, age: int = 0): User {
+    return new User { Name = name, Age = age };
 }
 
-greet("Alice");                    // "Hello, Alice!"
-greet("Bob", "Good morning");      // "Good morning, Bob!"
-
-// Variable parameters
+// Variable arguments
 function sum(params numbers: int[]): int {
     let total = 0;
     foreach (n in numbers) {
@@ -249,316 +258,297 @@ function sum(params numbers: int[]): int {
     return total;
 }
 
-let total = sum(1, 2, 3, 4, 5);  // 15
-
-// Reference parameters
-function swap(ref a: int, ref b: int) {
-    let temp = a;
-    a = b;
-    b = temp;
-}
-
-int x = 10, y = 20;
-swap(ref x, ref y);  // x=20, y=10
+// Call examples
+greet("Alice");
+let result = add(5, 3);
+let sq = square(4);
+let user1 = createUser("Bob");
+let user2 = createUser("Alice", 25);
+let total = sum(1, 2, 3, 4, 5);
 ```
 
 ### Lambda Functions
-
 ```ouro
 // Simple lambda
-let multiply = (a, b) => a * b;
-let result = multiply(4, 5);  // 20
+let multiply = (a: int, b: int) => a * b;
 
-// Lambda with types
-let divide = (a: double, b: double): double => a / b;
-
-// Block body lambda
-let process = (items) => {
-    let filtered = [];
-    foreach (item in items) {
-        if (item > 0) {
-            filtered.Add(item * 2);
-        }
-    }
-    return filtered;
+// Lambda with body
+let processData = (data: string) => {
+    let processed = data.ToUpper();
+    return processed.Trim();
 };
+
+// Using lambdas with higher-order functions
+let numbers = [1, 2, 3, 4, 5];
+let doubled = numbers.Select(x => x * 2);
+let evens = numbers.Where(x => x % 2 == 0);
 ```
 
 ## Control Flow
 
 ### If Statements
-
 ```ouro
 let score = 85;
 
 if (score >= 90) {
-    console.WriteLine("Grade: A");
+    print("Grade: A");
 } else if (score >= 80) {
-    console.WriteLine("Grade: B");
+    print("Grade: B");
 } else if (score >= 70) {
-    console.WriteLine("Grade: C");
+    print("Grade: C");
 } else {
-    console.WriteLine("Grade: F");
+    print("Grade: F");
 }
 
 // Ternary operator
-let grade = score >= 60 ? "Pass" : "Fail";
+let status = score >= 60 ? "Pass" : "Fail";
 ```
 
 ### Switch Statements
-
 ```ouro
-// Traditional switch
-let day = 3;
+let day = "Monday";
+
 switch (day) {
-    case 1:
-        console.WriteLine("Monday");
+    case "Monday":
+    case "Tuesday":
+    case "Wednesday":
+    case "Thursday":
+    case "Friday":
+        print("Weekday");
         break;
-    case 2:
-        console.WriteLine("Tuesday");
-        break;
-    case 3:
-        console.WriteLine("Wednesday");
+    case "Saturday":
+    case "Sunday":
+        print("Weekend");
         break;
     default:
-        console.WriteLine("Other day");
+        print("Invalid day");
         break;
 }
 
 // Switch expression
-let dayName = day switch {
-    1 => "Monday",
-    2 => "Tuesday",
-    3 => "Wednesday",
-    4 => "Thursday",
-    5 => "Friday",
-    6 or 7 => "Weekend",
-    _ => "Invalid day"
+let dayType = day switch {
+    "Monday" or "Tuesday" or "Wednesday" or "Thursday" or "Friday" => "Weekday",
+    "Saturday" or "Sunday" => "Weekend",
+    _ => "Invalid"
 };
 ```
 
 ### Loops
-
 ```ouro
 // For loop
-for (int i = 0; i < 5; i++) {
-    console.WriteLine($"Count: {i}");
+for (let i = 0; i < 10; i++) {
+    print(i);
 }
 
 // While loop
-int count = 0;
+let count = 0;
 while (count < 5) {
-    console.WriteLine($"Count: {count}");
+    print($"Count: {count}");
     count++;
 }
 
 // Do-while loop
 do {
-    console.WriteLine("At least once");
+    print("This runs at least once");
 } while (false);
 
 // Foreach loop
-let numbers = [1, 2, 3, 4, 5];
-foreach (num in numbers) {
-    console.WriteLine(num);
+let fruits = ["apple", "banana", "orange"];
+foreach (fruit in fruits) {
+    print($"I like {fruit}");
+}
+
+// Break and continue
+for (let i = 0; i < 10; i++) {
+    if (i == 3) continue;  // Skip 3
+    if (i == 7) break;     // Stop at 7
+    print(i);
 }
 ```
 
-### Custom Loops
+## Classes and Objects
 
-Ouroboros provides unique loop constructs:
-
+### Basic Classes
 ```ouro
-// Repeat loop
-repeat 3 times {
-    console.WriteLine("Hello!");
+class Person {
+    // Properties
+    public string Name { get; set; }
+    public int Age { get; set; }
+    private string ssn;
+    
+    // Constructor
+    public Person(name: string, age: int) {
+        Name = name;
+        Age = age;
+    }
+    
+    // Methods
+    public void Birthday() {
+        Age++;
+        print($"{Name} is now {Age} years old!");
+    }
+    
+    public string GetInfo() {
+        return $"{Name}, {Age} years old";
+    }
 }
 
-// Iterate loop
-iterate i: 1..5 {
-    console.WriteLine($"Number: {i}");
-}
-
-// Iterate with step
-iterate i: 0..10:2 {  // 0, 2, 4, 6, 8
-    console.WriteLine(i);
-}
-
-// Forever loop
-let counter = 0;
-forever {
-    console.WriteLine($"Counter: {counter}");
-    counter++;
-    if (counter >= 5) break;
-}
+// Using the class
+let person = new Person("Alice", 25);
+person.Birthday();
+print(person.GetInfo());
 ```
 
-## Collections
-
-### Lists
-
+### Inheritance
 ```ouro
-using Ouroboros.StdLib.Collections;
-
-// Create a list
-let numbers = new List<int>();
-
-// Add elements
-numbers.Add(10);
-numbers.Add(20);
-numbers.Add(30);
-
-// Access elements
-console.WriteLine(numbers[0]);  // 10
-
-// Iterate
-foreach (num in numbers) {
-    console.WriteLine(num);
+class Animal {
+    public string Name { get; set; }
+    
+    public Animal(name: string) {
+        Name = name;
+    }
+    
+    public virtual void MakeSound() {
+        print($"{Name} makes a sound");
+    }
 }
 
-// List with initialization
-let fruits = new List<string> { "Apple", "Banana", "Orange" };
+class Dog : Animal {
+    public string Breed { get; set; }
+    
+    public Dog(name: string, breed: string) : base(name) {
+        Breed = breed;
+    }
+    
+    public override void MakeSound() {
+        print($"{Name} barks!");
+    }
+    
+    public void WagTail() {
+        print($"{Name} wags tail");
+    }
+}
 
-// Common operations
-numbers.Remove(20);
-numbers.Insert(1, 15);
-let count = numbers.Count;
-let index = numbers.IndexOf(15);
+// Using inheritance
+let dog = new Dog("Buddy", "Golden Retriever");
+dog.MakeSound();  // "Buddy barks!"
+dog.WagTail();    // "Buddy wags tail"
 ```
 
-### Dictionaries
-
+### Interfaces
 ```ouro
-// Create dictionary
-let scores = new Dictionary<string, int>();
-
-// Add key-value pairs
-scores["Alice"] = 95;
-scores["Bob"] = 87;
-scores["Charlie"] = 92;
-
-// Access values
-console.WriteLine(scores["Alice"]);  // 95
-
-// Check if key exists
-if (scores.ContainsKey("David")) {
-    console.WriteLine(scores["David"]);
+interface IDrawable {
+    void Draw();
+    property Color Color { get; set; }
 }
 
-// Safe access
-if (scores.TryGetValue("Eve", out score)) {
-    console.WriteLine($"Eve's score: {score}");
+interface IMovable {
+    void Move(x: int, y: int);
+    property Position Position { get; }
 }
 
-// Iterate
-foreach (kvp in scores) {
-    console.WriteLine($"{kvp.Key}: {kvp.Value}");
+class Shape : IDrawable, IMovable {
+    public Color Color { get; set; }
+    public Position Position { get; private set; }
+    
+    public Shape() {
+        Position = new Position(0, 0);
+    }
+    
+    public void Draw() {
+        print($"Drawing shape at {Position}");
+    }
+    
+    public void Move(x: int, y: int) {
+        Position = new Position(x, y);
+    }
 }
-```
-
-### Arrays
-
-```ouro
-// Single-dimensional array
-int[] numbers = new int[5];
-numbers[0] = 10;
-numbers[1] = 20;
-
-// Array initialization
-int[] primes = [2, 3, 5, 7, 11];
-
-// Multi-dimensional array
-int[,] matrix = new int[3, 3];
-matrix[0, 0] = 1;
-matrix[1, 1] = 1;
-matrix[2, 2] = 1;
-
-// Jagged array
-int[][] jagged = new int[3][];
-jagged[0] = new int[] { 1, 2 };
-jagged[1] = new int[] { 3, 4, 5 };
-jagged[2] = new int[] { 6 };
-```
-
-## Pattern Matching
-
-Ouroboros supports advanced pattern matching:
-
-```ouro
-// Type patterns
-object value = GetValue();
-
-let description = value switch {
-    int n => $"Integer: {n}",
-    string s => $"String: {s}",
-    double d => $"Double: {d}",
-    null => "Null value",
-    _ => "Unknown type"
-};
-
-// Conditional patterns
-let category = age switch {
-    < 13 => "Child",
-    >= 13 and < 20 => "Teenager",
-    >= 20 and < 60 => "Adult",
-    >= 60 => "Senior",
-    _ => "Unknown"
-};
-
-// Tuple patterns
-let point = (10, 20);
-let position = point switch {
-    (0, 0) => "Origin",
-    (0, _) => "On Y-axis",
-    (_, 0) => "On X-axis",
-    (var x, var y) when x == y => "On diagonal",
-    _ => "General position"
-};
 ```
 
 ## Error Handling
 
+### Try-Catch
 ```ouro
 try {
-    let content = FileSystem.ReadAllText("data.txt");
-    let data = parseData(content);
-    processData(data);
-} catch (FileNotFoundException e) {
-    console.WriteLine($"File not found: {e.Message}");
-} catch (ParseException e) {
-    console.WriteLine($"Parse error: {e.Message}");
+    let result = riskyOperation();
+    print($"Success: {result}");
+} catch (SpecificException e) {
+    print($"Specific error: {e.Message}");
 } catch (Exception e) {
-    console.WriteLine($"Unexpected error: {e.Message}");
+    print($"General error: {e.Message}");
 } finally {
-    console.WriteLine("Cleanup complete");
+    print("Cleanup code runs always");
+}
+```
+
+### Throwing Exceptions
+```ouro
+function divide(a: int, b: int): double {
+    if (b == 0) {
+        throw new DivideByZeroException("Cannot divide by zero!");
+    }
+    return (double)a / b;
+}
+
+// Custom exceptions
+class ValidationException : Exception {
+    public string Field { get; }
+    
+    public ValidationException(field: string, message: string) : base(message) {
+        Field = field;
+    }
+}
+
+function validateAge(age: int) {
+    if (age < 0 || age > 150) {
+        throw new ValidationException("age", "Age must be between 0 and 150");
+    }
+}
+```
+
+### Using Statement
+```ouro
+// Automatic resource disposal
+using (let file = File.Open("data.txt")) {
+    let content = file.ReadAllText();
+    print(content);
+}  // file is automatically closed
+
+// Multiple resources
+using (let input = File.OpenRead("input.txt"))
+using (let output = File.OpenWrite("output.txt")) {
+    input.CopyTo(output);
 }
 ```
 
 ## Next Steps
 
-Now that you understand the basics, explore these topics:
+### Learn More
+1. **[Language Reference](../reference/language_reference.md)** - Complete language specification
+2. **[Standard Library](../api/stdlib_api.md)** - Built-in functions and types
+3. **[UI Framework Tutorial](ui_framework.md)** - Build graphical applications
+4. **[Examples](../examples/example_programs.md)** - Sample programs
 
-1. **[Object-Oriented Programming](oop_tutorial.md)** - Classes, inheritance, and interfaces
-2. **[Mathematical Programming](math_tutorial.md)** - Using Greek symbols and math functions
-3. **[Data-Oriented Design](dod_tutorial.md)** - Components, systems, and entities
-4. **[Async Programming](async_tutorial.md)** - Asynchronous operations and parallel processing
-5. **[Advanced Features](advanced_tutorial.md)** - Generics, LINQ, and more
+### Advanced Topics
+- **Async Programming** - Using async/await for concurrent code
+- **Pattern Matching** - Advanced pattern matching techniques
+- **Generics** - Writing reusable, type-safe code
+- **Memory Management** - Low-level memory control
+- **GPU Programming** - CUDA and compute shaders
+- **Contract Programming** - Design by contract
 
-### Example Projects
+### Community Resources
+- **GitHub**: https://github.com/ouroboros-lang/ouroboros
+- **Discord**: Join our community server
+- **Forums**: https://forums.ouroboros-lang.org
+- **Stack Overflow**: Tag your questions with `ouroboros`
 
+### Sample Projects
 Try building these projects to practice:
-
-1. **Calculator** - A simple calculator using pattern matching
-2. **Todo List** - Console app with file persistence
-3. **Game** - Simple text-based game using OOP
-4. **Data Processor** - File processing with parallel operations
-
-### Resources
-
-- [Language Reference](../reference/language_reference.md)
-- [API Documentation](../api/stdlib_api.md)
-- [Example Programs](../examples/example_programs.md)
-- [Community Forum](https://forum.ouroboros-lang.org)
-- [GitHub Repository](https://github.com/ouroboros-lang/ouroboros)
+1. **Calculator** - Basic arithmetic operations
+2. **Todo List** - File I/O and data structures
+3. **Simple Game** - Graphics and user input
+4. **Web Scraper** - Network programming
+5. **Data Analyzer** - Working with CSV/JSON
 
 Happy coding with Ouroboros! 🐍 
