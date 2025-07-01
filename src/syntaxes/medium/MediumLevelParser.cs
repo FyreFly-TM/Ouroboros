@@ -24,76 +24,61 @@ namespace Ouroboros.Syntaxes.Medium
         /// </summary>
         public Statement ParseStatement()
         {
-            Console.WriteLine($"DEBUG: MediumLevelParser.ParseStatement() starting at token: {mainParser.PublicCurrent()?.Type} '{mainParser.PublicCurrent()?.Lexeme}'");
-            
             // Check for common medium-level statements
             if (mainParser.PublicMatch(TokenType.If))
             {
-                Console.WriteLine($"DEBUG: Parsing if statement");
                 return ParseIfStatement();
             }
             
             if (mainParser.PublicMatch(TokenType.While))
             {
-                Console.WriteLine($"DEBUG: Parsing while statement");
                 return ParseWhileStatement();
             }
             
             if (mainParser.PublicMatch(TokenType.For))
             {
-                Console.WriteLine($"DEBUG: Parsing for statement");
                 return ParseForStatement();
             }
             
             if (mainParser.PublicMatch(TokenType.Switch))
             {
-                Console.WriteLine($"DEBUG: Parsing switch statement");
                 return ParseSwitchStatement();
             }
             
             if (mainParser.PublicMatch(TokenType.Try))
             {
-                Console.WriteLine($"DEBUG: Parsing try statement");
                 return ParseTryStatement();
             }
             
             if (mainParser.PublicMatch(TokenType.Return))
             {
-                Console.WriteLine($"DEBUG: Parsing return statement");
                 return ParseReturnStatement();
             }
             
             if (mainParser.PublicMatch(TokenType.Break))
             {
-                Console.WriteLine($"DEBUG: Parsing break statement");
                 return ParseBreakStatement();
             }
             
             if (mainParser.PublicMatch(TokenType.Continue))
             {
-                Console.WriteLine($"DEBUG: Parsing continue statement");
                 return ParseContinueStatement();
             }
             
             if (mainParser.PublicMatch(TokenType.Throw))
             {
-                Console.WriteLine($"DEBUG: Parsing throw statement");
                 return ParseThrowStatement();
             }
             
             // Check for declarations
-            Console.WriteLine($"DEBUG: Checking if current token is type declaration...");
             bool isTypeDecl = IsTypeDeclaration();
-            Console.WriteLine($"DEBUG: IsTypeDeclaration() returned: {isTypeDecl}");
             
             if (isTypeDecl)
             {
-                Console.WriteLine($"DEBUG: Parsing declaration");
                 return ParseDeclaration();
             }
             
             // Otherwise, it's an expression statement
-            Console.WriteLine($"DEBUG: Parsing expression statement");
             return ParseExpressionStatement();
         }
 
@@ -290,24 +275,19 @@ namespace Ouroboros.Syntaxes.Medium
                 string typeName;
                 bool isNullable = false;
                 
-                Console.WriteLine($"DEBUG: MediumLevelParser.ParseDeclaration() starting at token: {mainParser.PublicCurrent()?.Type} '{mainParser.PublicCurrent()?.Lexeme}'");
-                
                 if (mainParser.PublicCheck(TokenType.Var))
                 {
                     typeName = mainParser.PublicAdvance().Lexeme; // "var"
-                    Console.WriteLine($"DEBUG: Parsed var keyword: '{typeName}'");
                 }
                 else
                 {
                     typeName = mainParser.PublicConsume(TokenType.Identifier, "Expected type name").Lexeme;
-                    Console.WriteLine($"DEBUG: Parsed type name: '{typeName}'");
                     
                     // Check for nullable type (e.g., string?)
                     if (mainParser.PublicMatch(TokenType.Question))
                     {
                         isNullable = true;
                         typeName += "?";
-                        Console.WriteLine($"DEBUG: Parsed nullable type: '{typeName}'");
                     }
                 }
                 
@@ -316,32 +296,24 @@ namespace Ouroboros.Syntaxes.Medium
                 if (mainParser.PublicMatch(TokenType.Less))
                 {
                     genericArgs = ParseGenericArguments();
-                    Console.WriteLine($"DEBUG: Parsed generic arguments");
                 }
                 
                 // Parse variable name
-                Console.WriteLine($"DEBUG: About to parse variable name, current token: {mainParser.PublicCurrent()?.Type} '{mainParser.PublicCurrent()?.Lexeme}'");
                 string variableName = mainParser.PublicConsume(TokenType.Identifier, "Expected variable name").Lexeme;
-                Console.WriteLine($"DEBUG: Parsed variable name: '{variableName}'");
                 
                 // Check for initialization
                 Expression initializer = null;
                 if (mainParser.PublicMatch(TokenType.Equal))
                 {
-                    Console.WriteLine($"DEBUG: Parsing initializer expression");
                     initializer = mainParser.PublicParseAssignment(); // Use ParseAssignment to support throw expressions in lambdas
-                    Console.WriteLine($"DEBUG: Parsed initializer expression");
                 }
                 
-                Console.WriteLine($"DEBUG: About to consume semicolon, current token: {mainParser.PublicCurrent()?.Type} '{mainParser.PublicCurrent()?.Lexeme}'");
                 mainParser.PublicConsume(TokenType.Semicolon, "Expected ';' after variable declaration");
-                Console.WriteLine($"DEBUG: Successfully parsed declaration: {typeName} {variableName}");
                 
                 return new VariableDeclaration(typeName, variableName, initializer, genericArgs);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"DEBUG: Exception in ParseDeclaration: {ex.Message}");
                 throw;
             }
         }

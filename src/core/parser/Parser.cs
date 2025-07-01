@@ -45,7 +45,7 @@ namespace Ouroboros.Core.Parser
             catch (System.Exception ex)
             {
                 // Log the error but don't fail the parsing process
-                System.Console.WriteLine($"Warning: Failed to write debug file '{debugFile}': {ex.Message}");
+                // Warning: Failed to write debug file
             }
         }
 
@@ -61,7 +61,7 @@ namespace Ouroboros.Core.Parser
         // Only treat as C# interop if explicitly marked or in interop context
         if (IsCSharpMethodSignature() && !IsNativeOuroborosFunctionWithCSharpSyntax())
         {
-            Console.WriteLine($"DEBUG: Detected C# interop method signature, parsing mixed format");
+            // Detected C# interop method signature, parsing mixed format
             var methodBody = ParseCSharpMethodWithOuroborosBody();
             statements.Add(methodBody);
             continue;
@@ -174,8 +174,8 @@ namespace Ouroboros.Core.Parser
                         // Check for parameter list
                         if (lookAhead < _tokens.Count && _tokens[lookAhead].Type == TokenType.LeftParen)
                         {
-                            Console.WriteLine($"DEBUG: IsCSharpMethodSignature detected at line {Current().Line}");
-                            return true;
+                                                    // IsCSharpMethodSignature detected
+                        return true;
                         }
                     }
                 }
@@ -186,12 +186,12 @@ namespace Ouroboros.Core.Parser
 
         private Statement ParseCSharpMethodWithOuroborosBody()
         {
-            Console.WriteLine($"DEBUG: ParseCSharpMethodWithOuroborosBody starting");
+            // ParseCSharpMethodWithOuroborosBody starting
             
             // Skip the C# method signature by consuming tokens until we reach the opening brace
             while (!Check(TokenType.LeftBrace) && !IsAtEnd())
             {
-                Console.WriteLine($"DEBUG: Skipping C# signature token: {Current().Type} '{Current().Lexeme}'");
+                // Skipping C# signature token
                 Advance();
             }
             

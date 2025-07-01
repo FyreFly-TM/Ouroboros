@@ -37,7 +37,7 @@ namespace Ouroboros.Syntaxes.High
             // Log current token for debugging high-level parsing
             if (Environment.GetEnvironmentVariable("OURO_DEBUG") == "1")
             {
-                Console.WriteLine($"[DEBUG] HighLevelParser: Current token: {Current().Type} '{Current().Lexeme}' at {Current().Line}:{Current().Column}");
+                // HighLevelParser: Current token info available via Current()
             }
             
             // Handle natural language if statements
@@ -160,7 +160,7 @@ namespace Ouroboros.Syntaxes.High
                     new IdentifierExpression(CreateToken(TokenType.Identifier, "ElementOf", null)),
                     new List<Expression> { left, right }
                 );
-                Console.WriteLine($"DEBUG: Generated ElementOf call for '∈' operator");
+                                    // Generated ElementOf call for '∈' operator
                 return elementOfCall;
             }
             

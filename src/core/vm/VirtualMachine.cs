@@ -34,6 +34,7 @@ namespace Ouroboros.Core.VM
         private CompiledProgram compiledProgram;
         private SymbolTable symbolTable;
         private Dictionary<int, GeneratorState> generatorStates = new Dictionary<int, GeneratorState>();
+        private bool debugMode;
         
         // Debugger support properties
         public int ProgramCounter => instructionPointer;
@@ -59,6 +60,9 @@ namespace Ouroboros.Core.VM
             
             // Register built-in functions
             RegisterBuiltInFunctions();
+            
+            // Initialize debug mode from environment variable
+            debugMode = Environment.GetEnvironmentVariable("OURO_DEBUG") == "true";
         }
         
         /// <summary>
@@ -107,7 +111,7 @@ namespace Ouroboros.Core.VM
         private void ExecuteInstruction()
         {
             var opcode = (Opcode)instructions[instructionPointer++];
-            Console.WriteLine($"DEBUG: Executing opcode {opcode} at IP {instructionPointer - 1}");
+            LogDebug($"Executing opcode {opcode} at IP {instructionPointer - 1}");
             
             switch (opcode)
             {
@@ -131,7 +135,7 @@ namespace Ouroboros.Core.VM
                         var offset = ReadInt32();
                         if (operandStack.Count == 0)
                         {
-                            Console.WriteLine("DEBUG: JumpIfTrue - Stack empty, treating as false");
+                            LogDebug("JumpIfTrue - Stack empty, treating as false");
                             break;
                         }
                         var conditionValue = operandStack.Pop();
@@ -146,7 +150,7 @@ namespace Ouroboros.Core.VM
                         var offset = ReadInt32();
                         if (operandStack.Count == 0)
                         {
-                            Console.WriteLine("DEBUG: JumpIfFalse - Stack empty, treating as false");
+                            LogDebug("JumpIfFalse - Stack empty, treating as false");
                             instructionPointer += offset;
                             break;
                         }
@@ -358,7 +362,7 @@ namespace Ouroboros.Core.VM
                 case Opcode.LoadConstant:
                     {
                         var index = ReadInt32();
-                        Console.WriteLine($"DEBUG: LoadConstant trying to access index {index}");
+                        LogDebug($"LoadConstant trying to access index {index}");
                         operandStack.Push(constantPool[index]);
                     }
                     break;
@@ -385,10 +389,10 @@ namespace Ouroboros.Core.VM
                         var index = ReadInt32();
                         if (index >= globals.Count || globals[index] == null)
                         {
-                            Console.WriteLine($"DEBUG: LoadGlobal[{index}] - value is null, globals.Count = {globals.Count}");
+                            LogDebug($"LoadGlobal[{index}] - value is null, globals.Count = {globals.Count}");
                         }
                         var value = globals[index];
-                        Console.WriteLine($"DEBUG: LoadGlobal[{index}] = '{value}'");
+                        LogDebug($"LoadGlobal[{index}] = '{value}'");
                         operandStack.Push(value);
                     }
                     break;
@@ -437,7 +441,7 @@ namespace Ouroboros.Core.VM
                             
                         var oldValue = globals[index];
                         globals[index] = value;
-                        Console.WriteLine($"DEBUG: StoreGlobal[{index}] = '{value}' (was: '{oldValue}')");
+                        LogDebug($"StoreGlobal[{index}] = '{value}' (was: '{oldValue}')");
                     }
                     break;
                     
@@ -575,7 +579,7 @@ namespace Ouroboros.Core.VM
                     {
                         if (operandStack.Count == 0)
                         {
-                            Console.WriteLine("DEBUG: LogicalNot - Stack empty, pushing true");
+                            LogDebug("LogicalNot - Stack empty, pushing true");
                             operandStack.Push(true);
                             break;
                         }
@@ -753,7 +757,7 @@ namespace Ouroboros.Core.VM
                             var actualArgs = new object[argCount - 1];
                             Array.Copy(args, 1, actualArgs, 0, argCount - 1);
                             
-                            Console.WriteLine($"DEBUG: VM resolving user function '{functionName}' at runtime");
+                            LogDebug($"VM resolving user function '{functionName}' at runtime");
                             
                             // Look up function in function table by name
                             var function = ResolveUserFunction(functionName);
@@ -3227,6 +3231,13 @@ namespace Ouroboros.Core.VM
         }
         
         #endregion
+
+        // Add debug logging method
+        private void LogDebug(string message)
+        {
+            if (debugMode)
+                Console.WriteLine($"[VM] {message}");
+        }
     }
     
     /// <summary>
