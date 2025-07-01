@@ -557,15 +557,14 @@ namespace Ouroboros.Runtime
                 
                 for (int i = allocations.Count - 1; i >= 0; i--)
                 {
-                    if (!allocations[i].IsAlive)
+                    var weakRef = allocations[i];
+                    if (!weakRef.IsAlive)
                     {
                         allocations.RemoveAt(i);
                         deadCount++;
                         
-                        // Estimate freed memory (would need actual size tracking)
-                        freedMemory += 1024; // Placeholder
-                        // Calculate actual object size
-                        freedMemory += CalculateObjectSize(allocations[i].Target.GetType());
+                        // Estimate freed memory since we can't access the dead object
+                        freedMemory += 1024; // Default estimate
                     }
                 }
                 
@@ -698,12 +697,15 @@ namespace Ouroboros.Runtime
                     if (weakRef.IsAlive)
                     {
                         liveObjects++;
-                        // Would need actual object size tracking
-                        liveMemory += 1024; // Placeholder
                         var obj = weakRef.Target;
                         if (obj != null)
                         {
                             liveMemory += CalculateObjectSize(obj.GetType());
+                        }
+                        else
+                        {
+                            // Object was collected between IsAlive check and access
+                            liveMemory += 1024; // Default estimate
                         }
                     }
                 }
