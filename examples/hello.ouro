@@ -1,0 +1,114 @@
+// Hello World in OUROBOROS - Demonstrating multi-level syntax
+using Ouroboros.StdLib.System;
+using Ouroboros.StdLib.Math;
+
+namespace Examples
+{
+    class HelloWorld
+    {
+        // High-level natural language syntax
+        @high
+        public static void NaturalLanguageDemo()
+        {
+            print $"=== NATURAL LANGUAGE SYNTAX ==="
+            
+            name := "OUROBOROS"
+            version := 2.0
+            
+            if version is greater than 1.0 then
+                print $"Welcome to {name} version {version}!"
+            end if
+            
+            features := ["mathematical notation", "zero overhead", "GPU support"]
+            
+            for each feature in features
+                print $"  ✓ {feature}"
+            end for
+        }
+        
+        // Medium-level modern syntax
+        @medium
+        public static void ModernSyntaxDemo()
+        {
+            print $"\n=== MODERN SYNTAX FEATURES ==="
+            
+            // Power operator
+            var result = 2 ** 8;
+            print $"2^8 = {result}"
+            
+            // Null-aware operators
+            string? nullable = null;
+            var safe = nullable ?? "default";
+            print $"Safe string: {safe}"
+            
+            // Pattern matching
+            var point = (3, 4);
+            var classification = point match {
+                (0, 0) => "Origin",
+                (x, 0) => $"On X axis at {x}",
+                (0, y) => $"On Y axis at {y}",
+                (x, y) when x == y => "On diagonal",
+                _ => "Somewhere else"
+            };
+            print $"Point {point} is: {classification}"
+        }
+        
+        // Low-level systems programming
+        @low
+        public static void SystemsDemo()
+        {
+            print $"\n=== SYSTEMS PROGRAMMING ==="
+            
+            // Zero-cost abstraction
+            @inline(always)
+            struct Vec3 {
+                x, y, z: float;
+                
+                operator +(other: Vec3) -> Vec3 {
+                    return Vec3 { x + other.x, y + other.y, z + other.z };
+                }
+            }
+            
+            var v1 = Vec3 { 1.0, 2.0, 3.0 };
+            var v2 = Vec3 { 4.0, 5.0, 6.0 };
+            var v3 = v1 + v2;
+            
+            print $"Vector addition: ({v1.x}, {v1.y}, {v1.z}) + ({v2.x}, {v2.y}, {v2.z}) = ({v3.x}, {v3.y}, {v3.z})"
+        }
+        
+        // Mathematical notation
+        public static void MathematicsDemo()
+        {
+            print $"\n=== MATHEMATICAL NOTATION ==="
+            
+            // Using mathematical symbols
+            var θ = π / 4;
+            var sin_θ = Sin(θ);
+            var cos_θ = Cos(θ);
+            
+            print $"θ = π/4 = {θ}"
+            print $"sin(θ) = {sin_θ}"
+            print $"cos(θ) = {cos_θ}"
+            
+            // Complex expressions
+            var e_iθ = Exp(i * θ);
+            print $"e^(iθ) = {e_iθ}"
+        }
+        
+        public static void Main(string[] args)
+        {
+            print $"========================================"
+            print $"OUROBOROS LANGUAGE DEMONSTRATION"
+            print $"The Revolutionary C/C++ Replacement"
+            print $"========================================"
+            
+            NaturalLanguageDemo();
+            ModernSyntaxDemo();
+            SystemsDemo();
+            MathematicsDemo();
+            
+            print $"\n✅ All demonstrations completed!"
+            print $"OUROBOROS: More control than C, safer than Rust!"
+        }
+    }
+} 
