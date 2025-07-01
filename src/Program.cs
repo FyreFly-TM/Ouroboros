@@ -135,8 +135,38 @@ namespace Ouroboros
                     }
                     Console.WriteLine();
                     
+                    // Convert Compiler.CompiledProgram to VM.CompiledProgram
+                    var vmProgram = new Ouroboros.Core.VM.CompiledProgram
+                    {
+                        Bytecode = new Ouroboros.Core.VM.Bytecode
+                        {
+                            Instructions = compiledProgram.Bytecode.Code.ToArray(),
+                            ConstantPool = compiledProgram.Bytecode.Constants.ToArray(),
+                            Functions = new Ouroboros.Core.VM.FunctionInfo[0],
+                            Classes = new Ouroboros.Core.VM.ClassInfo[0],
+                            Interfaces = new Ouroboros.Core.VM.InterfaceInfo[0],
+                            Structs = new Ouroboros.Core.VM.StructInfo[0],
+                            Enums = new Ouroboros.Core.VM.EnumInfo[0],
+                            Components = new Ouroboros.Core.VM.ComponentInfo[0],
+                            Systems = new Ouroboros.Core.VM.SystemInfo[0],
+                            Entities = new Ouroboros.Core.VM.EntityInfo[0],
+                            ExceptionHandlers = new Ouroboros.Core.VM.ExceptionHandler[0]
+                        },
+                        SymbolTable = new Ouroboros.Core.VM.SymbolTable(),
+                        SourceFile = compiledProgram.SourceFile,
+                        Metadata = new Ouroboros.Core.VM.ProgramMetadata
+                        {
+                            Version = "1.0.0",
+                            CompilerVersion = compiledProgram.Metadata?.Version ?? "1.0.0",
+                            OptimizationLevel = 1,
+                            SourceFiles = new[] { compiledProgram.SourceFile },
+                            CompileTime = compiledProgram.Metadata?.CompileTime ?? DateTime.Now,
+                            TargetPlatform = "Windows"
+                        }
+                    };
+                    
                     // Execute the compiled program
-                    var result = runtime.Execute(compiledProgram);
+                    var result = runtime.Execute(vmProgram);
                     
                     Console.WriteLine();
                     if (result != null)

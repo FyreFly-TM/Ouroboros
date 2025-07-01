@@ -910,13 +910,13 @@ namespace Ouroboros.Analysis
             {
                 switch (node)
                 {
-                    case UnitLiteral unitLit:
+                    case LiteralExpression litExpr when litExpr.Value is Tokens.UnitLiteral unitLit:
                         // Ensure the unit is registered
                         if (!model.Units.Any(u => u.Symbol == unitLit.Unit || u.Name == unitLit.Unit))
                         {
-                            diagnostics.ReportWarning(
+                            diagnostics.ReportInfo(
                                 $"Unknown unit '{unitLit.Unit}' used in literal",
-                                new SourceLocation { Line = unitLit.Line, Column = unitLit.Column }
+                                new SourceLocation { Line = 1, Column = 1 }
                             );
                         }
                         break;

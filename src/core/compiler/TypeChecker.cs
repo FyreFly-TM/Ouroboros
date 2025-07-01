@@ -27,7 +27,7 @@ namespace Ouroboros.Core.Compiler
             scopes.Push(new Dictionary<string, TypeNode>()); // Global scope
         }
         
-        public Program Check(Program ast)
+        public Ouroboros.Core.AST.Program Check(Ouroboros.Core.AST.Program ast)
         {
             ast.Accept(this);
             
@@ -408,7 +408,7 @@ namespace Ouroboros.Core.Compiler
             var objectType = expr.Object.Accept(this);
             
             // Handle array/string length
-            if (expr.Member == "Length" || expr.Member == "length")
+            if (expr.MemberName == "Length" || expr.MemberName == "length")
             {
                 if (objectType is ArrayTypeNode || objectType?.Name == "string")
                     return typeRegistry.Int;
@@ -419,7 +419,7 @@ namespace Ouroboros.Core.Compiler
             {
                 // Look up member in type
                 // This would require type metadata in a full implementation
-                return new TypeNode($"{type.Name}.{expr.Member}");
+                return new TypeNode($"{type.Name}.{expr.MemberName}");
             }
             
             return new TypeNode("dynamic");
@@ -516,7 +516,7 @@ namespace Ouroboros.Core.Compiler
             }
             
             // Build generic type name
-            var typeArgs = expr.TypeArguments.Select(t => t.Name).ToArray();
+            var typeArgs = expr.GenericTypeArguments.Select(t => t.Name).ToArray();
             return new TypeNode($"{expr.Name}<{string.Join(", ", typeArgs)}>");
         }
         
@@ -605,6 +605,9 @@ namespace Ouroboros.Core.Compiler
         public TypeNode Void { get; } = new TypeNode("void");
         public TypeNode Null { get; } = new TypeNode("null");
         public TypeNode Type { get; } = new TypeNode("Type");
+        public TypeNode Long { get; } = new TypeNode("long");
+        public TypeNode Byte { get; } = new TypeNode("byte");
+        public TypeNode Short { get; } = new TypeNode("short");
     }
     
     /// <summary>

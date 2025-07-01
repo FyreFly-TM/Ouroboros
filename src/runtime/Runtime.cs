@@ -20,21 +20,22 @@ namespace Ouroboros.Runtime
         private readonly ExceptionHandler exceptionHandler;
         private readonly ModuleLoader moduleLoader;
         private readonly JitCompiler? jitCompiler;
-        private Stack<object> stack = new Stack<object>();
-        private Dictionary<string, object> globals = new Dictionary<string, object>();
+        internal readonly RuntimeOptions options;
+        internal Stack<object> stack = new Stack<object>();
+        internal Dictionary<string, object> globals = new Dictionary<string, object>();
         private List<object> constants = new List<object>();
         
         public Runtime(RuntimeOptions? options = null)
         {
-            options = options ?? new RuntimeOptions();
+            this.options = options ?? new RuntimeOptions();
             
             vm = new VirtualMachine();
-            gc = new GarbageCollector(options.GcOptions);
-            scheduler = new ThreadScheduler(options.MaxThreads);
+            gc = new GarbageCollector(this, this.options.GcOptions);
+            scheduler = new ThreadScheduler(this.options.MaxThreads);
             exceptionHandler = new ExceptionHandler();
             moduleLoader = new ModuleLoader();
             
-            if (options.EnableJit)
+            if (this.options.EnableJit)
             {
                 jitCompiler = new JitCompiler();
             }
@@ -251,11 +252,24 @@ namespace Ouroboros.Runtime
         public object Execute(byte[] bytecode)
         {
             // This method is deprecated - use Execute(CompiledProgram) instead
-            var bytecodeObj = new Compiler.Bytecode { Code = bytecode.ToList() };
+            var bytecodeObj = new Ouroboros.Core.VM.Bytecode
+            {
+                Instructions = bytecode,
+                ConstantPool = new object[0],
+                Functions = new Ouroboros.Core.VM.FunctionInfo[0],
+                Classes = new Ouroboros.Core.VM.ClassInfo[0],
+                Interfaces = new Ouroboros.Core.VM.InterfaceInfo[0],
+                Structs = new Ouroboros.Core.VM.StructInfo[0],
+                Enums = new Ouroboros.Core.VM.EnumInfo[0],
+                Components = new Ouroboros.Core.VM.ComponentInfo[0],
+                Systems = new Ouroboros.Core.VM.SystemInfo[0],
+                Entities = new Ouroboros.Core.VM.EntityInfo[0],
+                ExceptionHandlers = new Ouroboros.Core.VM.ExceptionHandler[0]
+            };
             var compiledProgram = new Ouroboros.Core.VM.CompiledProgram 
             { 
                 Bytecode = bytecodeObj,
-                SymbolTable = new Compiler.SymbolTable()
+                SymbolTable = new Ouroboros.Core.VM.SymbolTable()
             };
             return vm.Execute(compiledProgram);
         }
@@ -324,6 +338,7 @@ namespace Ouroboros.Runtime
     /// </summary>
     public class GarbageCollector
     {
+        private readonly Runtime runtime;
         private readonly GcOptions options;
         private readonly Thread gcThread;
         private readonly object gcLock = new object();
@@ -332,8 +347,9 @@ namespace Ouroboros.Runtime
         private long totalFreed;
         private bool running;
         
-        public GarbageCollector(GcOptions options)
+        public GarbageCollector(Runtime runtime, GcOptions options)
         {
+            this.runtime = runtime;
             this.options = options;
             allocations = new List<WeakReference>();
             gcThread = new Thread(GcThreadProc) { IsBackground = true };
@@ -437,7 +453,7 @@ namespace Ouroboros.Runtime
             
             // Add GC roots
             // 1. Global variables
-            foreach (var global in globals.Values)
+            foreach (var global in runtime.globals.Values)
             {
                 if (global != null && !marked.Contains(global))
                 {
@@ -446,7 +462,7 @@ namespace Ouroboros.Runtime
             }
             
             // 2. Stack values
-            foreach (var stackValue in stack)
+            foreach (var stackValue in runtime.stack)
             {
                 if (stackValue != null && !marked.Contains(stackValue))
                 {
@@ -608,7 +624,7 @@ namespace Ouroboros.Runtime
             };
             
             // Could emit GC events or update performance counters here
-            if (options.EnableProfiling)
+            if (runtime.options.EnableProfiling)
             {
                 Console.WriteLine($"[GC Stats] Live: {liveObjects} objects, {liveMemory / 1024}KB, Heap: {gcStats.HeapSize / 1024}KB");
             }
