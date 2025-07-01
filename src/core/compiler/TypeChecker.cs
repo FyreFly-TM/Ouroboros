@@ -81,6 +81,32 @@ namespace Ouroboros.Core.Compiler
             errors.Add(new TypeCheckError(message, line, column));
         }
         
+        private void AddErrorWithSuggestion(string message, string suggestion, int line, int column)
+        {
+            var fullMessage = $"{message}. {suggestion}";
+            errors.Add(new TypeCheckError(fullMessage, line, column));
+        }
+        
+        private string FormatType(TypeNode type)
+        {
+            if (type == null) return "<unknown>";
+            
+            if (type.IsArray)
+                return $"{type.Name}[{new string(',', type.ArrayRank - 1)}]";
+            if (type.IsNullable)
+                return $"{type.Name}?";
+            if (type.IsPointer)
+                return $"{type.Name}*";
+            if (type is FunctionTypeNode funcType)
+                return $"({string.Join(", ", funcType.ParameterTypes.Select(FormatType))}) => {FormatType(funcType.ReturnType)}";
+            if (type is ArrayTypeNode arrayType)
+                return $"{FormatType(arrayType.ElementType)}[]";
+            if (type is UnitTypeNode unitType)
+                return $"{FormatType(unitType.BaseType)}[{unitType.Unit}]";
+            
+            return type.Name;
+        }
+        
         // Visitor implementations
         public TypeNode VisitProgram(Ouroboros.Core.AST.Program program) 
         { 
@@ -107,8 +133,10 @@ namespace Ouroboros.Core.Compiler
                     if (expr.Operator.Type == TokenType.Plus && 
                         (leftType?.Name == "string" || rightType?.Name == "string"))
                         return typeRegistry.String;
-                    AddError($"Invalid operands for {expr.Operator.Lexeme}: {leftType?.Name} and {rightType?.Name}", 
-                            expr.Line, expr.Column);
+                    AddErrorWithSuggestion(
+                        $"Cannot apply operator '{expr.Operator.Lexeme}' to operands of type '{FormatType(leftType)}' and '{FormatType(rightType)}'",
+                        "Ensure both operands are numeric or use appropriate type conversions",
+                        expr.Line, expr.Column);
                     return typeRegistry.Unknown;
                     
                 case TokenType.Equal:
@@ -117,13 +145,27 @@ namespace Ouroboros.Core.Compiler
                 case TokenType.Greater:
                 case TokenType.LessEqual:
                 case TokenType.GreaterEqual:
+                    if (!AreTypesComparable(leftType, rightType))
+                    {
+                        AddErrorWithSuggestion(
+                            $"Cannot compare values of type '{FormatType(leftType)}' and '{FormatType(rightType)}'",
+                            "Values must be of comparable types (numeric, string, or same type)",
+                            expr.Line, expr.Column);
+                    }
                     return typeRegistry.Bool;
                     
                 case TokenType.LogicalAnd:
                 case TokenType.LogicalOr:
-                    if (leftType?.Name == "bool" && rightType?.Name == "bool")
-                        return typeRegistry.Bool;
-                    AddError("Logical operators require boolean operands", expr.Line, expr.Column);
+                    if (leftType?.Name != "bool")
+                        AddErrorWithSuggestion(
+                            $"Left operand of '{expr.Operator.Lexeme}' must be boolean, but was '{FormatType(leftType)}'",
+                            "Consider using a comparison operator or converting to boolean",
+                            expr.Left.Line, expr.Left.Column);
+                    if (rightType?.Name != "bool")
+                        AddErrorWithSuggestion(
+                            $"Right operand of '{expr.Operator.Lexeme}' must be boolean, but was '{FormatType(rightType)}'",
+                            "Consider using a comparison operator or converting to boolean",
+                            expr.Right.Line, expr.Right.Column);
                     return typeRegistry.Bool;
                     
                 default:
@@ -141,20 +183,29 @@ namespace Ouroboros.Core.Compiler
                 case TokenType.Plus:
                     if (IsNumericType(operandType))
                         return operandType;
-                    AddError($"Unary {expr.Operator.Lexeme} requires numeric operand", expr.Line, expr.Column);
+                    AddErrorWithSuggestion(
+                        $"Unary '{expr.Operator.Lexeme}' cannot be applied to operand of type '{FormatType(operandType)}'",
+                        "This operator requires a numeric operand",
+                        expr.Line, expr.Column);
                     return typeRegistry.Unknown;
                     
                 case TokenType.LogicalNot:
                     if (operandType?.Name == "bool")
                         return typeRegistry.Bool;
-                    AddError("Logical not requires boolean operand", expr.Line, expr.Column);
+                    AddErrorWithSuggestion(
+                        $"Logical not (!) cannot be applied to operand of type '{FormatType(operandType)}'",
+                        "Use a boolean expression or convert to boolean first",
+                        expr.Line, expr.Column);
                     return typeRegistry.Bool;
                     
                 case TokenType.Increment:
                 case TokenType.Decrement:
                     if (IsNumericType(operandType))
                         return operandType;
-                    AddError($"{expr.Operator.Lexeme} requires numeric operand", expr.Line, expr.Column);
+                    AddErrorWithSuggestion(
+                        $"'{expr.Operator.Lexeme}' cannot be applied to operand of type '{FormatType(operandType)}'",
+                        "This operator can only be used with numeric types",
+                        expr.Line, expr.Column);
                     return typeRegistry.Unknown;
                     
                 default:
@@ -191,10 +242,66 @@ namespace Ouroboros.Core.Compiler
             var type = LookupVariable(expr.Name);
             if (type == null)
             {
-                AddError($"Undefined variable '{expr.Name}'", expr.Line, expr.Column);
+                // Try to provide a helpful suggestion
+                var suggestion = "";
+                var similarName = FindSimilarVariableName(expr.Name);
+                if (similarName != null)
+                {
+                    suggestion = $"Did you mean '{similarName}'?";
+                }
+                else
+                {
+                    suggestion = "Make sure the variable is declared before use";
+                }
+                
+                AddErrorWithSuggestion(
+                    $"The name '{expr.Name}' does not exist in the current context",
+                    suggestion,
+                    expr.Line, expr.Column);
                 return typeRegistry.Unknown;
             }
             return type;
+        }
+        
+        private string FindSimilarVariableName(string name)
+        {
+            // Simple edit distance check for typos
+            foreach (var scope in scopes)
+            {
+                foreach (var varName in scope.Keys)
+                {
+                    if (LevenshteinDistance(name, varName) <= 2)
+                    {
+                        return varName;
+                    }
+                }
+            }
+            return null;
+        }
+        
+        private int LevenshteinDistance(string s, string t)
+        {
+            int n = s.Length;
+            int m = t.Length;
+            int[,] d = new int[n + 1, m + 1];
+
+            if (n == 0) return m;
+            if (m == 0) return n;
+
+            for (int i = 0; i <= n; d[i, 0] = i++) { }
+            for (int j = 0; j <= m; d[0, j] = j++) { }
+
+            for (int i = 1; i <= n; i++)
+            {
+                for (int j = 1; j <= m; j++)
+                {
+                    int cost = (t[j - 1] == s[i - 1]) ? 0 : 1;
+                    d[i, j] = Math.Min(
+                        Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1),
+                        d[i - 1, j - 1] + cost);
+                }
+            }
+            return d[n, m];
         }
         
         public TypeNode VisitAssignmentExpression(AssignmentExpression expr) 
@@ -204,7 +311,10 @@ namespace Ouroboros.Core.Compiler
             
             if (targetType != null && valueType != null && !AreTypesCompatible(targetType, valueType))
             {
-                AddError($"Cannot assign {valueType.Name} to {targetType.Name}", expr.Line, expr.Column);
+                AddErrorWithSuggestion(
+                    $"Cannot implicitly convert type '{FormatType(valueType)}' to '{FormatType(targetType)}'",
+                    $"Consider using an explicit cast or changing the target type",
+                    expr.Line, expr.Column);
             }
             
             return valueType;
@@ -219,11 +329,30 @@ namespace Ouroboros.Core.Compiler
                 var initType = stmt.Initializer.Accept(this);
                 if (!AreTypesCompatible(declaredType, initType))
                 {
-                    AddError($"Cannot initialize {declaredType.Name} with {initType?.Name}", stmt.Line, stmt.Column);
+                    AddErrorWithSuggestion(
+                        $"Cannot initialize variable of type '{FormatType(declaredType)}' with value of type '{FormatType(initType)}'",
+                        $"Either change the variable type to '{FormatType(initType)}' or convert the initializer",
+                        stmt.Line, stmt.Column);
                 }
             }
+            else if (stmt.IsConst)
+            {
+                AddError("A const field requires a value to be provided", stmt.Line, stmt.Column);
+            }
             
-            DefineVariable(stmt.Name, declaredType);
+            // Check for variable redefinition
+            if (scopes.Peek().ContainsKey(stmt.Name))
+            {
+                AddErrorWithSuggestion(
+                    $"A local variable named '{stmt.Name}' is already defined in this scope",
+                    "Use a different variable name or remove the duplicate declaration",
+                    stmt.Line, stmt.Column);
+            }
+            else
+            {
+                DefineVariable(stmt.Name, declaredType);
+            }
+            
             return null;
         }
         
@@ -232,7 +361,10 @@ namespace Ouroboros.Core.Compiler
             var condType = stmt.Condition.Accept(this);
             if (condType?.Name != "bool")
             {
-                AddError("If condition must be boolean", stmt.Line, stmt.Column);
+                AddErrorWithSuggestion(
+                    $"Condition must evaluate to boolean, but was '{FormatType(condType)}'",
+                    "Use a comparison operator or boolean expression",
+                    stmt.Line, stmt.Column);
             }
             
             stmt.ThenBranch.Accept(this);
@@ -254,8 +386,13 @@ namespace Ouroboros.Core.Compiler
             EnterScope();
             
             // Define parameters
+            var paramNames = new HashSet<string>();
             foreach (var param in decl.Parameters)
             {
+                if (!paramNames.Add(param.Name))
+                {
+                    AddError($"Duplicate parameter name '{param.Name}'", decl.Line, decl.Column);
+                }
                 DefineVariable(param.Name, param.Type);
             }
             
@@ -264,6 +401,15 @@ namespace Ouroboros.Core.Compiler
             currentReturnType = decl.ReturnType;
             
             decl.Body.Accept(this);
+            
+            // Check if non-void function has return path
+            if (currentReturnType?.Name != "void" && !HasReturnPath(decl.Body))
+            {
+                AddErrorWithSuggestion(
+                    $"Not all code paths return a value in function '{decl.Name}'",
+                    $"Add a return statement that returns a value of type '{FormatType(currentReturnType)}'",
+                    decl.Line, decl.Column);
+            }
             
             currentReturnType = previousReturnType;
             ExitScope();
@@ -281,6 +427,22 @@ namespace Ouroboros.Core.Compiler
             return null;
         }
         
+        private bool HasReturnPath(BlockStatement block)
+        {
+            // Simple check - a more sophisticated implementation would do control flow analysis
+            foreach (var stmt in block.Statements)
+            {
+                if (stmt is ReturnStatement)
+                    return true;
+                if (stmt is IfStatement ifStmt && 
+                    ifStmt.ElseBranch != null &&
+                    HasReturnPath(ifStmt.ThenBranch as BlockStatement) &&
+                    HasReturnPath(ifStmt.ElseBranch as BlockStatement))
+                    return true;
+            }
+            return false;
+        }
+        
         public TypeNode VisitReturnStatement(ReturnStatement stmt) 
         { 
             if (stmt.Value != null)
@@ -288,13 +450,28 @@ namespace Ouroboros.Core.Compiler
                 var returnType = stmt.Value.Accept(this);
                 if (currentReturnType != null && !AreTypesCompatible(currentReturnType, returnType))
                 {
-                    AddError($"Return type mismatch: expected {currentReturnType.Name}, got {returnType?.Name}", 
+                    if (currentReturnType.Name == "void")
+                    {
+                        AddErrorWithSuggestion(
+                            $"Cannot return a value from a void function",
+                            "Remove the return value or change the function return type",
                             stmt.Line, stmt.Column);
+                    }
+                    else
+                    {
+                        AddErrorWithSuggestion(
+                            $"Cannot return '{FormatType(returnType)}' from function declared to return '{FormatType(currentReturnType)}'",
+                            $"Return a value of type '{FormatType(currentReturnType)}' or change the function signature",
+                            stmt.Line, stmt.Column);
+                    }
                 }
             }
             else if (currentReturnType?.Name != "void")
             {
-                AddError("Missing return value", stmt.Line, stmt.Column);
+                AddErrorWithSuggestion(
+                    $"Must return a value of type '{FormatType(currentReturnType)}'",
+                    "Add a return value or change the function to return void",
+                    stmt.Line, stmt.Column);
             }
             return null;
         }
@@ -308,8 +485,11 @@ namespace Ouroboros.Core.Compiler
                 // Check argument count
                 if (expr.Arguments.Count != funcType.ParameterTypes.Count)
                 {
-                    AddError($"Wrong number of arguments: expected {funcType.ParameterTypes.Count}, got {expr.Arguments.Count}", 
-                            expr.Line, expr.Column);
+                    var funcName = expr.Callee is IdentifierExpression id ? id.Name : "function";
+                    AddErrorWithSuggestion(
+                        $"'{funcName}' expects {funcType.ParameterTypes.Count} arguments but was given {expr.Arguments.Count}",
+                        $"Provide exactly {funcType.ParameterTypes.Count} arguments",
+                        expr.Line, expr.Column);
                 }
                 else
                 {
@@ -319,8 +499,10 @@ namespace Ouroboros.Core.Compiler
                         var argType = expr.Arguments[i].Accept(this);
                         if (!AreTypesCompatible(funcType.ParameterTypes[i], argType))
                         {
-                            AddError($"Argument {i + 1} type mismatch: expected {funcType.ParameterTypes[i].Name}, got {argType?.Name}", 
-                                    expr.Line, expr.Column);
+                            AddErrorWithSuggestion(
+                                $"Argument {i + 1}: cannot convert from '{FormatType(argType)}' to '{FormatType(funcType.ParameterTypes[i])}'",
+                                $"Expected type '{FormatType(funcType.ParameterTypes[i])}'",
+                                expr.Arguments[i].Line, expr.Arguments[i].Column);
                         }
                     }
                 }
@@ -343,11 +525,34 @@ namespace Ouroboros.Core.Compiler
                         case "length":
                             if (expr.Arguments.Count == 1)
                             {
-                                expr.Arguments[0].Accept(this);
-                                return typeRegistry.Int;
+                                var argType = expr.Arguments[0].Accept(this);
+                                if (argType is ArrayTypeNode || argType?.Name == "string")
+                                    return typeRegistry.Int;
+                                else
+                                    AddErrorWithSuggestion(
+                                        $"'{id.Name}' can only be used with arrays or strings, not '{FormatType(argType)}'",
+                                        "Pass an array or string to this function",
+                                        expr.Line, expr.Column);
                             }
-                            break;
+                            else
+                            {
+                                AddError($"'{id.Name}' expects exactly 1 argument", expr.Line, expr.Column);
+                            }
+                            return typeRegistry.Int;
                     }
+                }
+                
+                // Unknown function
+                if (expr.Callee is IdentifierExpression unknownId)
+                {
+                    AddErrorWithSuggestion(
+                        $"'{unknownId.Name}' is not a function or is not callable",
+                        "Check that the function is defined and in scope",
+                        expr.Line, expr.Column);
+                }
+                else
+                {
+                    AddError($"Expression is not callable", expr.Line, expr.Column);
                 }
                 
                 foreach (var a in expr.Arguments) 
@@ -421,6 +626,14 @@ namespace Ouroboros.Core.Compiler
             {
                 if (objectType is ArrayTypeNode || objectType?.Name == "string")
                     return typeRegistry.Int;
+                else
+                {
+                    AddErrorWithSuggestion(
+                        $"'{expr.MemberName}' is not a member of type '{FormatType(objectType)}'",
+                        "This property is only available on arrays and strings",
+                        expr.Line, expr.Column);
+                    return typeRegistry.Unknown;
+                }
             }
             
             // Handle type member access
@@ -447,12 +660,15 @@ namespace Ouroboros.Core.Compiler
             var elementType = expr.Elements[0].Accept(this);
             
             // Check all elements have compatible types
-            foreach (var element in expr.Elements.Skip(1))
+            for (int i = 1; i < expr.Elements.Count; i++)
             {
-                var elemType = element.Accept(this);
+                var elemType = expr.Elements[i].Accept(this);
                 if (!AreTypesCompatible(elementType, elemType))
                 {
-                    AddError($"Array elements must have consistent types", expr.Line, expr.Column);
+                    AddErrorWithSuggestion(
+                        $"Array element at index {i} has type '{FormatType(elemType)}' but expected '{FormatType(elementType)}'",
+                        "Ensure all array elements have the same type or use explicit casts",
+                        expr.Elements[i].Line, expr.Elements[i].Column);
                     // Try to find common base type
                     elementType = FindCommonType(elementType, elemType);
                 }
@@ -566,9 +782,57 @@ namespace Ouroboros.Core.Compiler
         public TypeNode VisitMathExpression(MathExpression expr) { foreach (var o in expr.Operands) o.Accept(this); return typeRegistry.Double; }
         
         public TypeNode VisitExpressionStatement(ExpressionStatement stmt) { stmt.Expression.Accept(this); return null; }
-        public TypeNode VisitWhileStatement(WhileStatement stmt) { var cond = stmt.Condition.Accept(this); if (cond?.Name != "bool") AddError("While condition must be boolean", stmt.Line, stmt.Column); stmt.Body.Accept(this); return null; }
-        public TypeNode VisitDoWhileStatement(DoWhileStatement stmt) { stmt.Body.Accept(this); var cond = stmt.Condition.Accept(this); if (cond?.Name != "bool") AddError("Do-while condition must be boolean", stmt.Line, stmt.Column); return null; }
-        public TypeNode VisitForStatement(ForStatement stmt) { EnterScope(); stmt.Initializer?.Accept(this); stmt.Condition?.Accept(this); stmt.Update?.Accept(this); stmt.Body.Accept(this); ExitScope(); return null; }
+        public TypeNode VisitWhileStatement(WhileStatement stmt) 
+        { 
+            var cond = stmt.Condition.Accept(this); 
+            if (cond?.Name != "bool") 
+            {
+                AddErrorWithSuggestion(
+                    $"While loop condition must be boolean, but was '{FormatType(cond)}'",
+                    "Use a comparison operator or boolean expression",
+                    stmt.Line, stmt.Column);
+            }
+            stmt.Body.Accept(this); 
+            return null;
+        }
+        
+        public TypeNode VisitDoWhileStatement(DoWhileStatement stmt) 
+        { 
+            stmt.Body.Accept(this); 
+            var cond = stmt.Condition.Accept(this); 
+            if (cond?.Name != "bool") 
+            {
+                AddErrorWithSuggestion(
+                    $"Do-while loop condition must be boolean, but was '{FormatType(cond)}'",
+                    "Use a comparison operator or boolean expression",
+                    stmt.Line, stmt.Column);
+            }
+            return null;
+        }
+        
+        public TypeNode VisitForStatement(ForStatement stmt) 
+        { 
+            EnterScope(); 
+            stmt.Initializer?.Accept(this); 
+            
+            if (stmt.Condition != null)
+            {
+                var cond = stmt.Condition.Accept(this);
+                if (cond?.Name != "bool")
+                {
+                    AddErrorWithSuggestion(
+                        $"For loop condition must be boolean, but was '{FormatType(cond)}'",
+                        "Use a comparison operator or boolean expression",
+                        stmt.Condition.Line, stmt.Condition.Column);
+                }
+            }
+            
+            stmt.Update?.Accept(this); 
+            stmt.Body.Accept(this); 
+            ExitScope(); 
+            return null;
+        }
+        
         public TypeNode VisitForEachStatement(ForEachStatement stmt) { EnterScope(); stmt.Collection.Accept(this); DefineVariable(stmt.ElementName, stmt.ElementType); stmt.Body.Accept(this); ExitScope(); return null; }
         public TypeNode VisitRepeatStatement(RepeatStatement stmt) { stmt.Count?.Accept(this); stmt.Body.Accept(this); return null; }
         public TypeNode VisitIterateStatement(IterateStatement stmt) { EnterScope(); stmt.Start.Accept(this); stmt.End.Accept(this); stmt.Step.Accept(this); DefineVariable(stmt.IteratorName, typeRegistry.Int); stmt.Body.Accept(this); ExitScope(); return null; }
@@ -765,6 +1029,24 @@ namespace Ouroboros.Core.Compiler
             return baseType;
             
         return new UnitTypeNode(baseType, $"{left}/{right}");
+    }
+    
+    private bool AreTypesComparable(TypeNode left, TypeNode right)
+    {
+        if (left == null || right == null) return true;
+        
+        // Same types are always comparable
+        if (left.Name == right.Name) return true;
+        
+        // Numeric types are comparable
+        if (IsNumericType(left) && IsNumericType(right)) return true;
+        
+        // Null can be compared with nullable types
+        if ((left.Name == "null" && right.IsNullable) ||
+            (right.Name == "null" && left.IsNullable))
+            return true;
+            
+        return false;
     }
     }
     
