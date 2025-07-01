@@ -503,10 +503,11 @@ namespace Ouroboros.Syntaxes.Medium
         private Pattern ParsePattern()
         {
             // Parse different pattern types
-            if (Match(TokenType.NumberLiteral) || 
+            if (Match(TokenType.IntegerLiteral) || 
+                Match(TokenType.FloatLiteral) ||
+                Match(TokenType.DoubleLiteral) ||
                 Match(TokenType.StringLiteral) ||
-                Match(TokenType.True) ||
-                Match(TokenType.False) ||
+                Match(TokenType.BooleanLiteral) ||
                 Match(TokenType.NullLiteral))
             {
                 return new ConstantPattern(new LiteralExpression(Previous()));
@@ -916,8 +917,9 @@ namespace Ouroboros.Syntaxes.Medium
                 
                 while (!Check(TokenType.RightBrace) && !IsAtEnd())
                 {
-                    if (Match(TokenType.Get))
+                    if (Check(TokenType.Identifier) && Current().Lexeme == "get")
                     {
+                        Advance(); // consume 'get'
                         if (Match(TokenType.Semicolon))
                         {
                             // Auto-property getter
@@ -928,8 +930,9 @@ namespace Ouroboros.Syntaxes.Medium
                             getter = ParseBlockStatement();
                         }
                     }
-                    else if (Match(TokenType.Set))
+                    else if (Check(TokenType.Identifier) && Current().Lexeme == "set")
                     {
+                        Advance(); // consume 'set'
                         if (Match(TokenType.Semicolon))
                         {
                             // Auto-property setter
@@ -1402,7 +1405,7 @@ namespace Ouroboros.Syntaxes.Medium
             // Literals
             if (Match(TokenType.IntegerLiteral, TokenType.FloatLiteral, 
                      TokenType.DoubleLiteral, TokenType.StringLiteral,
-                     TokenType.CharLiteral, TokenType.True, TokenType.False, 
+                     TokenType.CharLiteral, TokenType.BooleanLiteral, 
                      TokenType.NullLiteral))
             {
                 return new LiteralExpression(Previous());
