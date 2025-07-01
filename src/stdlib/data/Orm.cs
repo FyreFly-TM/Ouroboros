@@ -176,8 +176,8 @@ namespace Ouroboros.Stdlib.Data
             if (identityColumn != null)
             {
                 // For SQLite, use last_insert_rowid()
-                var identity = await database.ExecuteScalarAsync("SELECT last_insert_rowid()");
-                if (identity != null && identity != DBNull.Value)
+                var identity = await database.ExecuteScalarAsync<long>("SELECT last_insert_rowid()");
+                if (identity != null && identity != default(long))
                 {
                     identityColumn.Property.SetValue(entity, Convert.ChangeType(identity, identityColumn.Property.PropertyType));
                 }
@@ -691,8 +691,8 @@ namespace Ouroboros.Stdlib.Data
         private async Task<HashSet<string>> GetAppliedMigrationsAsync()
         {
             var sql = "SELECT Id FROM __Migrations";
-            var results = await database.QueryAsync<string>(sql);
-            return new HashSet<string>(results);
+            var results = await database.QueryAsync(sql);
+            return new HashSet<string>(results.Select(r => (string)r["Id"]));
         }
 
         private async Task RecordMigrationAsync(Migration migration)

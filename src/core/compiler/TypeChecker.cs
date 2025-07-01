@@ -1101,7 +1101,7 @@ namespace Ouroboros.Core.Compiler
     /// </summary>
     public class GenericTypeNode : TypeNode
     {
-        public List<TypeNode> TypeArguments { get; }
+        public new List<TypeNode> TypeArguments { get; }
         
         public GenericTypeNode(string name, List<TypeNode> typeArgs)
             : base($"{name}<{string.Join(", ", typeArgs.Select(t => t.Name))}>")

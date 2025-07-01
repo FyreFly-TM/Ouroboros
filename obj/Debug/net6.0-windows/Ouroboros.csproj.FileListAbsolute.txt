@@ -27,3 +27,4 @@ H:\Ouroboros\obj\Debug\net6.0-windows\refint\ouroboros.dll
 H:\Ouroboros\obj\Debug\net6.0-windows\ouroboros.pdb
 H:\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.genruntimeconfig.cache
 H:\Ouroboros\obj\Debug\net6.0-windows\ref\ouroboros.dll
+H:\Ouroboros\obj\Debug\net6.0-windows\Ouroboros.csproj.AssemblyReference.cache
