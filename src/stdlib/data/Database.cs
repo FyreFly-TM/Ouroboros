@@ -7,36 +7,43 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ouroboros.Stdlib.Data
+namespace Ouroboros.StdLib.Data
 {
     /// <summary>
-    /// Database connection and query interface
+    /// High-level database abstraction supporting multiple providers
     /// </summary>
-    public class Database : IDisposable
+    public class Database : IDisposable, IAsyncDisposable
     {
-        private readonly DbConnection connection;
-        private readonly DatabaseProvider provider;
-        private DbTransaction? currentTransaction;
+        private readonly IDatabaseProvider provider;
+        private readonly string connectionString;
         private bool disposed;
 
-        public bool IsConnected => connection.State == ConnectionState.Open;
-        public DatabaseProvider Provider => provider;
+        public DatabaseProvider ProviderType { get; }
 
-        public Database(string connectionString, DatabaseProvider provider)
+        public Database(string connectionString, DatabaseProvider providerType)
         {
-            this.provider = provider;
-            connection = CreateConnection(connectionString, provider);
+            this.connectionString = connectionString;
+            this.ProviderType = providerType;
+            this.provider = CreateProvider(connectionString, providerType);
+        }
+
+        private static IDatabaseProvider CreateProvider(string connectionString, DatabaseProvider providerType)
+        {
+            return providerType switch
+            {
+                DatabaseProvider.PostgreSQL => new Providers.PostgreSQLProvider(connectionString),
+                DatabaseProvider.MySQL => new Providers.MySQLProvider(connectionString),
+                DatabaseProvider.SQLite => new Providers.SQLiteProvider(connectionString),
+                _ => throw new ArgumentException($"Unsupported database provider: {providerType}")
+            };
         }
 
         /// <summary>
         /// Open database connection
         /// </summary>
-        public async Task OpenAsync()
+        public async Task<DbConnection> OpenAsync()
         {
-            if (connection.State != ConnectionState.Open)
-            {
-                await connection.OpenAsync();
-            }
+            return await provider.OpenConnectionAsync();
         }
 
         /// <summary>
@@ -44,38 +51,38 @@ namespace Ouroboros.Stdlib.Data
         /// </summary>
         public async Task CloseAsync()
         {
-            if (connection.State != ConnectionState.Closed)
-            {
-                await connection.CloseAsync();
-            }
+            await provider.CloseConnectionAsync();
         }
 
         /// <summary>
-        /// Execute a query and return results
+        /// Execute a query and return typed results
         /// </summary>
-        public async Task<List<T>> QueryAsync<T>(string sql, object? parameters = null) where T : new()
+        public async Task<List<T>> QueryAsync<T>(string sql, params object[] parameters) where T : new()
         {
-            using var command = CreateCommand(sql, parameters);
-            using var reader = await command.ExecuteReaderAsync();
-            
-            return await MapResultsAsync<T>(reader);
+            return await provider.ExecuteQueryAsync<T>(sql, parameters);
         }
 
         /// <summary>
         /// Execute a query and return dynamic results
         /// </summary>
-        public async Task<List<dynamic>> QueryAsync(string sql, object? parameters = null)
+        public async Task<List<dynamic>> QueryAsync(string sql, params object[] parameters)
         {
-            using var command = CreateCommand(sql, parameters);
-            using var reader = await command.ExecuteReaderAsync();
-            
-            return await MapDynamicResultsAsync(reader);
+            var results = await provider.ExecuteQueryAsync(sql, parameters);
+            return results.Select(dict => 
+            {
+                var expando = new ExpandoObject() as IDictionary<string, object>;
+                foreach (var kvp in dict)
+                {
+                    expando[kvp.Key] = kvp.Value;
+                }
+                return (dynamic)expando;
+            }).ToList();
         }
 
         /// <summary>
-        /// Execute a query and return first result
+        /// Execute a query and return the first result or default
         /// </summary>
-        public async Task<T?> QueryFirstOrDefaultAsync<T>(string sql, object? parameters = null) where T : new()
+        public async Task<T?> QueryFirstOrDefaultAsync<T>(string sql, params object[] parameters) where T : new()
         {
             var results = await QueryAsync<T>(sql, parameters);
             return results.FirstOrDefault();
@@ -84,49 +91,79 @@ namespace Ouroboros.Stdlib.Data
         /// <summary>
         /// Execute a scalar query
         /// </summary>
-        public async Task<T?> ExecuteScalarAsync<T>(string sql, object? parameters = null)
+        public async Task<T?> ExecuteScalarAsync<T>(string sql, params object[] parameters)
         {
-            using var command = CreateCommand(sql, parameters);
-            var result = await command.ExecuteScalarAsync();
-            
+            var result = await provider.ExecuteScalarAsync(sql, parameters);
             if (result == null || result == DBNull.Value)
                 return default;
-                
+            
             return (T)Convert.ChangeType(result, typeof(T));
         }
 
         /// <summary>
         /// Execute a non-query command
         /// </summary>
-        public async Task<int> ExecuteAsync(string sql, object? parameters = null)
+        public async Task<int> ExecuteAsync(string sql, params object[] parameters)
         {
-            using var command = CreateCommand(sql, parameters);
-            return await command.ExecuteNonQueryAsync();
+            return await provider.ExecuteNonQueryAsync(sql, parameters);
         }
 
         /// <summary>
-        /// Begin a transaction
+        /// Begin a database transaction
         /// </summary>
         public async Task<DatabaseTransaction> BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
         {
-            currentTransaction = await connection.BeginTransactionAsync(isolationLevel);
-            return new DatabaseTransaction(this, currentTransaction);
+            var transaction = await provider.BeginTransactionAsync(isolationLevel);
+            return new DatabaseTransaction(this, transaction);
         }
 
         /// <summary>
-        /// Create a command builder
+        /// Bulk insert multiple items
         /// </summary>
-        public CommandBuilder CreateCommandBuilder()
+        public async Task<int> BulkInsertAsync<T>(string tableName, IEnumerable<T> items) where T : class
         {
-            return new CommandBuilder(this);
+            return await provider.BulkInsertAsync(tableName, items);
         }
 
         /// <summary>
-        /// Create a query builder
+        /// Check if a table exists
+        /// </summary>
+        public async Task<bool> TableExistsAsync(string tableName, string? schema = null)
+        {
+            return await provider.TableExistsAsync(tableName, schema);
+        }
+
+        /// <summary>
+        /// Create a table
+        /// </summary>
+        public async Task CreateTableAsync(string tableName, Dictionary<string, string> columns, string? primaryKey = null)
+        {
+            await provider.CreateTableAsync(tableName, columns, primaryKey);
+        }
+
+        /// <summary>
+        /// Get all table names
+        /// </summary>
+        public async Task<List<string>> GetTableNamesAsync(string? schema = null)
+        {
+            return await provider.GetTableNamesAsync(schema);
+        }
+
+        /// <summary>
+        /// Get table column information
+        /// </summary>
+        public async Task<List<ColumnInfo>> GetTableColumnsAsync(string tableName, string? schema = null)
+        {
+            return await provider.GetTableColumnsAsync(tableName, schema);
+        }
+
+        /// <summary>
+        /// Create a fluent query builder
         /// </summary>
         public QueryBuilder Select(params string[] columns)
         {
-            return new QueryBuilder(this).Select(columns);
+            var builder = new QueryBuilder(this);
+            return builder.Select(columns);
         }
 
         /// <summary>
@@ -153,107 +190,31 @@ namespace Ouroboros.Stdlib.Data
             return new DeleteBuilder(this, table);
         }
 
-        private DbConnection CreateConnection(string connectionString, DatabaseProvider provider)
+        internal async Task CommitTransactionAsync()
         {
-            return provider switch
-            {
-                DatabaseProvider.SqlServer => new System.Data.SqlClient.SqlConnection(connectionString),
-                DatabaseProvider.PostgreSQL => throw new NotImplementedException("PostgreSQL provider not implemented"),
-                DatabaseProvider.MySQL => throw new NotImplementedException("MySQL provider not implemented"),
-                DatabaseProvider.SQLite => throw new NotImplementedException("SQLite provider not implemented"),
-                _ => throw new NotSupportedException($"Provider {provider} is not supported")
-            };
+            await provider.CommitTransactionAsync();
         }
 
-        private DbCommand CreateCommand(string sql, object? parameters)
+        internal async Task RollbackTransactionAsync()
         {
-            var command = connection.CreateCommand();
-            command.CommandText = sql;
-            command.Transaction = currentTransaction;
-
-            if (parameters != null)
-            {
-                AddParameters(command, parameters);
-            }
-
-            return command;
-        }
-
-        private void AddParameters(DbCommand command, object parameters)
-        {
-            var properties = parameters.GetType().GetProperties();
-            
-            foreach (var property in properties)
-            {
-                var parameter = command.CreateParameter();
-                parameter.ParameterName = $"@{property.Name}";
-                parameter.Value = property.GetValue(parameters) ?? DBNull.Value;
-                command.Parameters.Add(parameter);
-            }
-        }
-
-        private async Task<List<T>> MapResultsAsync<T>(DbDataReader reader) where T : new()
-        {
-            var results = new List<T>();
-            var properties = typeof(T).GetProperties();
-
-            while (await reader.ReadAsync())
-            {
-                var obj = new T();
-                
-                foreach (var property in properties)
-                {
-                    try
-                    {
-                        var ordinal = reader.GetOrdinal(property.Name);
-                        if (!reader.IsDBNull(ordinal))
-                        {
-                            var value = reader.GetValue(ordinal);
-                            property.SetValue(obj, Convert.ChangeType(value, property.PropertyType));
-                        }
-                    }
-                    catch (IndexOutOfRangeException)
-                    {
-                        // Column doesn't exist in result set
-                    }
-                }
-                
-                results.Add(obj);
-            }
-
-            return results;
-        }
-
-        private async Task<List<dynamic>> MapDynamicResultsAsync(DbDataReader reader)
-        {
-            var results = new List<dynamic>();
-
-            while (await reader.ReadAsync())
-            {
-                var obj = new ExpandoObject() as IDictionary<string, object>;
-                
-                for (int i = 0; i < reader.FieldCount; i++)
-                {
-                    obj[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                }
-                
-                results.Add(obj);
-            }
-
-            return results;
-        }
-
-        internal void ClearTransaction()
-        {
-            currentTransaction = null;
+            await provider.RollbackTransactionAsync();
         }
 
         public void Dispose()
         {
             if (!disposed)
             {
-                currentTransaction?.Dispose();
-                connection?.Dispose();
+                provider?.Dispose();
+                disposed = true;
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (!disposed)
+            {
+                if (provider != null)
+                    await provider.DisposeAsync();
                 disposed = true;
             }
         }
@@ -264,7 +225,6 @@ namespace Ouroboros.Stdlib.Data
     /// </summary>
     public enum DatabaseProvider
     {
-        SqlServer,
         PostgreSQL,
         MySQL,
         SQLite
@@ -273,7 +233,7 @@ namespace Ouroboros.Stdlib.Data
     /// <summary>
     /// Database transaction wrapper
     /// </summary>
-    public class DatabaseTransaction : IDisposable
+    public class DatabaseTransaction : IDisposable, IAsyncDisposable
     {
         private readonly Database database;
         private readonly DbTransaction transaction;
@@ -292,7 +252,7 @@ namespace Ouroboros.Stdlib.Data
         {
             if (!completed)
             {
-                await transaction.CommitAsync();
+                await database.CommitTransactionAsync();
                 completed = true;
             }
         }
@@ -304,7 +264,7 @@ namespace Ouroboros.Stdlib.Data
         {
             if (!completed)
             {
-                await transaction.RollbackAsync();
+                await database.RollbackTransactionAsync();
                 completed = true;
             }
         }
@@ -316,7 +276,15 @@ namespace Ouroboros.Stdlib.Data
                 transaction.Rollback();
             }
             transaction.Dispose();
-            database.ClearTransaction();
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (!completed)
+            {
+                await transaction.RollbackAsync();
+            }
+            await transaction.DisposeAsync();
         }
     }
 
@@ -515,12 +483,14 @@ namespace Ouroboros.Stdlib.Data
 
         public Task<List<T>> QueryAsync<T>() where T : new()
         {
-            return database.QueryAsync<T>(ToSql(), parameters);
+            var paramArray = parameters.Values.ToArray();
+            return database.QueryAsync<T>(ToSql(), paramArray);
         }
 
         public Task<List<dynamic>> QueryAsync()
         {
-            return database.QueryAsync(ToSql(), parameters);
+            var paramArray = parameters.Values.ToArray();
+            return database.QueryAsync(ToSql(), paramArray);
         }
     }
 
@@ -558,19 +528,27 @@ namespace Ouroboros.Stdlib.Data
         public async Task<int> ExecuteAsync()
         {
             var columns = string.Join(", ", values.Keys);
-            var parameters = string.Join(", ", values.Keys.Select(k => $"@{k}"));
-            var sql = $"INSERT INTO {table} ({columns}) VALUES ({parameters})";
+            var paramNames = values.Keys.Select((k, i) => $"@{i}").ToList();
+            var sql = $"INSERT INTO {table} ({columns}) VALUES ({string.Join(", ", paramNames)})";
             
-            return await database.ExecuteAsync(sql, values);
+            return await database.ExecuteAsync(sql, values.Values.ToArray());
         }
 
         public async Task<T> ExecuteScalarAsync<T>()
         {
             var columns = string.Join(", ", values.Keys);
-            var parameters = string.Join(", ", values.Keys.Select(k => $"@{k}"));
-            var sql = $"INSERT INTO {table} ({columns}) VALUES ({parameters}); SELECT SCOPE_IDENTITY();";
+            var paramNames = values.Keys.Select((k, i) => $"@{i}").ToList();
             
-            return await database.ExecuteScalarAsync<T>(sql, values) ?? throw new InvalidOperationException("No identity returned");
+            // Provider-specific returning clause
+            string sql = database.ProviderType switch
+            {
+                DatabaseProvider.PostgreSQL => $"INSERT INTO {table} ({columns}) VALUES ({string.Join(", ", paramNames)}) RETURNING id",
+                DatabaseProvider.MySQL => $"INSERT INTO {table} ({columns}) VALUES ({string.Join(", ", paramNames)}); SELECT LAST_INSERT_ID()",
+                DatabaseProvider.SQLite => $"INSERT INTO {table} ({columns}) VALUES ({string.Join(", ", paramNames)}); SELECT last_insert_rowid()",
+                _ => throw new NotSupportedException($"Provider {database.ProviderType} does not support returning inserted ID")
+            };
+            
+            return await database.ExecuteScalarAsync<T>(sql, values.Values.ToArray()) ?? throw new InvalidOperationException("No identity returned");
         }
     }
 
@@ -583,8 +561,7 @@ namespace Ouroboros.Stdlib.Data
         private readonly string table;
         private readonly Dictionary<string, object> setValues = new();
         private readonly List<string> whereConditions = new();
-        private readonly Dictionary<string, object> parameters = new();
-        private int parameterIndex = 0;
+        private readonly List<object> whereParams = new();
 
         internal UpdateBuilder(Database database, string table)
         {
@@ -602,9 +579,9 @@ namespace Ouroboros.Stdlib.Data
         {
             if (value != null)
             {
-                var paramName = $"wp{parameterIndex++}";
-                whereConditions.Add(condition.Replace("?", $"@{paramName}"));
-                parameters[paramName] = value;
+                var paramIndex = setValues.Count + whereParams.Count;
+                whereConditions.Add(condition.Replace("?", $"@{paramIndex}"));
+                whereParams.Add(value);
             }
             else
             {
@@ -615,7 +592,7 @@ namespace Ouroboros.Stdlib.Data
 
         public async Task<int> ExecuteAsync()
         {
-            var setClauses = setValues.Select(kv => $"{kv.Key} = @{kv.Key}");
+            var setClauses = setValues.Select((kv, i) => $"{kv.Key} = @{i}");
             var sql = $"UPDATE {table} SET {string.Join(", ", setClauses)}";
             
             if (whereConditions.Any())
@@ -623,13 +600,8 @@ namespace Ouroboros.Stdlib.Data
                 sql += $" WHERE {string.Join(" AND ", whereConditions)}";
             }
             
-            // Merge all parameters
-            foreach (var kv in setValues)
-            {
-                parameters[kv.Key] = kv.Value;
-            }
-            
-            return await database.ExecuteAsync(sql, parameters);
+            var allParams = setValues.Values.Concat(whereParams).ToArray();
+            return await database.ExecuteAsync(sql, allParams);
         }
     }
 
@@ -674,7 +646,8 @@ namespace Ouroboros.Stdlib.Data
                 sql += $" WHERE {string.Join(" AND ", whereConditions)}";
             }
             
-            return await database.ExecuteAsync(sql, parameters);
+            return await database.ExecuteAsync(sql, parameters.ToArray());
         }
     }
+
 } 

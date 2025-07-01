@@ -51,10 +51,10 @@ namespace Ouroboros.Syntaxes.Low
                 SkipWhitespaceAndComments();
                 if (IsAtEnd()) break;
                 
-                var stmt = ParseStatement();
-                if (stmt != null)
+                    var stmt = ParseStatement();
+                    if (stmt != null)
                 {
-                    statements.Add(stmt);
+                        statements.Add(stmt);
                 }
             }
             
@@ -257,8 +257,8 @@ namespace Ouroboros.Syntaxes.Low
             }
             
             // Memory reference [base + index*scale + disp]
-            if (Match(TokenType.LeftBracket))
-            {
+                if (Match(TokenType.LeftBracket))
+                {
                 var memExpr = ParseMemoryOperand();
                 Consume(TokenType.RightBracket, "Expected ']'");
                 return memExpr;
