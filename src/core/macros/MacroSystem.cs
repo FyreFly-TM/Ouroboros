@@ -5,6 +5,7 @@ using System.Text;
 using Ouroboros.Core.AST;
 using Ouroboros.Core.Lexer;
 using Ouroboros.Core.Parser;
+using Ouroboros.Tokens;
 
 namespace Ouroboros.Core.Macros
 {

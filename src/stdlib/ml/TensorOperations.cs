@@ -87,7 +87,7 @@ namespace Ouroboros.StdLib.ML
                 // Box-Muller transform
                 double u1 = 1.0 - rand.NextDouble();
                 double u2 = 1.0 - rand.NextDouble();
-                double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
+                double randStdNormal = global::System.Math.Sqrt(-2.0 * global::System.Math.Log(u1)) * global::System.Math.Sin(2.0 * global::System.Math.PI * u2);
                 data[i] = mean + stdDev * randStdNormal;
             }
             
@@ -309,8 +309,8 @@ namespace Ouroboros.StdLib.ML
         public double Std()
         {
             var mean = Mean();
-            var variance = data.Select(x => Math.Pow(x - mean, 2)).Average();
-            return Math.Sqrt(variance);
+            var variance = data.Select(x => global::System.Math.Pow(x - mean, 2)).Average();
+            return global::System.Math.Sqrt(variance);
         }
         
         /// <summary>

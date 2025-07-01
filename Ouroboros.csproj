@@ -12,20 +12,37 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Include ALL source files -->
-    <Compile Include="src\**\*.cs" />
+    <!-- Core -->
+    <Compile Include="src/Program.cs" />
+    <Compile Include="src/core/**/*.cs" />
+    <Compile Include="src/syntaxes/**/*.cs" />
+    <Compile Include="src/tokens/**/*.cs" />
+    <Compile Include="src/runtime/**/*.cs" />
+    <Compile Include="src/codegen/**/*.cs" />
+    <Compile Include="src/gpu/**/*.cs" />
+    <Compile Include="src/stdlib/**/*.cs" />
+    <Compile Include="src/repl/**/*.cs" />
+    <Compile Include="src/ide/**/*.cs" />
+    <Compile Include="src/types/**/*.cs" />
+    <Compile Include="src/optimization/**/*.cs" />
+    <Compile Include="src/analysis/**/*.cs" />
     
-    <!-- Exclude files that still need fixing -->
-    <Compile Remove="src\syntaxes\**\*.cs" />
-    <Compile Remove="src\types\**\*.cs" />
-    <Compile Remove="src\optimization\**\*.cs" />
+    <!-- Tools - exclude until fixed -->
+    <Compile Include="src/tools/docgen/**/*.cs" />
     
-    <!-- Include specific syntax files that are needed -->
-    <Compile Include="src\syntaxes\high\HighLevelParser.cs" />
+    <!-- Exclude problematic files -->
+    <Compile Remove="src/tools/opm/**/*.cs" />
+    <Compile Remove="src/lsp/**/*.cs" />
+    <Compile Remove="src/stdlib/io/AdvancedFileSystem.cs" />
+    <Compile Remove="src/stdlib/concurrency/Atomics.cs" />
+    <Compile Remove="src/syntaxes/low/LowLevelParser.cs" />
+    <Compile Remove="src/syntaxes/high/HighLevelParser.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="LLVMSharp" Version="16.0.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+    <PackageReference Include="System.Collections.Concurrent" Version="4.3.0" />
   </ItemGroup>
 
 </Project>

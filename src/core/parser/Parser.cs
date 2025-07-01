@@ -1894,29 +1894,10 @@ namespace Ouroboros.Core.Parser
 
         private Statement ParseHighLevelStatement()
         {
-            // Use the comprehensive HighLevelParser for natural language constructs
-            var highParser = new Ouroboros.Syntaxes.High.HighLevelParser(_tokens);
-            var savedPosition = _current; // Save position before attempting high-level parsing
-            highParser.SetCurrentPosition(_current);
-            
-            try
-            {
-                var statement = highParser.ParseHighLevelStatement();
-                _current = highParser.GetCurrentPosition();
-                return statement;
-            }
-            catch (Exception ex)
-            {
-                // Restore position to where we started before falling back
-                _current = savedPosition;
-                
-                // Fall back to the simpler parsing if HighLevelParser fails
-                // This ensures backward compatibility
-                Console.WriteLine($"DEBUG: HighLevelParser failed with: {ex.Message}");
-                Console.WriteLine($"DEBUG: At token: {Current().Type} '{Current().Lexeme}' at line {Current().Line}");
-                return ParseHighLevelStatementFallback();
-                    }
-                }
+            // High-level parser is not available in this build, use fallback
+            Console.WriteLine($"DEBUG: High-level parser not available, using fallback");
+            return ParseHighLevelStatementFallback();
+        }
 
         private Statement ParseHighLevelStatementFallback()
         {

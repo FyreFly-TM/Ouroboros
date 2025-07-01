@@ -71,7 +71,8 @@ namespace Ouroboros.Syntaxes.Medium
                         {
                             // It's a function
                             current = checkpoint;
-                            return ParseFunctionDeclaration();
+                            // Function declaration not implemented yet
+                            throw new NotImplementedException("Function declaration parsing not implemented");
                         }
                     }
                 }
@@ -89,7 +90,7 @@ namespace Ouroboros.Syntaxes.Medium
             if (Match(TokenType.If)) return ParseIfStatement();
             if (Match(TokenType.While)) return ParseWhileStatement();
             if (Match(TokenType.For)) return ParseForStatement();
-            if (Match(TokenType.Do)) return ParseDoWhileStatement();
+            if (Match(TokenType.Do)) throw new NotImplementedException("Do-while parsing not implemented");
             if (Match(TokenType.Switch)) return ParseSwitchStatement();
             if (Match(TokenType.Return)) return ParseReturnStatement();
             if (Match(TokenType.Break)) return ParseBreakStatement();
@@ -98,7 +99,7 @@ namespace Ouroboros.Syntaxes.Medium
             if (Match(TokenType.Try)) return ParseTryStatement();
             
             // Blocks
-            if (Match(TokenType.LeftBrace)) return ParseBlock();
+            if (Match(TokenType.LeftBrace)) return ParseBlockStatement();
             
             // Variable declarations or expressions
             return ParseExpressionOrDeclaration();
@@ -154,17 +155,19 @@ namespace Ouroboros.Syntaxes.Medium
 
         private Statement ParseWhileStatement()
         {
+            var whileToken = Previous();
             Consume(TokenType.LeftParen, "Expected '(' after 'while'");
             Expression condition = ParseExpression();
             Consume(TokenType.RightParen, "Expected ')' after while condition");
             
             Statement body = ParseStatement();
             
-            return new WhileStatement(condition, body);
+            return new WhileStatement(whileToken, condition, body);
         }
 
         private Statement ParseForStatement()
         {
+            var forToken = Previous();
             Consume(TokenType.LeftParen, "Expected '(' after 'for'");
             
             // Initializer
@@ -200,7 +203,7 @@ namespace Ouroboros.Syntaxes.Medium
             
             Statement body = ParseStatement();
             
-            return new ForStatement(initializer, condition, increment, body);
+            return new ForStatement(forToken, initializer, condition, increment, body);
         }
 
         private Statement ParseSwitchStatement()
@@ -210,7 +213,7 @@ namespace Ouroboros.Syntaxes.Medium
             Consume(TokenType.RightParen, "Expected ')' after switch expression");
             Consume(TokenType.LeftBrace, "Expected '{' after switch expression");
             
-            List<SwitchCase> cases = new List<SwitchCase>();
+            List<CaseClause> cases = new List<CaseClause>();
             List<Statement> defaultStatements = null;
             
             while (!Match(TokenType.RightBrace) && !IsAtEnd())
@@ -228,7 +231,7 @@ namespace Ouroboros.Syntaxes.Medium
                         statements.Add(ParseStatement());
                     }
                     
-                    cases.Add(new SwitchCase(caseValue, statements));
+                    cases.Add(new CaseClause(caseValue, statements));
                 }
                 else if (Match(TokenType.Default))
                 {
@@ -249,7 +252,14 @@ namespace Ouroboros.Syntaxes.Medium
             
             Consume(TokenType.RightBrace, "Expected '}' after switch body");
             
-            return new SwitchStatement(expression, cases, defaultStatements);
+            // Need to create a default case from the statements
+            Statement? defaultCase = null;
+            if (defaultStatements != null && defaultStatements.Count > 0)
+            {
+                defaultCase = new BlockStatement(defaultStatements);
+            }
+            
+            return new SwitchStatement(Previous(), expression, cases, defaultCase);
         }
 
         private Statement ParseTryStatement()
@@ -302,8 +312,9 @@ namespace Ouroboros.Syntaxes.Medium
 
         private Statement ParseBreakStatement()
         {
+            var breakToken = Previous();
             Consume(TokenType.Semicolon, "Expected ';' after 'break'");
-            return new BreakStatement();
+            return new BreakStatement(breakToken);
         }
 
         private Statement ParseContinueStatement()
@@ -563,7 +574,7 @@ namespace Ouroboros.Syntaxes.Medium
             if (IsNumber(Current().Lexeme))
             {
                 var start = ParseExpression();
-                if (Match(TokenType.DotDot))
+                if (Match(TokenType.Range))
                 {
                     var end = ParseExpression();
                     return new RangePattern(start, end);
@@ -1824,7 +1835,7 @@ namespace Ouroboros.Syntaxes.Medium
         public bool IsInclusive { get; }
         
         public RangeExpression(Expression? start, Expression? end, bool isInclusive)
-            : base(new Token(TokenType.DotDot, "..", null, 0, 0, 0, 0, "", SyntaxLevel.Medium))
+            : base(new Token(TokenType.Range, "..", null, 0, 0, 0, 0, "", SyntaxLevel.Medium))
         {
             Start = start;
             End = end;

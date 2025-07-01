@@ -9,7 +9,7 @@ namespace Ouroboros.Stdlib.Concurrency
     /// <summary>
     /// Actor-based concurrency model
     /// </summary>
-    public abstract class Actor<TMessage>
+    public abstract class Actor<TMessage> : IActorBase
     {
         private readonly Channel<TMessage> mailbox;
         private readonly CancellationTokenSource cts = new();
@@ -396,7 +396,7 @@ namespace Ouroboros.Stdlib.Concurrency
     /// <summary>
     /// Actor base interface
     /// </summary>
-    internal interface IActorBase
+    public interface IActorBase
     {
         ActorId Id { get; }
         string Name { get; }

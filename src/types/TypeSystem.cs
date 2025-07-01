@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Ouroboros.Core;
+using Ouroboros.Core.AST;
+using Ouroboros.Tokens;
 
 namespace Ouroboros.Types
 {
@@ -889,7 +891,7 @@ namespace Ouroboros.Types
             return expr switch
             {
                 LiteralExpression lit => InferLiteral(lit),
-                VariableExpression var => InferVariable(var),
+                IdentifierExpression var => InferVariable(var),
                 BinaryExpression bin => InferBinary(bin),
                 UnaryExpression un => InferUnary(un),
                 CallExpression call => InferCall(call),
@@ -922,7 +924,7 @@ namespace Ouroboros.Types
             };
         }
         
-        private Type InferVariable(VariableExpression expr)
+        private Type InferVariable(IdentifierExpression expr)
         {
             if (inferredTypes.TryGetValue(expr.Name, out var type))
                 return type;
@@ -935,7 +937,7 @@ namespace Ouroboros.Types
             var leftType = Infer(expr.Left);
             var rightType = Infer(expr.Right);
             
-            switch (expr.Operator)
+            switch (expr.Operator.Type)
             {
                 case TokenType.Plus:
                     if (leftType == PrimitiveType.String || rightType == PrimitiveType.String)
@@ -943,21 +945,21 @@ namespace Ouroboros.Types
                     return GetNumericResultType(leftType, rightType);
                 
                 case TokenType.Minus:
-                case TokenType.Star:
-                case TokenType.Slash:
-                case TokenType.Percent:
+                case TokenType.Multiply:
+                case TokenType.Divide:
+                case TokenType.Modulo:
                     return GetNumericResultType(leftType, rightType);
                 
                 case TokenType.Less:
                 case TokenType.Greater:
                 case TokenType.LessEqual:
                 case TokenType.GreaterEqual:
-                case TokenType.EqualEqual:
-                case TokenType.BangEqual:
+                case TokenType.Equal:
+                case TokenType.NotEqual:
                     return PrimitiveType.Bool;
                 
-                case TokenType.AmpersandAmpersand:
-                case TokenType.PipePipe:
+                case TokenType.LogicalAnd:
+                case TokenType.LogicalOr:
                     return PrimitiveType.Bool;
                 
                 default:
@@ -969,9 +971,9 @@ namespace Ouroboros.Types
         {
             var operandType = Infer(expr.Operand);
             
-            switch (expr.Operator)
+            switch (expr.Operator.Type)
             {
-                case TokenType.Bang:
+                case TokenType.LogicalNot:
                     return PrimitiveType.Bool;
                 
                 case TokenType.Minus:
@@ -998,7 +1000,7 @@ namespace Ouroboros.Types
                 paramTypes.Add(PrimitiveType.Object);
             }
             
-            var returnType = Infer(expr.Body);
+            var returnType = expr.Body is Expression bodyExpr ? Infer(bodyExpr) : PrimitiveType.Void;
             return new FunctionType(paramTypes, returnType);
         }
         

@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Ouroboros.Core;
 using Ouroboros.Core.AST;
 using Ouroboros.Core.Lexer;
+using Ouroboros.Core.Parser;
 using Ouroboros.Tokens;
-using System.Text;
 
 namespace Ouroboros.Syntaxes.Low
 {
