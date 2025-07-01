@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Ouroboros.Core;
 using Ouroboros.Core.Lexer;
 using Ouroboros.Core.AST;
 using Ouroboros.Core.Parser;
+using Ouroboros.Tokens;
 
 namespace Ouroboros.Syntaxes.Medium
 {
@@ -12,98 +14,149 @@ namespace Ouroboros.Syntaxes.Medium
     /// </summary>
     public class MediumLevelParser
     {
-        private readonly Parser mainParser;
-        
-        public MediumLevelParser(Parser parser)
+        private readonly List<Token> tokens;
+        private int current = 0;
+
+        public MediumLevelParser(List<Token> tokens)
         {
-            mainParser = parser;
+            this.tokens = tokens;
         }
 
-        /// <summary>
-        /// Parse medium-level statements
-        /// </summary>
-        public Statement ParseStatement()
+        public Program Parse()
         {
-            // Check for common medium-level statements
-            if (mainParser.PublicMatch(TokenType.If))
+            var statements = new List<Statement>();
+            
+            while (!IsAtEnd())
             {
-                return ParseIfStatement();
+                try
+                {
+                    var stmt = ParseDeclaration();
+                    if (stmt != null)
+                    {
+                        statements.Add(stmt);
+                    }
+                }
+                catch (ParseException ex)
+                {
+                    // Synchronize to next statement
+                    Synchronize();
+                    throw ex;
+                }
             }
             
-            if (mainParser.PublicMatch(TokenType.While))
+            return new Program(statements);
+        }
+
+        private Statement ParseDeclaration()
+        {
+            // Type declarations
+            if (Match(TokenType.Class)) return ParseClassDeclaration();
+            if (Match(TokenType.Struct)) return ParseStructDeclaration();
+            if (Match(TokenType.Interface)) return ParseInterfaceDeclaration();
+            if (Match(TokenType.Enum)) return ParseEnumDeclaration();
+            if (Match(TokenType.UnionKeyword)) return ParseUnionDeclaration();
+            
+            // Function declarations
+            if (IsTypeKeyword() || Check(TokenType.Identifier))
             {
-                return ParseWhileStatement();
+                // Look ahead for function pattern
+                var checkpoint = current;
+                try
+                {
+                    ParseType(); // Try to parse type
+                    if (Check(TokenType.Identifier))
+                    {
+                        Advance(); // consume name
+                        if (Check(TokenType.LeftParen))
+                        {
+                            // It's a function
+                            current = checkpoint;
+                            return ParseFunctionDeclaration();
+                        }
+                    }
+                }
+                catch { }
+                current = checkpoint;
             }
             
-            if (mainParser.PublicMatch(TokenType.For))
+            // Statements
+            return ParseStatement();
+        }
+
+        private Statement ParseStatement()
+        {
+            // Control flow
+            if (Match(TokenType.If)) return ParseIfStatement();
+            if (Match(TokenType.While)) return ParseWhileStatement();
+            if (Match(TokenType.For)) return ParseForStatement();
+            if (Match(TokenType.Do)) return ParseDoWhileStatement();
+            if (Match(TokenType.Switch)) return ParseSwitchStatement();
+            if (Match(TokenType.Return)) return ParseReturnStatement();
+            if (Match(TokenType.Break)) return ParseBreakStatement();
+            if (Match(TokenType.Continue)) return ParseContinueStatement();
+            if (Match(TokenType.Throw)) return ParseThrowStatement();
+            if (Match(TokenType.Try)) return ParseTryStatement();
+            
+            // Blocks
+            if (Match(TokenType.LeftBrace)) return ParseBlock();
+            
+            // Variable declarations or expressions
+            return ParseExpressionOrDeclaration();
+        }
+
+        private Statement ParseExpressionOrDeclaration()
+        {
+            // Try to parse as variable declaration
+            var checkpoint = current;
+            try
             {
-                return ParseForStatement();
+                var type = ParseType();
+                if (Check(TokenType.Identifier))
+                {
+                    var name = Advance();
+                    
+                    // Variable declaration
+                    Expression initializer = null;
+                    if (Match(TokenType.Assign))
+                    {
+                        initializer = ParseExpression();
+                    }
+                    
+                    Consume(TokenType.Semicolon, "Expected ';' after variable declaration");
+                    return new VariableDeclaration(type, name, initializer);
+                }
             }
+            catch { }
             
-            if (mainParser.PublicMatch(TokenType.Switch))
-            {
-                return ParseSwitchStatement();
-            }
-            
-            if (mainParser.PublicMatch(TokenType.Try))
-            {
-                return ParseTryStatement();
-            }
-            
-            if (mainParser.PublicMatch(TokenType.Return))
-            {
-                return ParseReturnStatement();
-            }
-            
-            if (mainParser.PublicMatch(TokenType.Break))
-            {
-                return ParseBreakStatement();
-            }
-            
-            if (mainParser.PublicMatch(TokenType.Continue))
-            {
-                return ParseContinueStatement();
-            }
-            
-            if (mainParser.PublicMatch(TokenType.Throw))
-            {
-                return ParseThrowStatement();
-            }
-            
-            // Check for declarations
-            bool isTypeDecl = IsTypeDeclaration();
-            
-            if (isTypeDecl)
-            {
-                return ParseDeclaration();
-            }
-            
-            // Otherwise, it's an expression statement
-            return ParseExpressionStatement();
+            // Reset and parse as expression
+            current = checkpoint;
+            var expr = ParseExpression();
+            Consume(TokenType.Semicolon, "Expected ';' after expression");
+            return new ExpressionStatement(expr);
         }
 
         private Statement ParseIfStatement()
         {
-            mainParser.PublicConsume(TokenType.LeftParen, "Expected '(' after 'if'");
-            Expression condition = mainParser.PublicParseExpression();
-            mainParser.PublicConsume(TokenType.RightParen, "Expected ')' after if condition");
+            Consume(TokenType.LeftParen, "Expected '(' after 'if'");
+            Expression condition = ParseExpression();
+            Consume(TokenType.RightParen, "Expected ')' after if condition");
             
             Statement thenBranch = ParseStatement();
             Statement elseBranch = null;
             
-            if (mainParser.PublicMatch(TokenType.Else))
+            if (Match(TokenType.Else))
             {
                 elseBranch = ParseStatement();
             }
             
-            return new IfStatement(mainParser.PublicPrevious(), condition, thenBranch, elseBranch);
+            return new IfStatement(Previous(), condition, thenBranch, elseBranch);
         }
 
         private Statement ParseWhileStatement()
         {
-            mainParser.Consume(TokenType.LeftParen, "Expected '(' after 'while'");
-            Expression condition = mainParser.ParseExpression();
-            mainParser.Consume(TokenType.RightParen, "Expected ')' after while condition");
+            Consume(TokenType.LeftParen, "Expected '(' after 'while'");
+            Expression condition = ParseExpression();
+            Consume(TokenType.RightParen, "Expected ')' after while condition");
             
             Statement body = ParseStatement();
             
@@ -112,11 +165,11 @@ namespace Ouroboros.Syntaxes.Medium
 
         private Statement ParseForStatement()
         {
-            mainParser.Consume(TokenType.LeftParen, "Expected '(' after 'for'");
+            Consume(TokenType.LeftParen, "Expected '(' after 'for'");
             
             // Initializer
             Statement initializer = null;
-            if (mainParser.Match(TokenType.Semicolon))
+            if (Match(TokenType.Semicolon))
             {
                 initializer = null;
             }
@@ -131,19 +184,19 @@ namespace Ouroboros.Syntaxes.Medium
             
             // Condition
             Expression condition = null;
-            if (!mainParser.Check(TokenType.Semicolon))
+            if (!Match(TokenType.Semicolon))
             {
-                condition = mainParser.ParseExpression();
+                condition = ParseExpression();
             }
-            mainParser.Consume(TokenType.Semicolon, "Expected ';' after for condition");
+            Consume(TokenType.Semicolon, "Expected ';' after for condition");
             
             // Increment
             Expression increment = null;
-            if (!mainParser.Check(TokenType.RightParen))
+            if (!Match(TokenType.RightParen))
             {
-                increment = mainParser.ParseExpression();
+                increment = ParseExpression();
             }
-            mainParser.Consume(TokenType.RightParen, "Expected ')' after for clauses");
+            Consume(TokenType.RightParen, "Expected ')' after for clauses");
             
             Statement body = ParseStatement();
             
@@ -152,49 +205,49 @@ namespace Ouroboros.Syntaxes.Medium
 
         private Statement ParseSwitchStatement()
         {
-            mainParser.Consume(TokenType.LeftParen, "Expected '(' after 'switch'");
-            Expression expression = mainParser.ParseExpression();
-            mainParser.Consume(TokenType.RightParen, "Expected ')' after switch expression");
-            mainParser.Consume(TokenType.LeftBrace, "Expected '{' after switch expression");
+            Consume(TokenType.LeftParen, "Expected '(' after 'switch'");
+            Expression expression = ParseExpression();
+            Consume(TokenType.RightParen, "Expected ')' after switch expression");
+            Consume(TokenType.LeftBrace, "Expected '{' after switch expression");
             
             List<SwitchCase> cases = new List<SwitchCase>();
             List<Statement> defaultStatements = null;
             
-            while (!mainParser.Check(TokenType.RightBrace) && !mainParser.IsAtEnd())
+            while (!Match(TokenType.RightBrace) && !IsAtEnd())
             {
-                if (mainParser.Match(TokenType.Case))
+                if (Match(TokenType.Case))
                 {
-                    Expression caseValue = mainParser.ParseExpression();
-                    mainParser.Consume(TokenType.Colon, "Expected ':' after case value");
+                    Expression caseValue = ParseExpression();
+                    Consume(TokenType.Colon, "Expected ':' after case value");
                     
                     List<Statement> statements = new List<Statement>();
-                    while (!mainParser.Check(TokenType.Case) && 
-                           !mainParser.Check(TokenType.Default) && 
-                           !mainParser.Check(TokenType.RightBrace))
+                    while (!Match(TokenType.Case) && 
+                           !Match(TokenType.Default) && 
+                           !Match(TokenType.RightBrace))
                     {
                         statements.Add(ParseStatement());
                     }
                     
                     cases.Add(new SwitchCase(caseValue, statements));
                 }
-                else if (mainParser.Match(TokenType.Default))
+                else if (Match(TokenType.Default))
                 {
-                    mainParser.Consume(TokenType.Colon, "Expected ':' after 'default'");
+                    Consume(TokenType.Colon, "Expected ':' after 'default'");
                     
                     defaultStatements = new List<Statement>();
-                    while (!mainParser.Check(TokenType.Case) && 
-                           !mainParser.Check(TokenType.RightBrace))
+                    while (!Match(TokenType.Case) && 
+                           !Match(TokenType.RightBrace))
                     {
                         defaultStatements.Add(ParseStatement());
                     }
                 }
                 else
                 {
-                    throw new ParseException("Expected 'case' or 'default' in switch statement");
+                    throw Error(Current(), "Expected 'case' or 'default' in switch statement");
                 }
             }
             
-            mainParser.Consume(TokenType.RightBrace, "Expected '}' after switch body");
+            Consume(TokenType.RightBrace, "Expected '}' after switch body");
             
             return new SwitchStatement(expression, cases, defaultStatements);
         }
@@ -206,30 +259,30 @@ namespace Ouroboros.Syntaxes.Medium
             List<CatchClause> catchClauses = new List<CatchClause>();
             Statement finallyBlock = null;
             
-            while (mainParser.Match(TokenType.Catch))
+            while (Match(TokenType.Catch))
             {
                 string exceptionType = null;
                 string variableName = null;
                 
-                if (mainParser.Match(TokenType.LeftParen))
+                if (Match(TokenType.LeftParen))
                 {
-                    exceptionType = mainParser.Consume(TokenType.Identifier, "Expected exception type").Lexeme;
-                    variableName = mainParser.Consume(TokenType.Identifier, "Expected variable name").Lexeme;
-                    mainParser.Consume(TokenType.RightParen, "Expected ')' after catch parameters");
+                    exceptionType = Consume(TokenType.Identifier, "Expected exception type").Lexeme;
+                    variableName = Consume(TokenType.Identifier, "Expected variable name").Lexeme;
+                    Consume(TokenType.RightParen, "Expected ')' after catch parameters");
                 }
                 
                 Statement catchBlock = ParseBlockStatement();
                 catchClauses.Add(new CatchClause(exceptionType, variableName, catchBlock));
             }
             
-            if (mainParser.Match(TokenType.Finally))
+            if (Match(TokenType.Finally))
             {
                 finallyBlock = ParseBlockStatement();
             }
             
             if (catchClauses.Count == 0 && finallyBlock == null)
             {
-                throw new ParseException("Try statement must have at least one catch or finally clause");
+                throw Error(Current(), "Try statement must have at least one catch or finally clause");
             }
             
             return new TryStatement(tryBlock, catchClauses, finallyBlock);
@@ -238,119 +291,54 @@ namespace Ouroboros.Syntaxes.Medium
         private Statement ParseReturnStatement()
         {
             Expression value = null;
-            if (!mainParser.Check(TokenType.Semicolon))
+            if (!Match(TokenType.Semicolon))
             {
-                value = mainParser.ParseExpression();
+                value = ParseExpression();
             }
-            mainParser.Consume(TokenType.Semicolon, "Expected ';' after return value");
+            Consume(TokenType.Semicolon, "Expected ';' after return value");
             
             return new ReturnStatement(value);
         }
 
         private Statement ParseBreakStatement()
         {
-            mainParser.Consume(TokenType.Semicolon, "Expected ';' after 'break'");
+            Consume(TokenType.Semicolon, "Expected ';' after 'break'");
             return new BreakStatement();
         }
 
         private Statement ParseContinueStatement()
         {
-            mainParser.Consume(TokenType.Semicolon, "Expected ';' after 'continue'");
+            Consume(TokenType.Semicolon, "Expected ';' after 'continue'");
             return new ContinueStatement();
         }
 
         private Statement ParseThrowStatement()
         {
-            Expression exception = mainParser.ParseExpression();
-            mainParser.Consume(TokenType.Semicolon, "Expected ';' after throw expression");
+            Expression exception = ParseExpression();
+            Consume(TokenType.Semicolon, "Expected ';' after throw expression");
             
             return new ThrowStatement(exception);
         }
 
-        private Statement ParseDeclaration()
-        {
-            try
-            {
-                // Parse type (including var keyword and nullable types)
-                string typeName;
-                bool isNullable = false;
-                
-                if (mainParser.PublicCheck(TokenType.Var))
-                {
-                    typeName = mainParser.PublicAdvance().Lexeme; // "var"
-                }
-                else
-                {
-                    typeName = mainParser.PublicConsume(TokenType.Identifier, "Expected type name").Lexeme;
-                    
-                    // Check for nullable type (e.g., string?)
-                    if (mainParser.PublicMatch(TokenType.Question))
-                    {
-                        isNullable = true;
-                        typeName += "?";
-                    }
-                }
-                
-                // Check for generics
-                List<string> genericArgs = null;
-                if (mainParser.PublicMatch(TokenType.Less))
-                {
-                    genericArgs = ParseGenericArguments();
-                }
-                
-                // Parse variable name
-                string variableName = mainParser.PublicConsume(TokenType.Identifier, "Expected variable name").Lexeme;
-                
-                // Check for initialization
-                Expression initializer = null;
-                if (mainParser.PublicMatch(TokenType.Equal))
-                {
-                    initializer = mainParser.PublicParseAssignment(); // Use ParseAssignment to support throw expressions in lambdas
-                }
-                
-                mainParser.PublicConsume(TokenType.Semicolon, "Expected ';' after variable declaration");
-                
-                return new VariableDeclaration(typeName, variableName, initializer, genericArgs);
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
-        }
-
-        private List<string> ParseGenericArguments()
-        {
-            List<string> args = new List<string>();
-            
-            do
-            {
-                args.Add(mainParser.Consume(TokenType.Identifier, "Expected type argument").Lexeme);
-            } while (mainParser.Match(TokenType.Comma));
-            
-            mainParser.Consume(TokenType.Greater, "Expected '>' after generic arguments");
-            
-            return args;
-        }
-
         private Statement ParseExpressionStatement()
         {
-            Expression expr = mainParser.ParseExpression();
-            mainParser.Consume(TokenType.Semicolon, "Expected ';' after expression");
+            Expression expr = ParseExpression();
+            Consume(TokenType.Semicolon, "Expected ';' after expression");
             
             return new ExpressionStatement(expr);
         }
 
         private Statement ParseBlockStatement()
         {
-            mainParser.Consume(TokenType.LeftBrace, "Expected '{'");
+            Consume(TokenType.LeftBrace, "Expected '{'");
             
             List<Statement> statements = new List<Statement>();
-            while (!mainParser.Check(TokenType.RightBrace) && !mainParser.IsAtEnd())
+            while (!Match(TokenType.RightBrace) && !IsAtEnd())
             {
                 statements.Add(ParseStatement());
             }
             
-            mainParser.Consume(TokenType.RightBrace, "Expected '}' after block");
+            Consume(TokenType.RightBrace, "Expected '}' after block");
             
             return new BlockStatement(statements);
         }
@@ -358,46 +346,46 @@ namespace Ouroboros.Syntaxes.Medium
         private bool IsTypeDeclaration()
         {
             // Check for var keyword first
-            if (mainParser.Check(TokenType.Var))
+            if (Match(TokenType.Var))
                 return true;
                 
             // Simple heuristic: check if current token could be a type name
             // and next token is an identifier
-            if (!mainParser.Check(TokenType.Identifier))
+            if (!Match(TokenType.Identifier))
                 return false;
             
             // Look ahead to see if this might be a declaration
-            int current = mainParser.GetCurrentPosition();
+            int current = this.current;
             
             // Skip type name
-            mainParser.Advance();
+            Advance();
             
             // Skip nullable marker if present
-            if (mainParser.Match(TokenType.Question))
+            if (Match(TokenType.Question))
             {
                 // This is likely a nullable type declaration
             }
             
             // Skip generic arguments if present
-            if (mainParser.Match(TokenType.Less))
+            if (Match(TokenType.Less))
             {
                 int depth = 1;
-                while (depth > 0 && !mainParser.IsAtEnd())
+                while (depth > 0 && !IsAtEnd())
                 {
-                    if (mainParser.Match(TokenType.Less))
+                    if (Match(TokenType.Less))
                         depth++;
-                    else if (mainParser.Match(TokenType.Greater))
+                    else if (Match(TokenType.Greater))
                         depth--;
                     else
-                        mainParser.Advance();
+                        Advance();
                 }
             }
             
             // Check if followed by identifier
-            bool isDeclaration = mainParser.Check(TokenType.Identifier);
+            bool isDeclaration = Match(TokenType.Identifier);
             
             // Reset position
-            mainParser.SetPosition(current);
+            this.current = current;
             
             return isDeclaration;
         }
@@ -409,27 +397,27 @@ namespace Ouroboros.Syntaxes.Medium
         {
             List<string> parameters = new List<string>();
             
-            if (mainParser.Match(TokenType.LeftParen))
+            if (Match(TokenType.LeftParen))
             {
-                if (!mainParser.Check(TokenType.RightParen))
+                if (!Match(TokenType.RightParen))
                 {
                     do
                     {
-                        parameters.Add(mainParser.Consume(TokenType.Identifier, "Expected parameter name").Lexeme);
-                    } while (mainParser.Match(TokenType.Comma));
+                        parameters.Add(Consume(TokenType.Identifier, "Expected parameter name").Lexeme);
+                    } while (Match(TokenType.Comma));
                 }
-                mainParser.Consume(TokenType.RightParen, "Expected ')' after parameters");
+                Consume(TokenType.RightParen, "Expected ')' after parameters");
             }
             else
             {
                 // Single parameter without parentheses
-                parameters.Add(mainParser.Consume(TokenType.Identifier, "Expected parameter name").Lexeme);
+                parameters.Add(Consume(TokenType.Identifier, "Expected parameter name").Lexeme);
             }
             
-            mainParser.Consume(TokenType.Arrow, "Expected '=>' in lambda expression");
+            Consume(TokenType.Arrow, "Expected '=>' in lambda expression");
             
             Expression body;
-            if (mainParser.Check(TokenType.LeftBrace))
+            if (Match(TokenType.LeftBrace))
             {
                 // Block body
                 Statement blockBody = ParseBlockStatement();
@@ -438,7 +426,7 @@ namespace Ouroboros.Syntaxes.Medium
             else
             {
                 // Expression body - use ParseAssignment to support throw expressions
-                body = mainParser.PublicParseAssignment();
+                body = ParseAssignment();
             }
             
             return new LambdaExpression(parameters, body);
@@ -449,54 +437,54 @@ namespace Ouroboros.Syntaxes.Medium
         /// </summary>
         public Expression ParsePatternMatch(Expression expression)
         {
-            mainParser.Consume(TokenType.Switch, "Expected 'switch' in pattern match");
-            mainParser.Consume(TokenType.LeftBrace, "Expected '{' after switch");
+            Consume(TokenType.Switch, "Expected 'switch' in pattern match");
+            Consume(TokenType.LeftBrace, "Expected '{' after switch");
             
             List<PatternCase> cases = new List<PatternCase>();
             Expression defaultCase = null;
             
-            while (!mainParser.Check(TokenType.RightBrace) && !mainParser.IsAtEnd())
+            while (!Match(TokenType.RightBrace) && !IsAtEnd())
             {
-                if (mainParser.Match(TokenType.Case))
+                if (Match(TokenType.Case))
                 {
                     Pattern pattern = ParsePattern();
                     Expression guard = null;
                     
-                    if (mainParser.Match(TokenType.When))
+                    if (Match(TokenType.When))
                     {
-                        guard = mainParser.ParseExpression();
+                        guard = ParseExpression();
                     }
                     
-                    mainParser.Consume(TokenType.Arrow, "Expected '=>' after pattern");
-                    Expression result = mainParser.ParseExpression();
+                    Consume(TokenType.Arrow, "Expected '=>' after pattern");
+                    Expression result = ParseExpression();
                     
                     cases.Add(new PatternCase(pattern, guard, result));
                     
-                    if (!mainParser.Match(TokenType.Comma))
+                    if (!Match(TokenType.Comma))
                     {
-                        if (!mainParser.Check(TokenType.RightBrace) && !mainParser.Check(TokenType.Default))
+                        if (!Match(TokenType.RightBrace) && !Match(TokenType.Default))
                         {
-                            throw new ParseException("Expected ',' between pattern cases");
+                            throw Error(Current(), "Expected ',' between pattern cases");
                         }
                     }
                 }
-                else if (mainParser.Match(TokenType.Default))
+                else if (Match(TokenType.Default))
                 {
-                    mainParser.Consume(TokenType.Arrow, "Expected '=>' after 'default'");
-                    defaultCase = mainParser.ParseExpression();
+                    Consume(TokenType.Arrow, "Expected '=>' after 'default'");
+                    defaultCase = ParseExpression();
                     
-                    if (!mainParser.Check(TokenType.RightBrace))
+                    if (!Match(TokenType.RightBrace))
                     {
-                        mainParser.Consume(TokenType.Comma, "Expected ',' after default case");
+                        Consume(TokenType.Comma, "Expected ',' after default case");
                     }
                 }
                 else
                 {
-                    throw new ParseException("Expected 'case' or 'default' in pattern match");
+                    throw Error(Current(), "Expected 'case' or 'default' in pattern match");
                 }
             }
             
-            mainParser.Consume(TokenType.RightBrace, "Expected '}' after pattern match");
+            Consume(TokenType.RightBrace, "Expected '}' after pattern match");
             
             return new PatternMatchExpression(expression, cases, defaultCase);
         }
@@ -504,40 +492,40 @@ namespace Ouroboros.Syntaxes.Medium
         private Pattern ParsePattern()
         {
             // Parse different pattern types
-            if (mainParser.Check(TokenType.NumberLiteral) || 
-                mainParser.Check(TokenType.StringLiteral) ||
-                mainParser.Check(TokenType.True) ||
-                mainParser.Check(TokenType.False) ||
-                mainParser.Check(TokenType.Null))
+            if (Match(TokenType.NumberLiteral) || 
+                Match(TokenType.StringLiteral) ||
+                Match(TokenType.True) ||
+                Match(TokenType.False) ||
+                Match(TokenType.Null))
             {
                 // Constant pattern
-                Expression constant = mainParser.ParsePrimary();
+                Expression constant = ParsePrimary();
                 return new ConstantPattern(constant);
             }
-            else if (mainParser.Match(TokenType.Var))
+            else if (Match(TokenType.Var))
             {
                 // Variable pattern
-                string name = mainParser.Consume(TokenType.Identifier, "Expected variable name").Lexeme;
+                string name = Consume(TokenType.Identifier, "Expected variable name").Lexeme;
                 return new VariablePattern(name);
             }
-            else if (mainParser.Check(TokenType.Identifier))
+            else if (Match(TokenType.Identifier))
             {
-                string typeName = mainParser.Advance().Lexeme;
+                string typeName = Advance().Lexeme;
                 
-                if (mainParser.Match(TokenType.LeftParen))
+                if (Match(TokenType.LeftParen))
                 {
                     // Deconstruction pattern
                     List<Pattern> subpatterns = new List<Pattern>();
                     
-                    if (!mainParser.Check(TokenType.RightParen))
+                    if (!Match(TokenType.RightParen))
                     {
                         do
                         {
                             subpatterns.Add(ParsePattern());
-                        } while (mainParser.Match(TokenType.Comma));
+                        } while (Match(TokenType.Comma));
                     }
                     
-                    mainParser.Consume(TokenType.RightParen, "Expected ')' after deconstruction patterns");
+                    Consume(TokenType.RightParen, "Expected ')' after deconstruction patterns");
                     
                     return new DeconstructionPattern(typeName, subpatterns);
                 }
@@ -547,15 +535,108 @@ namespace Ouroboros.Syntaxes.Medium
                     return new TypePattern(typeName);
                 }
             }
-            else if (mainParser.Match(TokenType.Underscore))
+            else if (Match(TokenType.Underscore))
             {
                 // Wildcard pattern
                 return new WildcardPattern();
             }
             else
             {
-                throw new ParseException("Invalid pattern");
+                throw Error(Current(), "Invalid pattern");
             }
         }
+
+        #region Helper Methods
+
+        private bool Match(params TokenType[] types)
+        {
+            foreach (var type in types)
+            {
+                if (Check(type))
+                {
+                    Advance();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool Check(TokenType type)
+        {
+            if (IsAtEnd()) return false;
+            return Current().Type == type;
+        }
+
+        private Token Advance()
+        {
+            if (!IsAtEnd()) current++;
+            return Previous();
+        }
+
+        private bool IsAtEnd()
+        {
+            return current >= tokens.Count || Current().Type == TokenType.EndOfFile;
+        }
+
+        private Token Current()
+        {
+            return current < tokens.Count ? tokens[current] : 
+                new Token(TokenType.EndOfFile, "", null, 0, 0, 0, 0, "", SyntaxLevel.Medium);
+        }
+
+        private Token Previous()
+        {
+            return tokens[current - 1];
+        }
+
+        private Token Consume(TokenType type, string message)
+        {
+            if (Check(type)) return Advance();
+            throw Error(Current(), message);
+        }
+
+        private ParseException Error(Token token, string message)
+        {
+            return new ParseException(message, token.Line, token.Column);
+        }
+
+        private void Synchronize()
+        {
+            Advance();
+            
+            while (!IsAtEnd())
+            {
+                if (Previous().Type == TokenType.Semicolon) return;
+                
+                switch (Current().Type)
+                {
+                    case TokenType.Class:
+                    case TokenType.Function:
+                    case TokenType.Var:
+                    case TokenType.For:
+                    case TokenType.If:
+                    case TokenType.While:
+                    case TokenType.Return:
+                        return;
+                }
+                
+                Advance();
+            }
+        }
+
+        private bool IsTypeKeyword()
+        {
+            return Check(TokenType.Void) || Check(TokenType.Bool) || 
+                   Check(TokenType.Byte) || Check(TokenType.SByte) ||
+                   Check(TokenType.Short) || Check(TokenType.UShort) ||
+                   Check(TokenType.Int) || Check(TokenType.UInt) ||
+                   Check(TokenType.Long) || Check(TokenType.ULong) ||
+                   Check(TokenType.Float) || Check(TokenType.Double) ||
+                   Check(TokenType.Decimal) || Check(TokenType.String) ||
+                   Check(TokenType.Char) || Check(TokenType.Object) ||
+                   Check(TokenType.Dynamic) || Check(TokenType.Var);
+        }
+
+        #endregion
     }
 } 
