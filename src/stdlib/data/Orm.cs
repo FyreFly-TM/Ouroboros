@@ -756,4 +756,450 @@ namespace Ouroboros.Stdlib.Data
         public MigrationException(string message) : base(message) { }
         public MigrationException(string message, Exception inner) : base(message, inner) { }
     }
+
+    /// <summary>
+    /// Connection string builder and manager
+    /// </summary>
+    public class ConnectionStringBuilder
+    {
+        private readonly Dictionary<string, string> parameters = new();
+
+        public string Server 
+        { 
+            get => GetValue("Server") ?? "localhost";
+            set => SetValue("Server", value);
+        }
+
+        public string Database
+        {
+            get => GetValue("Database") ?? "";
+            set => SetValue("Database", value);
+        }
+
+        public string UserId
+        {
+            get => GetValue("User Id") ?? "";
+            set => SetValue("User Id", value);
+        }
+
+        public string Password
+        {
+            get => GetValue("Password") ?? "";
+            set => SetValue("Password", value);
+        }
+
+        public int Port
+        {
+            get => int.TryParse(GetValue("Port"), out var port) ? port : 0;
+            set => SetValue("Port", value.ToString());
+        }
+
+        public bool IntegratedSecurity
+        {
+            get => bool.TryParse(GetValue("Integrated Security"), out var result) && result;
+            set => SetValue("Integrated Security", value.ToString());
+        }
+
+        public int ConnectionTimeout
+        {
+            get => int.TryParse(GetValue("Connection Timeout"), out var timeout) ? timeout : 30;
+            set => SetValue("Connection Timeout", value.ToString());
+        }
+
+        public bool Pooling
+        {
+            get => !bool.TryParse(GetValue("Pooling"), out var result) || result;
+            set => SetValue("Pooling", value.ToString());
+        }
+
+        public int MinPoolSize
+        {
+            get => int.TryParse(GetValue("Min Pool Size"), out var size) ? size : 0;
+            set => SetValue("Min Pool Size", value.ToString());
+        }
+
+        public int MaxPoolSize
+        {
+            get => int.TryParse(GetValue("Max Pool Size"), out var size) ? size : 100;
+            set => SetValue("Max Pool Size", value.ToString());
+        }
+
+        private string? GetValue(string key)
+        {
+            return parameters.TryGetValue(key, out var value) ? value : null;
+        }
+
+        private void SetValue(string key, string value)
+        {
+            parameters[key] = value;
+        }
+
+        public ConnectionStringBuilder() { }
+
+        public ConnectionStringBuilder(string connectionString)
+        {
+            Parse(connectionString);
+        }
+
+        public void Parse(string connectionString)
+        {
+            parameters.Clear();
+            var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            
+            foreach (var part in parts)
+            {
+                var kvp = part.Split('=', 2);
+                if (kvp.Length == 2)
+                {
+                    parameters[kvp[0].Trim()] = kvp[1].Trim();
+                }
+            }
+        }
+
+        public string BuildPostgreSQL()
+        {
+            var parts = new List<string>();
+            
+            if (!string.IsNullOrEmpty(Server))
+                parts.Add($"Host={Server}");
+            if (Port > 0 && Port != 5432)
+                parts.Add($"Port={Port}");
+            if (!string.IsNullOrEmpty(Database))
+                parts.Add($"Database={Database}");
+            if (!string.IsNullOrEmpty(UserId))
+                parts.Add($"Username={UserId}");
+            if (!string.IsNullOrEmpty(Password))
+                parts.Add($"Password={Password}");
+            if (ConnectionTimeout != 30)
+                parts.Add($"Timeout={ConnectionTimeout}");
+            if (!Pooling)
+                parts.Add("Pooling=false");
+            if (MinPoolSize > 0)
+                parts.Add($"Minimum Pool Size={MinPoolSize}");
+            if (MaxPoolSize != 100)
+                parts.Add($"Maximum Pool Size={MaxPoolSize}");
+            
+            return string.Join(";", parts);
+        }
+
+        public string BuildMySQL()
+        {
+            var parts = new List<string>();
+            
+            if (!string.IsNullOrEmpty(Server))
+                parts.Add($"Server={Server}");
+            if (Port > 0 && Port != 3306)
+                parts.Add($"Port={Port}");
+            if (!string.IsNullOrEmpty(Database))
+                parts.Add($"Database={Database}");
+            if (!string.IsNullOrEmpty(UserId))
+                parts.Add($"User={UserId}");
+            if (!string.IsNullOrEmpty(Password))
+                parts.Add($"Password={Password}");
+            if (ConnectionTimeout != 30)
+                parts.Add($"Connection Timeout={ConnectionTimeout}");
+            if (!Pooling)
+                parts.Add("Pooling=false");
+            if (MinPoolSize > 0)
+                parts.Add($"Min Pool Size={MinPoolSize}");
+            if (MaxPoolSize != 100)
+                parts.Add($"Max Pool Size={MaxPoolSize}");
+            
+            parts.Add("AllowUserVariables=true");
+            parts.Add("UseAffectedRows=true");
+            
+            return string.Join(";", parts);
+        }
+
+        public string BuildSQLite()
+        {
+            var parts = new List<string>();
+            
+            if (!string.IsNullOrEmpty(Database))
+                parts.Add($"Data Source={Database}");
+            if (ConnectionTimeout != 30)
+                parts.Add($"Default Timeout={ConnectionTimeout}");
+            if (!Pooling)
+                parts.Add("Pooling=false");
+            
+            parts.Add("Version=3");
+            
+            return string.Join(";", parts);
+        }
+
+        public override string ToString()
+        {
+            return string.Join(";", parameters.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+        }
+    }
+
+    /// <summary>
+    /// Enhanced migration builder
+    /// </summary>
+    public class MigrationBuilder
+    {
+        private readonly List<MigrationOperation> operations = new();
+        
+        public void CreateTable(string name, Action<CreateTableBuilder> configure)
+        {
+            var builder = new CreateTableBuilder(name);
+            configure(builder);
+            operations.Add(builder.Build());
+        }
+        
+        public void AlterTable(string name, Action<AlterTableBuilder> configure)
+        {
+            var builder = new AlterTableBuilder(name);
+            configure(builder);
+            operations.Add(builder.Build());
+        }
+        
+        public void DropTable(string name)
+        {
+            operations.Add(new DropTableOperation { TableName = name });
+        }
+        
+        public void CreateIndex(string name, string table, params string[] columns)
+        {
+            operations.Add(new CreateIndexOperation
+            {
+                IndexName = name,
+                TableName = table,
+                Columns = columns.ToList()
+            });
+        }
+        
+        public void DropIndex(string name, string table)
+        {
+            operations.Add(new DropIndexOperation
+            {
+                IndexName = name,
+                TableName = table
+            });
+        }
+        
+        public void Sql(string sql)
+        {
+            operations.Add(new RawSqlOperation { Sql = sql });
+        }
+        
+        public List<MigrationOperation> Build() => operations;
+    }
+    
+    public class CreateTableBuilder
+    {
+        private readonly string tableName;
+        private readonly List<ColumnDefinition> columns = new();
+        private readonly List<string> primaryKeys = new();
+        private readonly List<ForeignKeyDefinition> foreignKeys = new();
+        
+        public CreateTableBuilder(string tableName)
+        {
+            this.tableName = tableName;
+        }
+        
+        public CreateTableBuilder Column(string name, string type, Action<ColumnBuilder>? configure = null)
+        {
+            var builder = new ColumnBuilder(name, type);
+            configure?.Invoke(builder);
+            columns.Add(builder.Build());
+            return this;
+        }
+        
+        public CreateTableBuilder PrimaryKey(params string[] columnNames)
+        {
+            primaryKeys.AddRange(columnNames);
+            return this;
+        }
+        
+        public CreateTableBuilder ForeignKey(string column, string referencedTable, string referencedColumn)
+        {
+            foreignKeys.Add(new ForeignKeyDefinition
+            {
+                Column = column,
+                ReferencedTable = referencedTable,
+                ReferencedColumn = referencedColumn
+            });
+            return this;
+        }
+        
+        public CreateTableOperation Build()
+        {
+            return new CreateTableOperation
+            {
+                TableName = tableName,
+                Columns = columns,
+                PrimaryKeys = primaryKeys,
+                ForeignKeys = foreignKeys
+            };
+        }
+    }
+    
+    public class ColumnBuilder
+    {
+        private readonly ColumnDefinition column;
+        
+        public ColumnBuilder(string name, string type)
+        {
+            column = new ColumnDefinition { Name = name, Type = type };
+        }
+        
+        public ColumnBuilder NotNull()
+        {
+            column.IsNullable = false;
+            return this;
+        }
+        
+        public ColumnBuilder DefaultValue(object value)
+        {
+            column.DefaultValue = value;
+            return this;
+        }
+        
+        public ColumnBuilder Identity()
+        {
+            column.IsIdentity = true;
+            return this;
+        }
+        
+        public ColumnBuilder Unique()
+        {
+            column.IsUnique = true;
+            return this;
+        }
+        
+        public ColumnDefinition Build() => column;
+    }
+    
+    public class AlterTableBuilder
+    {
+        private readonly string tableName;
+        private readonly List<MigrationOperation> operations = new();
+        
+        public AlterTableBuilder(string tableName)
+        {
+            this.tableName = tableName;
+        }
+        
+        public AlterTableBuilder AddColumn(string name, string type, Action<ColumnBuilder>? configure = null)
+        {
+            var builder = new ColumnBuilder(name, type);
+            configure?.Invoke(builder);
+            operations.Add(new AddColumnOperation
+            {
+                TableName = tableName,
+                Column = builder.Build()
+            });
+            return this;
+        }
+        
+        public AlterTableBuilder DropColumn(string name)
+        {
+            operations.Add(new DropColumnOperation
+            {
+                TableName = tableName,
+                ColumnName = name
+            });
+            return this;
+        }
+        
+        public AlterTableBuilder RenameColumn(string oldName, string newName)
+        {
+            operations.Add(new RenameColumnOperation
+            {
+                TableName = tableName,
+                OldName = oldName,
+                NewName = newName
+            });
+            return this;
+        }
+        
+        public AlterTableOperation Build()
+        {
+            return new AlterTableOperation
+            {
+                TableName = tableName,
+                Operations = operations
+            };
+        }
+    }
+    
+    // Migration operation classes
+    public abstract class MigrationOperation { }
+    
+    public class CreateTableOperation : MigrationOperation
+    {
+        public string TableName { get; set; } = "";
+        public List<ColumnDefinition> Columns { get; set; } = new();
+        public List<string> PrimaryKeys { get; set; } = new();
+        public List<ForeignKeyDefinition> ForeignKeys { get; set; } = new();
+    }
+    
+    public class AlterTableOperation : MigrationOperation
+    {
+        public string TableName { get; set; } = "";
+        public List<MigrationOperation> Operations { get; set; } = new();
+    }
+    
+    public class DropTableOperation : MigrationOperation
+    {
+        public string TableName { get; set; } = "";
+    }
+    
+    public class AddColumnOperation : MigrationOperation
+    {
+        public string TableName { get; set; } = "";
+        public ColumnDefinition Column { get; set; } = new();
+    }
+    
+    public class DropColumnOperation : MigrationOperation
+    {
+        public string TableName { get; set; } = "";
+        public string ColumnName { get; set; } = "";
+    }
+    
+    public class RenameColumnOperation : MigrationOperation
+    {
+        public string TableName { get; set; } = "";
+        public string OldName { get; set; } = "";
+        public string NewName { get; set; } = "";
+    }
+    
+    public class CreateIndexOperation : MigrationOperation
+    {
+        public string IndexName { get; set; } = "";
+        public string TableName { get; set; } = "";
+        public List<string> Columns { get; set; } = new();
+        public bool IsUnique { get; set; }
+    }
+    
+    public class DropIndexOperation : MigrationOperation
+    {
+        public string IndexName { get; set; } = "";
+        public string TableName { get; set; } = "";
+    }
+    
+    public class RawSqlOperation : MigrationOperation
+    {
+        public string Sql { get; set; } = "";
+    }
+    
+    public class ColumnDefinition
+    {
+        public string Name { get; set; } = "";
+        public string Type { get; set; } = "";
+        public bool IsNullable { get; set; } = true;
+        public object? DefaultValue { get; set; }
+        public bool IsIdentity { get; set; }
+        public bool IsUnique { get; set; }
+    }
+    
+    public class ForeignKeyDefinition
+    {
+        public string Column { get; set; } = "";
+        public string ReferencedTable { get; set; } = "";
+        public string ReferencedColumn { get; set; } = "";
+        public string? OnDelete { get; set; }
+        public string? OnUpdate { get; set; }
+    }
 } 
