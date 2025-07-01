@@ -34,12 +34,16 @@ namespace Ouroboros.Syntaxes.High
         
         public Statement ParseHighLevelStatement()
         {
-            Console.WriteLine($"DEBUG: HighLevelParser.ParseHighLevelStatement() - Current token: {Current().Type} '{Current().Lexeme}' at {Current().Line}:{Current().Column}");
+            // Log current token for debugging high-level parsing
+            if (Environment.GetEnvironmentVariable("OURO_DEBUG") == "1")
+            {
+                Console.WriteLine($"[DEBUG] HighLevelParser: Current token: {Current().Type} '{Current().Lexeme}' at {Current().Line}:{Current().Column}");
+            }
             
             // Handle natural language if statements
             if (Match(TokenType.If))
             {
-                Console.WriteLine($"DEBUG: Matched IF token, parsing natural language if");
+                // Matched IF token, parsing natural language if
                 return ParseNaturalLanguageIf();
             }
             
@@ -81,7 +85,7 @@ namespace Ouroboros.Syntaxes.High
             // Handle variable assignment with :=
             if (CanBeUsedAsIdentifier() && PeekNext() == TokenType.Assign)
             {
-                Console.WriteLine($"DEBUG: Parsing assignment for {Current().Lexeme}");
+                // Parsing assignment for variable
                 return ParseAssignment();
             }
             
@@ -103,7 +107,7 @@ namespace Ouroboros.Syntaxes.High
             }
             
             // Default: try to parse as expression statement
-            Console.WriteLine($"DEBUG: No statement pattern matched, parsing as expression");
+            // No statement pattern matched, parsing as expression
             var expr = ParseExpression();
             return new ExpressionStatement(expr);
         }
