@@ -5,6 +5,7 @@ using Ouroboros.Core;
 using Ouroboros.Core.AST;
 using Ouroboros.Core.Lexer;
 using Ouroboros.Tokens;
+using System.Text;
 
 namespace Ouroboros.Syntaxes.Low
 {
@@ -181,6 +182,10 @@ namespace Ouroboros.Syntaxes.Low
             var outputs = new List<AsmOperand>();
             var clobbers = new List<string>();
             
+            // Create an instance of the Assembler to validate instructions
+            var assembler = new Core.Assembly.Assembler();
+            var assemblySource = new StringBuilder();
+            
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
                 // Check for constraint syntax
@@ -213,12 +218,25 @@ namespace Ouroboros.Syntaxes.Low
                 if (!string.IsNullOrWhiteSpace(line))
                 {
                     // Process line for variable substitutions
-                    line = ProcessAsmVariables(line, variables);
+                    line = ProcessAsmVariables(line, variables, inputs, outputs);
                     asmStatements.Add(line);
+                    assemblySource.AppendLine(line);
                 }
             }
             
             Consume(TokenType.RightBrace, "Expected '}' to close assembly block");
+            
+            // Try to assemble the code to validate it
+            try
+            {
+                var bytecode = assembler.Assemble(assemblySource.ToString());
+                // Assembly validation successful
+            }
+            catch (Core.Assembly.AssemblerException ex)
+            {
+                // Report assembly error but don't fail parsing
+                throw Error(Current(), $"Assembly error: {ex.Message}");
+            }
             
             var asmCode = string.Join("\n", asmStatements);
             
@@ -269,14 +287,31 @@ namespace Ouroboros.Syntaxes.Low
             return clobbers;
         }
         
-        private string ProcessAsmVariables(string line, Dictionary<string, string> variables)
+        private string ProcessAsmVariables(string line, Dictionary<string, string> variables, 
+            List<AsmOperand> inputs, List<AsmOperand> outputs)
         {
-            // Replace %0, %1, etc. with actual register names
-            // Replace ${varname} with variable references
+            // Replace %0, %1, etc. with actual register/operand references
+            var result = line;
             
-            // Simple regex replacement for demonstration
-            // In production, use proper parsing
-            return line;
+            // Replace output operands (start from %0)
+            for (int i = 0; i < outputs.Count; i++)
+            {
+                result = result.Replace($"%{i}", $"[output_{i}]");
+            }
+            
+            // Replace input operands (continue numbering after outputs)
+            for (int i = 0; i < inputs.Count; i++)
+            {
+                result = result.Replace($"%{outputs.Count + i}", $"[input_{i}]");
+            }
+            
+            // Replace ${varname} with variable references
+            foreach (var kvp in variables)
+            {
+                result = result.Replace($"${{{kvp.Key}}}", kvp.Value);
+            }
+            
+            return result;
         }
         
         private string ParseAsmLine()
@@ -498,59 +533,82 @@ namespace Ouroboros.Syntaxes.Low
             Expression scale = null;
             Expression displacement = null;
             
-            // Parse base register or displacement
-            if (Check(TokenType.Modulo) || Check(TokenType.Identifier))
+            // Parse first component
+            if (Check(TokenType.Modulo))
             {
-                baseReg = ParseOperand();
+                // Register
+                Advance(); // consume %
+                var reg = Consume(TokenType.Identifier, "Expected register name");
+                baseReg = new RegisterExpression(reg.Lexeme);
             }
             else if (Check(TokenType.IntegerLiteral) || Check(TokenType.HexLiteral))
             {
-                displacement = ParseOperand();
+                // Immediate displacement
+                displacement = new LiteralExpression(Advance());
+            }
+            else if (Check(TokenType.Identifier))
+            {
+                // Label or variable
+                baseReg = new IdentifierExpression(Advance());
             }
             
-            while (Match(TokenType.Plus) || Match(TokenType.Minus))
+            // Parse additional components
+            while (!Check(TokenType.RightBracket) && !IsAtEnd())
             {
-                var op = Previous();
-                
-                // Check for index*scale pattern
-                if (Check(TokenType.Modulo) || Check(TokenType.Identifier))
+                if (Match(TokenType.Plus))
                 {
-                    var nextOperand = ParseOperand();
-                    
-                    if (Match(TokenType.Multiply))
+                    // Addition
+                    if (Check(TokenType.Modulo))
                     {
-                        // This is index*scale
-                        index = nextOperand;
-                        scale = ParseOperand();
-                    }
-                    else
-                    {
-                        // This is either another base or displacement
-                        if (displacement == null && (Check(TokenType.IntegerLiteral) || Check(TokenType.HexLiteral)))
+                        // Register
+                        Advance(); // consume %
+                        var reg = Consume(TokenType.Identifier, "Expected register name");
+                        
+                        // Check for scale
+                        if (Match(TokenType.Multiply))
                         {
-                            displacement = nextOperand;
-                        }
-                        else if (baseReg == null)
-                        {
-                            baseReg = nextOperand;
+                            // index*scale
+                            if (index != null)
+                                throw Error(Current(), "Multiple index registers not allowed");
+                            index = new RegisterExpression(reg.Lexeme);
+                            scale = new LiteralExpression(Consume(TokenType.IntegerLiteral, "Expected scale factor"));
                         }
                         else
                         {
-                            index = nextOperand;
+                            // Just another register
+                            if (baseReg == null)
+                                baseReg = new RegisterExpression(reg.Lexeme);
+                            else if (index == null)
+                                index = new RegisterExpression(reg.Lexeme);
+                            else
+                                throw Error(Current(), "Too many registers in memory operand");
                         }
                     }
+                    else if (Check(TokenType.IntegerLiteral) || Check(TokenType.HexLiteral))
+                    {
+                        // Displacement
+                        if (displacement != null)
+                            throw Error(Current(), "Multiple displacements not allowed");
+                        displacement = new LiteralExpression(Advance());
+                    }
+                    else
+                    {
+                        throw Error(Current(), "Expected register or displacement after '+'");
+                    }
+                }
+                else if (Match(TokenType.Minus))
+                {
+                    // Negative displacement
+                    if (displacement != null)
+                        throw Error(Current(), "Multiple displacements not allowed");
+                    var value = Consume(TokenType.IntegerLiteral, "Expected number after '-'");
+                    displacement = new UnaryExpression(
+                        new Token(TokenType.Minus, "-", null, value.Line, value.Column, 0, 0, "", SyntaxLevel.Low),
+                        new LiteralExpression(value));
                 }
                 else
                 {
-                    // Must be displacement
-                    displacement = ParseOperand();
-                    if (op.Type == TokenType.Minus && displacement is LiteralExpression lit)
-                    {
-                        // Negate the displacement
-                        displacement = new LiteralExpression(
-                            CreateToken(TokenType.IntegerLiteral, (-Convert.ToInt64(lit.Value)).ToString(), -Convert.ToInt64(lit.Value))
-                        );
-                    }
+                    throw Error(Current(), "Unexpected token in memory operand");
                 }
             }
             
@@ -793,18 +851,20 @@ namespace Ouroboros.Syntaxes.Low
         
         private Statement ParseFixedStatement()
         {
-            Consume(TokenType.LeftParen, "Expected '(' after fixed");
+            Consume(TokenType.LeftParen, "Expected '(' after 'fixed'");
             
             var type = ParseType();
             var name = Consume(TokenType.Identifier, "Expected variable name");
+            
             Consume(TokenType.Assign, "Expected '=' in fixed statement");
+            
             var target = ParseExpression();
             
             Consume(TokenType.RightParen, "Expected ')' after fixed declaration");
             
             var body = ParseStatement();
             
-            return new FixedStatement(type, name.Lexeme, target, body, 0, 0);
+            return new FixedStatement(type, name.Lexeme, target, body);
         }
         
         private TypeNode ParseType()
@@ -1034,10 +1094,19 @@ namespace Ouroboros.Syntaxes.Low
         
         private void SkipWhitespaceAndComments()
         {
-            while (Match(TokenType.Whitespace) || Match(TokenType.NewLine) || 
-                   Match(TokenType.Comment) || Match(TokenType.MultiLineComment))
+            while (current < tokens.Count)
             {
-                // Skip
+                var token = tokens[current];
+                if (token.Type == TokenType.NewLine || 
+                    token.Type == TokenType.Comment ||
+                    (token.Type == TokenType.Identifier && string.IsNullOrWhiteSpace(token.Lexeme)))
+                {
+                    current++;
+                }
+                else
+                {
+                    break;
+                }
             }
         }
         
@@ -1119,11 +1188,21 @@ namespace Ouroboros.Syntaxes.Low
         
         private bool IsTypeKeyword()
         {
-            return Check(TokenType.Byte) || Check(TokenType.Short) || 
-                   Check(TokenType.Int) || Check(TokenType.Long) ||
-                   Check(TokenType.Float) || Check(TokenType.Double) ||
-                   Check(TokenType.Void) || Check(TokenType.Char) ||
-                   Check(TokenType.Unsigned) || Check(TokenType.Signed);
+            if (Check(TokenType.Void) || Check(TokenType.Int) || Check(TokenType.Float) ||
+                Check(TokenType.Double) || Check(TokenType.Char) || Check(TokenType.Bool) ||
+                Check(TokenType.Byte) || Check(TokenType.Short) || Check(TokenType.Long))
+                return true;
+                
+            // Also check for pointer types
+            if (Check(TokenType.Identifier))
+            {
+                var name = Current().Lexeme;
+                return name == "int8_t" || name == "int16_t" || name == "int32_t" || name == "int64_t" ||
+                       name == "uint8_t" || name == "uint16_t" || name == "uint32_t" || name == "uint64_t" ||
+                       name == "size_t" || name == "ptrdiff_t" || name == "intptr_t" || name == "uintptr_t";
+            }
+            
+            return false;
         }
     }
     
@@ -1258,8 +1337,8 @@ namespace Ouroboros.Syntaxes.Low
         public Expression Target { get; }
         public Statement Body { get; }
         
-        public FixedStatement(TypeNode type, string name, Expression target, Statement body, int line, int column)
-            : base(line, column)
+        public FixedStatement(TypeNode type, string name, Expression target, Statement body)
+            : base(type.Line, type.Column)
         {
             Type = type;
             Name = name;
@@ -1472,10 +1551,21 @@ namespace Ouroboros.Syntaxes.Low
     public class TypeNode
     {
         public string Name { get; }
-        
+        public int Line { get; }
+        public int Column { get; }
+
         public TypeNode(string name)
         {
             Name = name;
+            Line = 0;
+            Column = 0;
+        }
+        
+        public TypeNode(string name, int line, int column)
+        {
+            Name = name;
+            Line = line;
+            Column = column;
         }
     }
     
