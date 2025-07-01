@@ -428,7 +428,11 @@ namespace Ouroboros.Core.Compiler
         public TypeNode VisitArrayExpression(ArrayExpression expr) 
         { 
             if (expr.Elements.Count == 0)
-                return new ArrayTypeNode(typeRegistry.Unknown);
+            {
+                // For empty arrays, try to infer from context
+                // For now, default to object[]
+                return new ArrayTypeNode(new TypeNode("object"));
+            }
                 
             // Infer element type from first element
             var elementType = expr.Elements[0].Accept(this);
@@ -440,10 +444,31 @@ namespace Ouroboros.Core.Compiler
                 if (!AreTypesCompatible(elementType, elemType))
                 {
                     AddError($"Array elements must have consistent types", expr.Line, expr.Column);
+                    // Try to find common base type
+                    elementType = FindCommonType(elementType, elemType);
                 }
             }
             
             return new ArrayTypeNode(elementType);
+        }
+        
+        private TypeNode FindCommonType(TypeNode type1, TypeNode type2)
+        {
+            // If types are the same, return that type
+            if (type1.Name == type2.Name) return type1;
+            
+            // If either is unknown, return the other
+            if (type1.Name == "?") return type2;
+            if (type2.Name == "?") return type1;
+            
+            // If both are numeric, return the wider type
+            if (IsNumericType(type1) && IsNumericType(type2))
+            {
+                return GetNumericResultType(type1, type2);
+            }
+            
+            // Otherwise return object as the common base type
+            return new TypeNode("object");
         }
         
         public TypeNode VisitLambdaExpression(LambdaExpression expr) 

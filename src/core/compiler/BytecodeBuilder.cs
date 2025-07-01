@@ -572,6 +572,110 @@ namespace Ouroboros.Core.Compiler
                     return new byte[] { 0x0F, 0x31 };
                     
                 // TODO: Add more x86-64 instructions as needed
+                
+                // Additional arithmetic instructions
+                case "IDIV":
+                    return new byte[] { 0xF7, 0xF8 }; // idiv rax/eax
+                    
+                case "IMUL":
+                    return new byte[] { 0xF7, 0xE8 }; // imul rax/eax
+                    
+                // Bit manipulation instructions
+                case "BSF":
+                    return new byte[] { 0x0F, 0xBC }; // bit scan forward
+                    
+                case "BSR":
+                    return new byte[] { 0x0F, 0xBD }; // bit scan reverse
+                    
+                case "POPCNT":
+                    return new byte[] { 0xF3, 0x0F, 0xB8 }; // population count
+                    
+                case "LZCNT":
+                    return new byte[] { 0xF3, 0x0F, 0xBD }; // leading zero count
+                    
+                case "TZCNT":
+                    return new byte[] { 0xF3, 0x0F, 0xBC }; // trailing zero count
+                    
+                // Atomic operations
+                case "LOCK":
+                    return new byte[] { 0xF0 }; // lock prefix
+                    
+                case "XADD":
+                    return new byte[] { 0x0F, 0xC1 }; // exchange and add
+                    
+                case "CMPXCHG":
+                    return new byte[] { 0x0F, 0xB1 }; // compare and exchange
+                    
+                case "CMPXCHG8B":
+                    return new byte[] { 0x0F, 0xC7 }; // compare and exchange 8 bytes
+                    
+                // SSE/AVX instructions for SIMD
+                case "MOVAPS":
+                    return new byte[] { 0x0F, 0x28 }; // move aligned packed single-precision
+                    
+                case "MOVUPS":
+                    return new byte[] { 0x0F, 0x10 }; // move unaligned packed single-precision
+                    
+                case "ADDPS":
+                    return new byte[] { 0x0F, 0x58 }; // add packed single-precision
+                    
+                case "MULPS":
+                    return new byte[] { 0x0F, 0x59 }; // multiply packed single-precision
+                    
+                case "SUBPS":
+                    return new byte[] { 0x0F, 0x5C }; // subtract packed single-precision
+                    
+                case "DIVPS":
+                    return new byte[] { 0x0F, 0x5E }; // divide packed single-precision
+                    
+                // Memory barriers
+                case "MFENCE":
+                    return new byte[] { 0x0F, 0xAE, 0xF0 }; // memory fence
+                    
+                case "LFENCE":
+                    return new byte[] { 0x0F, 0xAE, 0xE8 }; // load fence
+                    
+                case "SFENCE":
+                    return new byte[] { 0x0F, 0xAE, 0xF8 }; // store fence
+                    
+                // String operations
+                case "REP":
+                    return new byte[] { 0xF3 }; // repeat prefix
+                    
+                case "MOVSB":
+                    return new byte[] { 0xA4 }; // move string byte
+                    
+                case "STOSB":
+                    return new byte[] { 0xAA }; // store string byte
+                    
+                case "CMPSB":
+                    return new byte[] { 0xA6 }; // compare string byte
+                    
+                // System instructions
+                case "SYSCALL":
+                    return new byte[] { 0x0F, 0x05 }; // system call
+                    
+                case "SYSRET":
+                    return new byte[] { 0x0F, 0x07 }; // return from system call
+                    
+                case "RDMSR":
+                    return new byte[] { 0x0F, 0x32 }; // read model specific register
+                    
+                case "WRMSR":
+                    return new byte[] { 0x0F, 0x30 }; // write model specific register
+                    
+                // Conditional moves
+                case "CMOVE":
+                    return new byte[] { 0x0F, 0x44 }; // conditional move if equal
+                    
+                case "CMOVNE":
+                    return new byte[] { 0x0F, 0x45 }; // conditional move if not equal
+                    
+                case "CMOVG":
+                    return new byte[] { 0x0F, 0x4F }; // conditional move if greater
+                    
+                case "CMOVL":
+                    return new byte[] { 0x0F, 0x4C }; // conditional move if less
             }
             
             // For unrecognized instructions, emit a NOP and log a warning

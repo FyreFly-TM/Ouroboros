@@ -2061,6 +2061,13 @@ namespace Ouroboros.Core.VM
                         // Break should be handled by compiler with jump to loop end
                         // This is a placeholder in case of direct break instruction
                         Console.WriteLine("[VM] Break instruction encountered - should be compiled to jump");
+                        // Break instruction - unwind to nearest loop and jump to end
+                        // The compiler should have emitted a jump target
+                        var jumpTarget = ReadInt32();
+                        instructionPointer = jumpTarget;
+                        
+                        // Fire debugging event
+                        OnInstructionExecute?.Invoke(instructionPointer - 5, Opcode.Break);
                     }
                     break;
                     
@@ -2069,6 +2076,13 @@ namespace Ouroboros.Core.VM
                         // Continue should be handled by compiler with jump to loop start
                         // This is a placeholder in case of direct continue instruction
                         Console.WriteLine("[VM] Continue instruction encountered - should be compiled to jump");
+                        // Continue instruction - jump to loop condition check
+                        // The compiler should have emitted a jump target
+                        var jumpTarget = ReadInt32();
+                        instructionPointer = jumpTarget;
+                        
+                        // Fire debugging event
+                        OnInstructionExecute?.Invoke(instructionPointer - 5, Opcode.Continue);
                     }
                     break;
                     

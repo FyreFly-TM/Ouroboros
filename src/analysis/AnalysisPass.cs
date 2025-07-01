@@ -148,6 +148,34 @@ namespace Ouroboros.Analysis
                         diagnostics.ReportMathematicalError("Cross product requires exactly two operands", location);
                     }
                     // TODO: Verify operands are 3D vectors when type info available
+                    // Verify operands are 3D vectors
+                    foreach (var operand in expr.Operands)
+                    {
+                        if (operand is VectorExpression vecExpr)
+                        {
+                            // Check if it's a 3D vector
+                            if (vecExpr.Components.Count != 3)
+                            {
+                                var vecLocation = new SourceLocation(vecExpr.FileName, vecExpr.Line, vecExpr.Column);
+                                diagnostics.ReportMathematicalError($"Cross product requires 3D vectors, but found {vecExpr.Components.Count}D vector", vecLocation);
+                            }
+                        }
+                        else if (operand is IdentifierExpression idExpr)
+                        {
+                            // Look up type information from semantic model if available
+                            // For now, we'll just flag non-vector expressions
+                            if (!idExpr.Name.Contains("vec") && !idExpr.Name.Contains("Vec") && !idExpr.Name.Contains("vector"))
+                            {
+                                var idLocation = new SourceLocation(idExpr.FileName, idExpr.Line, idExpr.Column);
+                                diagnostics.ReportInfo($"Cross product operand '{idExpr.Name}' should be a 3D vector", idLocation);
+                            }
+                        }
+                        else
+                        {
+                            var opLocation = new SourceLocation(operand.FileName, operand.Line, operand.Column);
+                            diagnostics.ReportMathematicalError("Cross product operands must be vectors", opLocation);
+                        }
+                    }
                     break;
                     
                 case MathOperationType.DotProduct:

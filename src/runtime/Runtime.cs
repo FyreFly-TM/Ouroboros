@@ -6,6 +6,8 @@ using Ouroboros.Core;
 using Ouroboros.Core.VM;
 using Ouroboros.Core.Compiler;
 using System.Globalization;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace Ouroboros.Runtime
 {
@@ -547,13 +549,12 @@ namespace Ouroboros.Runtime
         
         private void SweepUnreachableObjects()
         {
-            // Free unreachable objects
+            // Sweep phase - remove unreachable objects
             lock (gcLock)
             {
                 var deadCount = 0;
                 var freedMemory = 0L;
                 
-                // Remove dead weak references
                 for (int i = allocations.Count - 1; i >= 0; i--)
                 {
                     if (!allocations[i].IsAlive)
@@ -563,6 +564,8 @@ namespace Ouroboros.Runtime
                         
                         // Estimate freed memory (would need actual size tracking)
                         freedMemory += 1024; // Placeholder
+                        // Calculate actual object size
+                        freedMemory += CalculateObjectSize(allocations[i].Target.GetType());
                     }
                 }
                 
@@ -573,6 +576,93 @@ namespace Ouroboros.Runtime
                 {
                     Console.WriteLine($"[GC] Collected {deadCount} objects, freed ~{freedMemory / 1024}KB");
                 }
+            }
+        }
+        
+        private long CalculateObjectSize(Type type)
+        {
+            // Calculate approximate object size based on type
+            
+            // Base object overhead (sync block, type pointer, etc.)
+            long size = 24; // 24 bytes base overhead on 64-bit
+            
+            // Add field sizes
+            foreach (var field in type.GetFields(System.Reflection.BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                var fieldType = field.FieldType;
+                
+                if (fieldType.IsPrimitive)
+                {
+                    // Primitive types
+                    if (fieldType == typeof(bool) || fieldType == typeof(byte) || fieldType == typeof(sbyte))
+                        size += 1;
+                    else if (fieldType == typeof(short) || fieldType == typeof(ushort) || fieldType == typeof(char))
+                        size += 2;
+                    else if (fieldType == typeof(int) || fieldType == typeof(uint) || fieldType == typeof(float))
+                        size += 4;
+                    else if (fieldType == typeof(long) || fieldType == typeof(ulong) || fieldType == typeof(double))
+                        size += 8;
+                    else if (fieldType == typeof(decimal))
+                        size += 16;
+                }
+                else if (fieldType == typeof(string))
+                {
+                    // String reference + average string size estimate
+                    size += 8 + 64; // 8 byte reference + 64 byte average string
+                }
+                else if (fieldType.IsArray)
+                {
+                    // Array reference + average array size estimate
+                    size += 8 + 256; // 8 byte reference + 256 byte average array
+                }
+                else if (fieldType.IsClass || fieldType.IsInterface)
+                {
+                    // Reference type - just the reference size
+                    size += 8; // 8 bytes for reference on 64-bit
+                }
+                else if (fieldType.IsValueType && !fieldType.IsEnum)
+                {
+                    // Struct - recursively calculate size
+                    size += CalculateValueTypeSize(fieldType);
+                }
+                else if (fieldType.IsEnum)
+                {
+                    // Enum - size of underlying type
+                    size += Marshal.SizeOf(Enum.GetUnderlyingType(fieldType));
+                }
+            }
+            
+            // Align to 8 bytes
+            return (size + 7) & ~7;
+        }
+        
+        private long CalculateValueTypeSize(Type type)
+        {
+            // Calculate size of a value type (struct)
+            try
+            {
+                return Marshal.SizeOf(type);
+            }
+            catch
+            {
+                // If Marshal.SizeOf fails, estimate based on fields
+                long size = 0;
+                foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                {
+                    if (field.FieldType.IsPrimitive)
+                    {
+                        size += Marshal.SizeOf(field.FieldType);
+                    }
+                    else if (field.FieldType.IsValueType && !field.FieldType.IsEnum)
+                    {
+                        size += CalculateValueTypeSize(field.FieldType);
+                    }
+                    else
+                    {
+                        size += 8; // Reference size
+                    }
+                }
+                return size;
             }
         }
         
@@ -610,6 +700,11 @@ namespace Ouroboros.Runtime
                         liveObjects++;
                         // Would need actual object size tracking
                         liveMemory += 1024; // Placeholder
+                        var obj = weakRef.Target;
+                        if (obj != null)
+                        {
+                            liveMemory += CalculateObjectSize(obj.GetType());
+                        }
                     }
                 }
             }
