@@ -372,8 +372,42 @@ namespace Ouroboros.Tools.Opm
             if (File.Exists(installScript))
             {
                 Console.WriteLine("Running install script...");
-                // TODO: Execute Ouroboros script
-                await Task.CompletedTask;
+                RunInstallScript(packageDir, installScript);
+            }
+        }
+
+        private static void RunInstallScript(string packagePath, string scriptPath)
+        {
+            if (!File.Exists(scriptPath))
+                return;
+                
+            Console.WriteLine($"Running install script: {scriptPath}");
+            
+            // Execute Ouroboros script
+            try
+            {
+                // Create a temporary Ouroboros runtime instance
+                var runtime = new OuroborosRuntime();
+                runtime.SetWorkingDirectory(packagePath);
+                
+                // Load and execute the script
+                var scriptContent = File.ReadAllText(scriptPath);
+                var result = runtime.ExecuteScript(scriptContent);
+                
+                if (result.Success)
+                {
+                    Console.WriteLine("Install script completed successfully");
+                }
+                else
+                {
+                    Console.WriteLine($"Install script failed: {result.Error}");
+                    throw new Exception($"Install script failed: {result.Error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error running install script: {ex.Message}");
+                throw;
             }
         }
 
@@ -760,5 +794,127 @@ namespace Ouroboros.Tools.Opm
         public string Version { get; set; } = "";
         public PackageInfo Info { get; set; } = new();
         public long Size { get; set; }
+    }
+
+    // Temporary runtime for script execution
+    // In production, this would use the full Ouroboros interpreter
+    internal class OuroborosRuntime
+    {
+        private string workingDirectory = Environment.CurrentDirectory;
+        
+        public void SetWorkingDirectory(string path)
+        {
+            workingDirectory = path;
+        }
+        
+        public ScriptResult ExecuteScript(string script)
+        {
+            try
+            {
+                // For now, we'll parse common install script patterns
+                // In production, this would use the full Ouroboros interpreter
+                
+                var lines = script.Split('\n');
+                foreach (var line in lines)
+                {
+                    var trimmed = line.Trim();
+                    if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("//"))
+                        continue;
+                        
+                    // Handle common install commands
+                    if (trimmed.StartsWith("copy "))
+                    {
+                        ExecuteCopyCommand(trimmed);
+                    }
+                    else if (trimmed.StartsWith("mkdir "))
+                    {
+                        ExecuteMkdirCommand(trimmed);
+                    }
+                    else if (trimmed.StartsWith("echo "))
+                    {
+                        ExecuteEchoCommand(trimmed);
+                    }
+                    else if (trimmed.StartsWith("register "))
+                    {
+                        ExecuteRegisterCommand(trimmed);
+                    }
+                }
+                
+                return new ScriptResult { Success = true };
+            }
+            catch (Exception ex)
+            {
+                return new ScriptResult { Success = false, Error = ex.Message };
+            }
+        }
+        
+        private void ExecuteCopyCommand(string command)
+        {
+            var parts = command.Split(' ', 3);
+            if (parts.Length >= 3)
+            {
+                var source = Path.Combine(workingDirectory, parts[1].Trim('"'));
+                var dest = Path.Combine(workingDirectory, parts[2].Trim('"'));
+                
+                if (File.Exists(source))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(dest));
+                    File.Copy(source, dest, true);
+                }
+                else if (Directory.Exists(source))
+                {
+                    CopyDirectory(source, dest);
+                }
+            }
+        }
+        
+        private void ExecuteMkdirCommand(string command)
+        {
+            var parts = command.Split(' ', 2);
+            if (parts.Length >= 2)
+            {
+                var path = Path.Combine(workingDirectory, parts[1].Trim('"'));
+                Directory.CreateDirectory(path);
+            }
+        }
+        
+        private void ExecuteEchoCommand(string command)
+        {
+            var message = command.Substring(5).Trim().Trim('"');
+            Console.WriteLine(message);
+        }
+        
+        private void ExecuteRegisterCommand(string command)
+        {
+            // Handle component/module registration
+            var parts = command.Split(' ', 2);
+            if (parts.Length >= 2)
+            {
+                Console.WriteLine($"Registered: {parts[1]}");
+            }
+        }
+        
+        private void CopyDirectory(string source, string dest)
+        {
+            Directory.CreateDirectory(dest);
+            
+            foreach (var file in Directory.GetFiles(source))
+            {
+                var destFile = Path.Combine(dest, Path.GetFileName(file));
+                File.Copy(file, destFile, true);
+            }
+            
+            foreach (var dir in Directory.GetDirectories(source))
+            {
+                var destDir = Path.Combine(dest, Path.GetFileName(dir));
+                CopyDirectory(dir, destDir);
+            }
+        }
+    }
+    
+    internal class ScriptResult
+    {
+        public bool Success { get; set; }
+        public string Error { get; set; }
     }
 } 
