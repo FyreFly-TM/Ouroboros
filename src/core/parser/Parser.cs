@@ -52,20 +52,22 @@ namespace Ouroboros.Core.Parser
         public Ouroboros.Core.AST.Program Parse()
         {
             var statements = new List<Statement>();
+            var errorCount = 0;
+            const int maxErrors = 50; // Prevent infinite error loops
 
-            while (!IsAtEnd())
+            while (!IsAtEnd() && errorCount < maxErrors)
             {
                 try
                 {
-                            // Check for C# interop method signatures (but not native Ouroboros functions with C#-style syntax)
-        // Only treat as C# interop if explicitly marked or in interop context
-        if (IsCSharpMethodSignature() && !IsNativeOuroborosFunctionWithCSharpSyntax())
-        {
-            // Detected C# interop method signature, parsing mixed format
-            var methodBody = ParseCSharpMethodWithOuroborosBody();
-            statements.Add(methodBody);
-            continue;
-        }
+                    // Check for C# interop method signatures (but not native Ouroboros functions with C#-style syntax)
+                    // Only treat as C# interop if explicitly marked or in interop context
+                    if (IsCSharpMethodSignature() && !IsNativeOuroborosFunctionWithCSharpSyntax())
+                    {
+                        // Detected C# interop method signature, parsing mixed format
+                        var methodBody = ParseCSharpMethodWithOuroborosBody();
+                        statements.Add(methodBody);
+                        continue;
+                    }
                     
                     // Check if this is definitely a declaration token that should never be a statement
                     var current = Current();
@@ -82,33 +84,58 @@ namespace Ouroboros.Core.Parser
                     }
                     else
                     {
-                    // Try to parse as declaration first
-                    var savedPosition = _current;
-                    try
-                    {
-                        var declaration = ParseDeclaration();
-                        statements.Add(declaration);
-                    }
-                    catch (ParseException)
-                    {
-                        // If declaration parsing fails, try as statement  
-                        _current = savedPosition;
-                        var stmt = ParseStatement();
-                        statements.Add(stmt);
+                        // Try to parse as declaration first
+                        var savedPosition = _current;
+                        try
+                        {
+                            var declaration = ParseDeclaration();
+                            statements.Add(declaration);
+                        }
+                        catch (ParseException)
+                        {
+                            // If declaration parsing fails, try as statement  
+                            _current = savedPosition;
+                            var stmt = ParseStatement();
+                            statements.Add(stmt);
                         }
                     }
                 }
                 catch (ParseException error)
                 {
-                    Console.WriteLine($"Parse error: {error.Message}");
+                    errorCount++;
+                    Console.WriteLine($"Parse error at line {error.Token?.Line ?? Current().Line}: {error.Message}");
+                    RecordError(error);
                     Synchronize();
                     // Continue parsing instead of throwing
                     // This allows the parser to continue after encountering errors
                 }
+                catch (Exception ex)
+                {
+                    errorCount++;
+                    // Unexpected error - wrap and continue
+                    Console.WriteLine($"Unexpected error at line {Current().Line}: {ex.Message}");
+                    RecordError(new ParseException($"Unexpected error: {ex.Message}", Current()));
+                    Synchronize();
+                }
+            }
+
+            if (errorCount >= maxErrors)
+            {
+                throw new ParseException($"Too many parse errors (>{maxErrors}). Aborting parse.", Current());
             }
 
             return new Ouroboros.Core.AST.Program(statements);
         }
+        
+        private readonly List<ParseException> _parseErrors = new List<ParseException>();
+        
+        private void RecordError(ParseException error)
+        {
+            _parseErrors.Add(error);
+        }
+        
+        public bool HadError => _parseErrors.Count > 0;
+        public IReadOnlyList<ParseException> Errors => _parseErrors.AsReadOnly();
 
         #region Mixed C#/Ouroboros Format Support
 
@@ -334,9 +361,15 @@ namespace Ouroboros.Core.Parser
                     {
                         var previousLevel = _currentSyntaxLevel;
                         _currentSyntaxLevel = scopedSyntaxLevel.Value;
-                        var declaration = ParseDeclaration();
-                        _currentSyntaxLevel = previousLevel;
-                        return declaration;
+                        try
+                        {
+                            var declaration = ParseDeclaration();
+                            return declaration;
+                        }
+                        finally
+                        {
+                            _currentSyntaxLevel = previousLevel;
+                        }
                     }
                 }
 
@@ -502,41 +535,64 @@ namespace Ouroboros.Core.Parser
 
         private ClassDeclaration ParseClass(List<Modifier> modifiers)
         {
-            var name = Consume(TokenType.Identifier, "Expected class name.");
-            var typeParameters = ParseTypeParameters();
-
-            TypeNode baseClass = null;
-            var interfaces = new List<TypeNode>();
-
-            if (Match(TokenType.Colon))
+            var name = Consume(TokenType.Identifier, "Expected class name");
+            var typeParameters = new List<TypeParameter>();
+            
+            if (Match(TokenType.Less))
             {
-                baseClass = ParseType();
-                while (Match(TokenType.Comma))
-                {
-                    interfaces.Add(ParseType());
-                }
+                typeParameters = ParseTypeParameters();
+                Consume(TokenType.Greater, "Expected '>' after type parameters");
             }
 
-            Consume(TokenType.LeftBrace, "Expected '{' before class body.");
+            var baseTypes = new List<TypeNode>();
+            if (Match(TokenType.Colon))
+            {
+                do
+                {
+                    baseTypes.Add(ParseType());
+                } while (Match(TokenType.Comma));
+            }
+
+            Consume(TokenType.LeftBrace, "Expected '{' before class body");
 
             var members = new List<Declaration>();
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
                 try
                 {
-                    var member = (Declaration)ParseDeclaration();
-                    members.Add(member);
+                    var decl = ParseDeclaration();
+                    if (decl is Declaration d)
+                    {
+                        members.Add(d);
+                    }
+                    else
+                    {
+                        throw Error(Current(), "Expected class member declaration");
+                    }
                 }
-                catch (ParseException ex)
+                catch (ParseException)
                 {
-                    // Log the error with context
-                    Console.WriteLine($"Error parsing class member at line {Current().Line}: {ex.Message}");
-                    throw;
+                    // Skip to next member
+                    while (!IsAtEnd() && !Check(TokenType.RightBrace))
+                    {
+                        if (Match(TokenType.Semicolon)) break;
+                        if (Check(TokenType.Public) || Check(TokenType.Private) || 
+                            Check(TokenType.Protected) || Check(TokenType.Internal) ||
+                            Check(TokenType.Static) || Check(TokenType.Virtual) ||
+                            Check(TokenType.Override) || Check(TokenType.Abstract))
+                        {
+                            break;
+                        }
+                        Advance();
+                    }
                 }
             }
 
-            Consume(TokenType.RightBrace, "Expected '}' after class body.");
+            Consume(TokenType.RightBrace, "Expected '}' after class body");
 
+            var baseClass = baseTypes.Count > 0 ? baseTypes[0] : null;
+            var interfaces = baseTypes.Count > 1 ? baseTypes.Skip(1).ToList() : new List<TypeNode>();
+            
             return new ClassDeclaration(Previous(), name, baseClass, interfaces, members, typeParameters, modifiers);
         }
 
@@ -6460,33 +6516,77 @@ namespace Ouroboros.Core.Parser
         private Token Consume(TokenType type, string message)
         {
             if (Check(type)) return Advance();
-            
-            throw Error(Current(), message);
+            throw Error(Current(), message + $" (got {Current().Type} '{Current().Lexeme}')");
         }
 
         private ParseException Error(Token token, string message)
         {
-            return new ParseException($"[{token.FileName}:{token.Line}:{token.Column}] {message}");
+            var error = new ParseException(message, token);
+            RecordError(error);
+            return error;
         }
 
         private void Synchronize()
         {
+            // Enhanced error recovery - synchronize to next likely statement boundary
             Advance();
 
             while (!IsAtEnd())
             {
+                // If we hit a semicolon, we're likely at the end of a statement
                 if (Previous().Type == TokenType.Semicolon) return;
 
+                // Check for statement/declaration keywords that indicate a new statement
                 switch (Current().Type)
                 {
+                    // Declaration keywords
                     case TokenType.Class:
-                    case TokenType.Interface:
+                    case TokenType.Function:
                     case TokenType.Struct:
+                    case TokenType.Interface:
                     case TokenType.Enum:
-                    case TokenType.For:
+                    case TokenType.Namespace:
+                    case TokenType.Using:
+                    case TokenType.Import:
+                    case TokenType.Module:
+                    case TokenType.Domain:
+                    case TokenType.Component:
+                    case TokenType.System:
+                    case TokenType.Entity:
+                    case TokenType.Const:
+                    case TokenType.Alias:
+                    case TokenType.Type:
+                    // Statement keywords
                     case TokenType.If:
                     case TokenType.While:
+                    case TokenType.For:
+                    case TokenType.Do:
+                    case TokenType.Switch:
                     case TokenType.Return:
+                    case TokenType.Break:
+                    case TokenType.Continue:
+                    case TokenType.Try:
+                    case TokenType.Throw:
+                    case TokenType.Yield:
+                    case TokenType.Var:
+                    // Modifiers that typically start declarations
+                    case TokenType.Public:
+                    case TokenType.Private:
+                    case TokenType.Protected:
+                    case TokenType.Static:
+                    case TokenType.Abstract:
+                    case TokenType.Virtual:
+                    case TokenType.Override:
+                    case TokenType.Async:
+                    // Syntax level markers
+                    case TokenType.HighLevel:
+                    case TokenType.MediumLevel:
+                    case TokenType.LowLevel:
+                    case TokenType.Assembly:
+                        return;
+                        
+                    // Also stop at closing braces as they often end blocks
+                    case TokenType.RightBrace:
                         return;
                 }
 
@@ -6820,7 +6920,14 @@ namespace Ouroboros.Core.Parser
 
     public class ParseException : Exception
     {
+        public Token? Token { get; }
+        
         public ParseException(string message) : base(message) { }
+        
+        public ParseException(string message, Token token) : base(message)
+        {
+            Token = token;
+        }
     }
 
     // Pattern classes for pattern matching
