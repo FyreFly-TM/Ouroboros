@@ -10,6 +10,7 @@ using Ouroboros.Core.Parser;
 using Ouroboros.Core.Compiler;
 using Ouroboros.Core.VM;
 using Ouroboros.Runtime;
+using Ouroboros.Tokens;
 
 namespace Ouroboros.REPL
 {
@@ -36,6 +37,8 @@ namespace Ouroboros.REPL
             history = new History(100);
             completionProvider = new CompletionProvider(context);
         }
+
+        public ReplContext Context => context;
 
         /// <summary>
         /// Run the REPL
@@ -398,62 +401,167 @@ namespace Ouroboros.REPL
             return commands.Execute(parts[0], parts.Skip(1).ToArray());
         }
 
-        private async Task<object?> EvaluateAsync(string input)
+        public async Task<object?> EvaluateAsync(string input)
         {
-            // Lex
-            var lexer = new Lexer(input, "<repl>");
-            var tokens = lexer.ScanTokens();
-
-            if (lexer.HadError)
+            try
             {
-                throw new ReplException("Lexical error in input");
+                // Lex
+                var lexer = new Lexer(input, "<repl>");
+                var tokens = lexer.ScanTokens();
+
+                // Simple error check for lexer (since HadError doesn't exist)
+                if (tokens.Any(t => t.Type == TokenType.Error))
+                {
+                    var errorTokens = tokens.Where(t => t.Type == TokenType.Error);
+                    var errorMessages = string.Join("\n", errorTokens.Select(t => 
+                        $"  Line {t.Line}, Column {t.Column}: Unexpected character '{t.Lexeme}'"));
+                    throw new ReplException($"Lexical errors found:\n{errorMessages}");
+                }
+
+                // Parse
+                var parser = new Parser(tokens);
+                var ast = parser.Parse();
+
+                if (parser.HadError)
+                {
+                    var errors = parser.Errors;
+                    throw new ReplException($"Parse errors found:\n{FormatParseErrors(errors)}");
+                }
+
+                // Type check
+                var typeChecker = new Core.Compiler.TypeChecker();
+                try
+                {
+                    ast = typeChecker.Check(ast);
+                }
+                catch (Core.Compiler.TypeCheckException ex)
+                {
+                    throw new ReplException($"Type errors found:\n{FormatTypeErrors(ex.Errors)}");
+                }
+
+                // Compile
+                var program = compiler.Compile(ast);
+
+                // Execute with better error handling
+                try
+                {
+                    // Execute the compiled program
+                    // Let the VM handle any necessary conversions
+                    var result = await Task.Run(() => vm.Execute(program));
+                    
+                    // Update context
+                    context.LastResult = result;
+                    context.UpdateBindings(ast);
+
+                    return result;
+                }
+                catch (Exception vmEx)
+                {
+                    throw new ReplException($"Runtime error: {vmEx.Message}", vmEx);
+                }
             }
-
-            // Parse
-            var parser = new Parser(tokens);
-            var ast = parser.Parse();
-
-            if (parser.HadError)
+            catch (ReplException)
             {
-                throw new ReplException("Parse error in input");
+                // Re-throw REPL exceptions as-is
+                throw;
             }
-
-            // Compile
-            var program = compiler.Compile(ast);
-
-            // Execute
-            var result = await Task.Run(() => vm.Execute(program));
-
-            // Update context
-            context.LastResult = result;
-            context.UpdateBindings(ast);
-
-            return result;
+            catch (Exception ex)
+            {
+                // Wrap unexpected exceptions
+                throw new ReplException($"Unexpected error during evaluation: {ex.Message}", ex);
+            }
         }
 
-        private void PrintResult(object result)
+        private string FormatParseErrors(IEnumerable<Core.Parser.ParseException> errors)
+        {
+            var sb = new StringBuilder();
+            foreach (var error in errors.Take(5))
+            {
+                var location = error.Token != null 
+                    ? $"Line {error.Token.Line}, Column {error.Token.Column}" 
+                    : "Unknown location";
+                sb.AppendLine($"  {location}: {error.Message}");
+            }
+            if (errors.Count() > 5)
+            {
+                sb.AppendLine($"  ... and {errors.Count() - 5} more errors");
+            }
+            return sb.ToString();
+        }
+
+        private string FormatTypeErrors(IEnumerable<Core.Compiler.TypeCheckError> errors)
+        {
+            var sb = new StringBuilder();
+            foreach (var error in errors.Take(5))
+            {
+                sb.AppendLine($"  Line {error.Line}, Column {error.Column}: {error.Message}");
+            }
+            if (errors.Count() > 5)
+            {
+                sb.AppendLine($"  ... and {errors.Count() - 5} more errors");
+            }
+            return sb.ToString();
+        }
+
+        public void PrintResult(object result)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.Write("=> ");
             Console.ResetColor();
             
-            var formatted = FormatValue(result);
-            Console.WriteLine(formatted);
-        }
-
-        private void PrintError(Exception ex)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.Write("Error: ");
-            Console.ResetColor();
-            Console.WriteLine(ex.Message);
-
-            if (ex.InnerException != null)
+            try
             {
-                Console.ForegroundColor = ConsoleColor.DarkRed;
-                Console.WriteLine($"  Inner: {ex.InnerException.Message}");
+                var formatted = FormatValue(result);
+                Console.WriteLine(formatted);
+            }
+            catch (Exception ex)
+            {
+                // Fallback if formatting fails
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                Console.WriteLine($"<Unable to format result: {ex.Message}>");
                 Console.ResetColor();
             }
+        }
+
+        public void PrintError(Exception ex)
+        {
+            if (ex is ReplException replEx)
+            {
+                // REPL-specific exceptions get special formatting
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Error:");
+                Console.ResetColor();
+                Console.WriteLine(replEx.Message);
+
+                if (replEx.InnerException != null && context.ShowStackTrace)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkRed;
+                    Console.WriteLine("\nStack trace:");
+                    Console.WriteLine(replEx.InnerException.StackTrace);
+                    Console.ResetColor();
+                }
+            }
+            else
+            {
+                // Generic exceptions
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.Write("Unexpected error: ");
+                Console.ResetColor();
+                Console.WriteLine(ex.Message);
+
+                if (context.ShowStackTrace)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkRed;
+                    Console.WriteLine("\nStack trace:");
+                    Console.WriteLine(ex.StackTrace);
+                    Console.ResetColor();
+                }
+            }
+
+            // Suggest help
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine("\nType ':help' for assistance or ':clear' to reset.");
+            Console.ResetColor();
         }
 
         private string FormatValue(object? value)
@@ -501,11 +609,62 @@ namespace Ouroboros.REPL
         public Dictionary<string, object> Bindings { get; } = new();
         public object? LastResult { get; set; }
         public List<string> ImportedModules { get; } = new();
+        public bool ShowStackTrace { get; set; } = false;
+        public Dictionary<string, object> Variables { get; } = new();
 
         public void UpdateBindings(Core.AST.Program ast)
         {
-            // Extract variable bindings from AST
-            // This would analyze the AST and update the bindings dictionary
+            // Extract variable bindings from the AST
+            var bindingVisitor = new BindingExtractor();
+            bindingVisitor.Visit(ast);
+            
+            foreach (var binding in bindingVisitor.Bindings)
+            {
+                Variables[binding.Key] = binding.Value;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Helper to extract variable bindings from AST
+    /// </summary>
+    internal class BindingExtractor
+    {
+        public Dictionary<string, object> Bindings { get; } = new();
+
+        public void Visit(Core.AST.Program program)
+        {
+            foreach (var stmt in program.Statements)
+            {
+                if (stmt is Core.AST.VariableDeclaration varDecl)
+                {
+                    // Store variable declaration info
+                    Bindings[varDecl.Name] = new VariableInfo
+                    {
+                        Name = varDecl.Name,
+                        Type = varDecl.Type.Name,
+                        IsConst = varDecl.IsConst,
+                        IsReadonly = varDecl.IsReadonly
+                    };
+                }
+            }
+        }
+    }
+
+    internal class VariableInfo
+    {
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public bool IsConst { get; set; }
+        public bool IsReadonly { get; set; }
+
+        public override string ToString()
+        {
+            var modifiers = new List<string>();
+            if (IsConst) modifiers.Add("const");
+            if (IsReadonly) modifiers.Add("readonly");
+            var modStr = modifiers.Any() ? string.Join(" ", modifiers) + " " : "";
+            return $"{modStr}{Type} {Name}";
         }
     }
 
@@ -586,8 +745,17 @@ namespace Ouroboros.REPL
 
         private void ShowBindings(string[] args)
         {
-            Console.WriteLine("Current bindings:");
-            // Show bindings implementation
+            if (repl.Context.Variables.Count == 0)
+            {
+                Console.WriteLine("No variables defined.");
+                return;
+            }
+
+            Console.WriteLine("Variables:");
+            foreach (var kvp in repl.Context.Variables)
+            {
+                Console.WriteLine($"  {kvp.Key}: {kvp.Value}");
+            }
         }
 
         private void ShowImports(string[] args)
@@ -629,7 +797,28 @@ namespace Ouroboros.REPL
                 Console.WriteLine("Usage: :time <expression>");
                 return;
             }
-            // Time execution implementation
+
+            var expression = string.Join(" ", args);
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
+            try
+            {
+                var task = repl.EvaluateAsync(expression);
+                task.Wait();
+                stopwatch.Stop();
+                
+                Console.WriteLine($"Execution time: {stopwatch.ElapsedMilliseconds}ms");
+                if (task.Result != null)
+                {
+                    repl.PrintResult(task.Result);
+                }
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                Console.WriteLine($"Execution failed after {stopwatch.ElapsedMilliseconds}ms");
+                repl.PrintError(ex.InnerException ?? ex);
+            }
         }
 
         private void ShowMemory(string[] args)
