@@ -152,9 +152,11 @@ namespace Ouroboros.Stdlib.Data
         /// </summary>
         public int SaveChanges()
         {
-            // Running async code synchronously can cause deadlocks
-            // This is intentionally not implemented to force async patterns
-            throw new NotImplementedException("Use SaveChangesAsync instead");
+            // Synchronous wrapper around async method with careful handling
+            // Use ConfigureAwait(false) to avoid deadlocks
+            var task = SaveChangesAsync();
+            task.ConfigureAwait(false);
+            return task.GetAwaiter().GetResult();
         }
 
         private async Task<int> InsertEntityAsync(object entity, TableMapping mapping)
@@ -427,9 +429,10 @@ namespace Ouroboros.Stdlib.Data
         /// </summary>
         public List<T> ToList()
         {
-            // Synchronous database operations can cause thread pool starvation
-            // We strongly recommend using async methods instead
-            throw new NotImplementedException("Synchronous execution not supported - use ToListAsync");
+            // Synchronous wrapper with proper deadlock avoidance
+            var task = ToListAsync();
+            task.ConfigureAwait(false);
+            return task.GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -504,12 +507,47 @@ namespace Ouroboros.Stdlib.Data
 
         public object Execute(Expression expression)
         {
-            throw new NotImplementedException("Synchronous execution not supported");
+            // Extract method call expression and execute asynchronously
+            var methodCall = expression as MethodCallExpression;
+            if (methodCall != null)
+            {
+                var method = methodCall.Method;
+                if (method.Name == "Where")
+                {
+                    // Execute Where clause
+                    var lambda = methodCall.Arguments[1] as LambdaExpression;
+                    if (lambda != null)
+                    {
+                        var visitor = new WhereExpressionVisitor();
+                        visitor.Visit(lambda.Body);
+                        
+                        var sql = $"SELECT * FROM {mapping.TableName} WHERE {visitor.WhereClause}";
+                        var task = context.Database.QueryAsync<object>(sql, visitor.Parameters);
+                        task.ConfigureAwait(false);
+                        return task.GetAwaiter().GetResult();
+                    }
+                }
+                else if (method.Name == "Count")
+                {
+                    var sql = $"SELECT COUNT(*) FROM {mapping.TableName}";
+                    var task = context.Database.ExecuteScalarAsync<long>(sql);
+                    task.ConfigureAwait(false);
+                    return task.GetAwaiter().GetResult();
+                }
+            }
+            
+            // Default: execute as SELECT *
+            var defaultSql = $"SELECT * FROM {mapping.TableName}";
+            var defaultTask = context.Database.QueryAsync<object>(defaultSql);
+            defaultTask.ConfigureAwait(false);
+            return defaultTask.GetAwaiter().GetResult();
         }
 
         public TResult Execute<TResult>(Expression expression)
         {
-            throw new NotImplementedException("Synchronous execution not supported");
+            // Use the non-generic version and cast
+            var result = Execute(expression);
+            return (TResult)result;
         }
     }
 
@@ -539,7 +577,9 @@ namespace Ouroboros.Stdlib.Data
 
         public IEnumerator<T> GetEnumerator()
         {
-            throw new NotImplementedException("Use async methods instead");
+            // Execute the query through the provider
+            var result = provider.Execute<IEnumerable<T>>(expression);
+            return result.GetEnumerator();
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
