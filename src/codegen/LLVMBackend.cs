@@ -343,9 +343,9 @@ namespace Ouroboros.CodeGen
             // Generate virtual method table
             var vtableEntries = new List<LLVMValueRef>();
             
-            foreach (var method in classDecl.Methods)
+            foreach (var member in classDecl.Members)
             {
-                if (method.IsVirtual)
+                if (member is FunctionDeclaration method && method.IsVirtual)
                 {
                     var mangledName = $"{classDecl.Name}_{method.Name}";
                     if (irBuilder.TryGetFunction(mangledName, out var funcRef))
