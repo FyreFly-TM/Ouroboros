@@ -1501,7 +1501,7 @@ namespace Ouroboros.Syntaxes.Medium
                         Consume(TokenType.RightBrace, "Expected '}' after initializers");
                     }
                     
-                    return new NewExpression(type, args, initializers);
+                    return new NewExpression(Previous(), type, args);
                 }
                 // Array creation
                 else if (Match(TokenType.LeftBracket))
@@ -1534,7 +1534,7 @@ namespace Ouroboros.Syntaxes.Medium
                 Consume(TokenType.LeftParen, "Expected '(' after 'typeof'");
                 var type = ParseType();
                 Consume(TokenType.RightParen, "Expected ')' after type");
-                return new TypeofExpression(type);
+                return new TypeofExpression(Previous(), type);
             }
             
             // Sizeof
@@ -1543,7 +1543,7 @@ namespace Ouroboros.Syntaxes.Medium
                 Consume(TokenType.LeftParen, "Expected '(' after 'sizeof'");
                 var type = ParseType();
                 Consume(TokenType.RightParen, "Expected ')' after type");
-                return new SizeofExpression(type);
+                return new SizeofExpression(Previous(), type);
             }
             
             // Lambda
@@ -1598,11 +1598,11 @@ namespace Ouroboros.Syntaxes.Medium
             var expr = ParseConditional();
             
             // Handle all assignment operators
-            if (Match(TokenType.Assign, TokenType.PlusEqual, TokenType.MinusEqual,
-                     TokenType.MultiplyEqual, TokenType.DivideEqual, TokenType.ModuloEqual,
-                     TokenType.AndEqual, TokenType.OrEqual, TokenType.XorEqual,
-                     TokenType.LeftShiftEqual, TokenType.RightShiftEqual,
-                     TokenType.NullCoalescingEqual))
+            if (Match(TokenType.Assign, TokenType.PlusAssign, TokenType.MinusAssign,
+                     TokenType.MultiplyAssign, TokenType.DivideAssign, TokenType.ModuloAssign,
+                     TokenType.BitwiseAndAssign, TokenType.BitwiseOrAssign, TokenType.BitwiseXorAssign,
+                     TokenType.LeftShiftAssign, TokenType.RightShiftAssign,
+                     TokenType.NullCoalesceAssign))
             {
                 var op = Previous();
                 var right = ParseAssignment();
@@ -1900,6 +1900,111 @@ namespace Ouroboros.Syntaxes.Medium
         public ConstantPattern(Expression value)
         {
             Value = value;
+        }
+    }
+
+    // Expression types not in Core.AST that need to be converted
+    public class IndexExpression : Expression
+    {
+        public Expression Array { get; }
+        public Expression Index { get; }
+        
+        public IndexExpression(Expression array, Expression index)
+            : base(array.Token)
+        {
+            Array = array;
+            Index = index;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            // Convert to member access with computed property
+            return visitor.VisitMemberExpression(new MemberExpression(Array, 
+                new Token(TokenType.LeftBracket, "[", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
+                new Token(TokenType.Identifier, $"[{Index}]", Index, Line, Column, 0, 0, "", SyntaxLevel.Medium)));
+        }
+    }
+    
+    public class PointerMemberExpression : Expression
+    {
+        public Expression Pointer { get; }
+        public string MemberName { get; }
+        
+        public PointerMemberExpression(Expression pointer, Token memberName)
+            : base(pointer.Token)
+        {
+            Pointer = pointer;
+            MemberName = memberName.Lexeme;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            // Convert to regular member expression with arrow operator
+            return visitor.VisitMemberExpression(new MemberExpression(Pointer,
+                new Token(TokenType.Arrow, "->", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
+                new Token(TokenType.Identifier, MemberName, MemberName, Line, Column, 0, 0, "", SyntaxLevel.Medium)));
+        }
+    }
+    
+    public class PostfixExpression : Expression
+    {
+        public Expression Operand { get; }
+        public Token Operator { get; }
+        
+        public PostfixExpression(Expression operand, Token op)
+            : base(op)
+        {
+            Operand = operand;
+            Operator = op;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            // Convert to unary expression with postfix flag
+            return visitor.VisitUnaryExpression(new UnaryExpression(Operator, Operand, false));
+        }
+    }
+    
+    public class ArrayCreationExpression : Expression
+    {
+        public TypeNode ElementType { get; }
+        public Expression Size { get; }
+        public List<Expression>? Initializer { get; }
+        
+        public ArrayCreationExpression(TypeNode elementType, Expression size, List<Expression>? initializer)
+            : base(new Token(TokenType.New, "new", null, 0, 0, 0, 0, "", SyntaxLevel.Medium))
+        {
+            ElementType = elementType;
+            Size = size;
+            Initializer = initializer;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            // Convert to NewExpression with array type
+            var arrayType = new TypeNode(ElementType.Name, ElementType.TypeArguments, true, 1);
+            return visitor.VisitNewExpression(new NewExpression(Token, arrayType, 
+                new List<Expression> { Size }, Initializer));
+        }
+    }
+    
+    public class MemberAccessExpression : Expression
+    {
+        public Expression Object { get; }
+        public string MemberName { get; }
+        
+        public MemberAccessExpression(Expression obj, string memberName)
+            : base(obj.Token)
+        {
+            Object = obj;
+            MemberName = memberName;
+        }
+        
+        public override T Accept<T>(IAstVisitor<T> visitor)
+        {
+            return visitor.VisitMemberExpression(new MemberExpression(Object,
+                new Token(TokenType.Dot, ".", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
+                new Token(TokenType.Identifier, MemberName, MemberName, Line, Column, 0, 0, "", SyntaxLevel.Medium)));
         }
     }
 
