@@ -205,7 +205,7 @@ namespace Ouroboros.StdLib.Collections
             if (node == null)
                 return 0;
                 
-            return 1 + Math.Max(HeightRecursive(node.Left), HeightRecursive(node.Right));
+            return 1 + global::System.Math.Max(HeightRecursive(node.Left), HeightRecursive(node.Right));
         }
     }
     
@@ -320,8 +320,8 @@ namespace Ouroboros.StdLib.Collections
             y.Left = T2;
             
             // Update heights
-            y.Height = Math.Max(GetHeight(y.Left), GetHeight(y.Right)) + 1;
-            x.Height = Math.Max(GetHeight(x.Left), GetHeight(x.Right)) + 1;
+            y.Height = global::System.Math.Max(GetHeight(y.Left), GetHeight(y.Right)) + 1;
+            x.Height = global::System.Math.Max(GetHeight(x.Left), GetHeight(x.Right)) + 1;
             
             return x;
         }
@@ -336,8 +336,8 @@ namespace Ouroboros.StdLib.Collections
             x.Right = T2;
             
             // Update heights
-            x.Height = Math.Max(GetHeight(x.Left), GetHeight(x.Right)) + 1;
-            y.Height = Math.Max(GetHeight(y.Left), GetHeight(y.Right)) + 1;
+            x.Height = global::System.Math.Max(GetHeight(x.Left), GetHeight(x.Right)) + 1;
+            y.Height = global::System.Math.Max(GetHeight(y.Left), GetHeight(y.Right)) + 1;
             
             return y;
         }
