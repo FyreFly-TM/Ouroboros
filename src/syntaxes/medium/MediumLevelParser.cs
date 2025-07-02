@@ -21,6 +21,18 @@ namespace Ouroboros.Syntaxes.Medium
         {
             this.tokens = tokens;
         }
+        
+        // Helper to convert local TypeParameter to Core.AST.TypeParameter
+        private List<Core.AST.TypeParameter>? ConvertTypeParameters(List<TypeParameter>? localParams)
+        {
+            if (localParams == null || localParams.Count == 0) return null;
+            return localParams.Select(p => new Core.AST.TypeParameter(
+                p.Name,
+                p.Constraints,
+                p.Variance == Variance.Covariant,
+                p.Variance == Variance.Contravariant
+            )).ToList();
+        }
 
         public Core.AST.Program Parse()
         {
@@ -731,7 +743,7 @@ namespace Ouroboros.Syntaxes.Medium
                         } while (Match(TokenType.Comma));
                     }
                     
-                    typeParameters.Add(new TypeParameter(paramName.Lexeme, constraints));
+                    typeParameters.Add(new TypeParameter(paramName.Lexeme, Variance.Invariant, constraints));
                 } while (Match(TokenType.Comma));
                 
                 Consume(TokenType.Greater, "Expected '>' after type parameters");
@@ -762,7 +774,7 @@ namespace Ouroboros.Syntaxes.Medium
             
             Consume(TokenType.RightBrace, "Expected '}' after class body");
             
-            return new ClassDeclaration(classToken, name, baseClass, interfaces, members, typeParameters);
+            return new ClassDeclaration(classToken, name, baseClass, interfaces, members, ConvertTypeParameters(typeParameters));
         }
         
         private Statement ParseStructDeclaration()
@@ -777,7 +789,7 @@ namespace Ouroboros.Syntaxes.Medium
                 do
                 {
                     var paramName = Consume(TokenType.Identifier, "Expected type parameter name");
-                    typeParameters.Add(new TypeParameter(paramName.Lexeme));
+                    typeParameters.Add(new TypeParameter(paramName.Lexeme, Variance.Invariant, null));
                 } while (Match(TokenType.Comma));
                 
                 Consume(TokenType.Greater, "Expected '>' after type parameters");
@@ -804,7 +816,7 @@ namespace Ouroboros.Syntaxes.Medium
             
             Consume(TokenType.RightBrace, "Expected '}' after struct body");
             
-            return new StructDeclaration(structToken, name, interfaces, members, typeParameters);
+            return new StructDeclaration(structToken, name, interfaces, members, ConvertTypeParameters(typeParameters));
         }
         
         private Statement ParseInterfaceDeclaration()
@@ -819,7 +831,7 @@ namespace Ouroboros.Syntaxes.Medium
                 do
                 {
                     var paramName = Consume(TokenType.Identifier, "Expected type parameter name");
-                    typeParameters.Add(new TypeParameter(paramName.Lexeme));
+                    typeParameters.Add(new TypeParameter(paramName.Lexeme, Variance.Invariant, null));
                 } while (Match(TokenType.Comma));
                 
                 Consume(TokenType.Greater, "Expected '>' after type parameters");
@@ -846,7 +858,7 @@ namespace Ouroboros.Syntaxes.Medium
             
             Consume(TokenType.RightBrace, "Expected '}' after interface body");
             
-            return new InterfaceDeclaration(interfaceToken, name, baseInterfaces, members, typeParameters);
+            return new InterfaceDeclaration(interfaceToken, name, baseInterfaces, members, ConvertTypeParameters(typeParameters));
         }
         
         private Statement ParseEnumDeclaration()
