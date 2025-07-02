@@ -961,7 +961,7 @@ namespace Ouroboros.Syntaxes.Medium
                         }
                         else
                         {
-                            getter = ParseBlockStatement();
+                            getter = ParseBlockStatement() as BlockStatement;
                         }
                     }
                     else if (Check(TokenType.Identifier) && Current().Lexeme == "set")
@@ -974,7 +974,7 @@ namespace Ouroboros.Syntaxes.Medium
                         }
                         else
                         {
-                            setter = ParseBlockStatement();
+                            setter = ParseBlockStatement() as BlockStatement;
                         }
                     }
                 }
@@ -1015,7 +1015,7 @@ namespace Ouroboros.Syntaxes.Medium
                 }
                 else
                 {
-                    body = ParseBlockStatement();
+                    body = ParseBlockStatement() as BlockStatement;
                 }
                 
                 return new FunctionDeclaration(name, type, parameters, body, null, false, modifiers);
@@ -1048,13 +1048,15 @@ namespace Ouroboros.Syntaxes.Medium
                 
                 while (!Check(TokenType.RightBrace) && !IsAtEnd())
                 {
-                    if (Match(TokenType.Get))
+                    if (Check(TokenType.Identifier) && Current().Lexeme == "get")
                     {
+                        Advance(); // consume 'get'
                         hasGetter = true;
                         Consume(TokenType.Semicolon, "Expected ';' after get");
                     }
-                    else if (Match(TokenType.Set))
+                    else if (Check(TokenType.Identifier) && Current().Lexeme == "set")
                     {
+                        Advance(); // consume 'set'
                         hasSetter = true;
                         Consume(TokenType.Semicolon, "Expected ';' after set");
                     }
@@ -1197,7 +1199,7 @@ namespace Ouroboros.Syntaxes.Medium
         {
             var expr = ParseLogicalOr();
             
-            while (Match(TokenType.NullCoalescing))
+            while (Match(TokenType.NullCoalesce))
             {
                 var op = Previous();
                 var right = ParseLogicalOr();
@@ -1370,7 +1372,7 @@ namespace Ouroboros.Syntaxes.Medium
                     {
                         // It's a cast
                         var expr = ParseUnary();
-                        return new CastExpression(type, expr);
+                        return new CastExpression(Previous(), type, expr);
                     }
                 }
                 catch { }
