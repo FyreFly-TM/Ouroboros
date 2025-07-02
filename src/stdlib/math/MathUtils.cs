@@ -1,6 +1,6 @@
 using System;
 
-namespace Ouroboros.StdLib.Math
+namespace Ouro.StdLib.Math
 {
     /// <summary>
     /// Additional math utility functions

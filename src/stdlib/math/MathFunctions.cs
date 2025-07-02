@@ -1,10 +1,10 @@
 using System;
-using Ouroboros.Core;
+using Ouro.Core;
 
-namespace Ouroboros.StdLib.Math
+namespace Ouro.StdLib.Math
 {
     /// <summary>
-    /// Comprehensive mathematical functions for Ouroboros
+    /// Comprehensive mathematical functions for Ouro
     /// </summary>
     public static class MathFunctions
     {

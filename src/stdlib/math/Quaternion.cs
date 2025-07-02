@@ -1,7 +1,7 @@
 using System;
 using SysMath = System.Math;
 
-namespace Ouroboros.StdLib.Math
+namespace Ouro.StdLib.Math
 {
     /// <summary>
     /// Quaternion class for 3D rotations and orientations

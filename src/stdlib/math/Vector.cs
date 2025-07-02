@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SystemMath = System.Math;
 
-namespace Ouroboros.StdLib.Math
+namespace Ouro.StdLib.Math
 {
     /// <summary>
     /// Mathematical vector class supporting arbitrary dimensions

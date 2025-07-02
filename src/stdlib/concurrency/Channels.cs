@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Ouroboros.Stdlib.Concurrency
+namespace Ouro.Stdlib.Concurrency
 {
     /// <summary>
     /// Channel for inter-thread communication

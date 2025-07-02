@@ -1,6 +1,6 @@
 using System;
 
-namespace Ouroboros.StdLib.Math
+namespace Ouro.StdLib.Math
 {
     /// <summary>
     /// Transform class for 3D transformations (position, rotation, scale)

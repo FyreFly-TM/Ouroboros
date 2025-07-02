@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ouroboros.StdLib.Data
+namespace Ouro.StdLib.Data
 {
     /// <summary>
     /// High-level database abstraction supporting multiple providers

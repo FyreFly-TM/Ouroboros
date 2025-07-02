@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Ouroboros.StdLib.Math
+namespace Ouro.StdLib.Math
 {
     /// <summary>
     /// Extension methods for set operations with Unicode operators

@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Runtime.CompilerServices;
 
-namespace Ouroboros.Stdlib.Concurrency
+namespace Ouro.Stdlib.Concurrency
 {
     /// <summary>
     /// Atomic operations for lock-free programming
