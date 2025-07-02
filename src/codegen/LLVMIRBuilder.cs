@@ -42,7 +42,7 @@ namespace Ouroboros.CodeGen
 
         private void DeclareRuntimeFunction(string name, LLVMTypeRef returnType, params LLVMTypeRef[] paramTypes)
         {
-            var functionType = LLVM.FunctionType(returnType, paramTypes, false);
+            var functionType = LLVM.FunctionType(returnType, paramTypes, (uint)paramTypes.Length, 0);
             var function = LLVM.AddFunction(llvmContext.Module, name, functionType);
             functions[name] = function;
         }
@@ -54,7 +54,7 @@ namespace Ouroboros.CodeGen
                 .Select(p => MapTypeToLLVM(p.Type))
                 .ToArray();
             var returnType = MapTypeToLLVM(funcDecl.ReturnType);
-            var functionType = LLVM.FunctionType(returnType, paramTypes, false);
+            var functionType = LLVM.FunctionType(returnType, paramTypes, (uint)paramTypes.Length, 0);
 
             // Create function
             currentFunction = LLVM.AddFunction(llvmContext.Module, funcDecl.Name, functionType);
@@ -69,7 +69,7 @@ namespace Ouroboros.CodeGen
             {
                 var param = LLVM.GetParam(currentFunction, (uint)i);
                 var paramName = funcDecl.Parameters[i].Name;
-                LLVM.SetValueName(param, paramName);
+                LLVM.SetValueName2(param, paramName, (uint)paramName.Length);
                 
                 // Allocate stack space for parameter
                 var alloca = CreateAlloca(paramTypes[i], paramName);

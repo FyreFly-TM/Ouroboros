@@ -44,12 +44,28 @@ namespace Ouroboros.GPU.CUDA
             CudaAPI.cuDeviceGetName(nameBuffer, nameBuffer.Length, device);
             props.Name = Marshal.PtrToStringAnsi(Marshal.UnsafeAddrOfPinnedArrayElement(nameBuffer, 0));
 
-            CudaAPI.cuDeviceComputeCapability(out props.Major, out props.Minor, device);
-            CudaAPI.cuDeviceTotalMem(out props.TotalMemory, device);
-            CudaAPI.cuDeviceGetAttribute(out props.SharedMemoryPerBlock, CudaDeviceAttribute.SharedMemoryPerBlock, device);
-            CudaAPI.cuDeviceGetAttribute(out props.MaxThreadsPerBlock, CudaDeviceAttribute.MaxThreadsPerBlock, device);
-            CudaAPI.cuDeviceGetAttribute(out props.WarpSize, CudaDeviceAttribute.WarpSize, device);
-            CudaAPI.cuDeviceGetAttribute(out props.MultiprocessorCount, CudaDeviceAttribute.MultiprocessorCount, device);
+            int major, minor;
+            long totalMemory;
+            int sharedMemPerBlock, maxThreadsPerBlock, warpSize, multiprocessorCount;
+            
+            CudaAPI.cuDeviceComputeCapability(out major, out minor, device);
+            props.Major = major;
+            props.Minor = minor;
+            
+            CudaAPI.cuDeviceTotalMem(out totalMemory, device);
+            props.TotalMemory = totalMemory;
+            
+            CudaAPI.cuDeviceGetAttribute(out sharedMemPerBlock, CudaDeviceAttribute.SharedMemoryPerBlock, device);
+            props.SharedMemoryPerBlock = sharedMemPerBlock;
+            
+            CudaAPI.cuDeviceGetAttribute(out maxThreadsPerBlock, CudaDeviceAttribute.MaxThreadsPerBlock, device);
+            props.MaxThreadsPerBlock = maxThreadsPerBlock;
+            
+            CudaAPI.cuDeviceGetAttribute(out warpSize, CudaDeviceAttribute.WarpSize, device);
+            props.WarpSize = warpSize;
+            
+            CudaAPI.cuDeviceGetAttribute(out multiprocessorCount, CudaDeviceAttribute.MultiprocessorCount, device);
+            props.MultiprocessorCount = multiprocessorCount;
 
             return props;
         }
