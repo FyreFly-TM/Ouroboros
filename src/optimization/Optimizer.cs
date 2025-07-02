@@ -1172,7 +1172,8 @@ namespace Ouroboros.Optimization
     {
         public virtual T Visit(AstNode node)
         {
-            return node?.Accept(this) as T;
+            if (node == null) return default(T);
+            return (T)(object)node.Accept(this);
         }
         
         public virtual Statement VisitStatement(Statement stmt)
@@ -1290,15 +1291,16 @@ namespace Ouroboros.Optimization
         
         public virtual Expression VisitAssignmentExpression(AssignmentExpression expr)
         {
+            var target = Visit(expr.Target) as Expression;
             var value = Visit(expr.Value) as Expression;
-            return new AssignmentExpression(expr.Name, value, expr.Line, expr.Column);
+            return new AssignmentExpression(target, expr.Operator, value);
         }
         
         public virtual Expression VisitCallExpression(CallExpression expr)
         {
             var callee = Visit(expr.Callee) as Expression;
             var arguments = expr.Arguments.Select(a => Visit(a) as Expression).ToList();
-            return new CallExpression(callee, arguments, expr.Line, expr.Column);
+            return new CallExpression(callee, arguments, expr.IsAsync, expr.GenericTypeArguments);
         }
     }
 } 
