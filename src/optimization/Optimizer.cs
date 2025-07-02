@@ -1173,7 +1173,15 @@ namespace Ouroboros.Optimization
         public virtual T Visit(AstNode node)
         {
             if (node == null) return default(T);
-            return (T)(object)node.Accept(this);
+            
+            // Since we can't use the Accept pattern directly without implementing IAstVisitor,
+            // we'll use type checking and casting
+            if (node is Statement stmt)
+                return (T)(object)VisitStatement(stmt);
+            else if (node is Expression expr)
+                return (T)(object)VisitExpression(expr);
+            else
+                return (T)(object)node;
         }
         
         public virtual Statement VisitStatement(Statement stmt)
