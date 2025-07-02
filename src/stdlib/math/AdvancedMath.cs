@@ -55,7 +55,7 @@ namespace Ouroboros.StdLib.Math
                 );
                 
             public static Complex Exp(Complex z)
-                => MathFunctions.Exp(z.Real) * new Complex(
+                => new Complex(MathFunctions.Exp(z.Real), 0) * new Complex(
                     MathFunctions.Cos(z.Imaginary),
                     MathFunctions.Sin(z.Imaginary)
                 );
@@ -214,7 +214,7 @@ namespace Ouroboros.StdLib.Math
             const double a5 = 1.061405429;
             const double p = 0.3275911;
             
-            int sign = MathFunctions.Sign(x);
+            int sign = (int)MathFunctions.Sign(x);
             x = MathFunctions.Abs(x);
             
             double t = 1.0 / (1.0 + p * x);

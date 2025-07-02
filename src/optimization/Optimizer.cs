@@ -363,7 +363,7 @@ namespace Ouroboros.Optimization
             if (func.Parameters.Count > 3) return false;
             if (GetStatementCount(func.Body) > 5) return false;
             if (ContainsRecursion(func)) return false;
-            if (func.Attributes.Any(a => a.Name == "NoInline")) return false;
+            // if (func.Attributes.Any(a => a.Name == "NoInline")) return false; // TODO: Add attributes support
             
             return true;
         }
@@ -448,7 +448,8 @@ namespace Ouroboros.Optimization
                     if (returns.Count == 0)
                     {
                         // No return, function returns null/void
-                        return new LiteralExpression(null, func.Line, func.Column);
+                        var nullToken = new Token(TokenType.NullLiteral, "null", null, func.Line, func.Column, 0, 0, "", SyntaxLevel.Medium);
+                        return new LiteralExpression(nullToken);
                     }
                     else if (returns.Count == 1 && IsLastStatement(returns[0], block))
                     {
@@ -462,14 +463,15 @@ namespace Ouroboros.Optimization
                         return CreateIIFE(func, cloner);
                     }
                 }
-                else if (func.Body is ReturnStatement ret)
+                else
                 {
-                    // Simple expression body
-                    return cloner.Visit(ret.Value) as Expression;
+                    // Other cases - create IIFE
+                    return CreateIIFE(func, cloner);
                 }
                 
                 // Fallback
-                return new LiteralExpression(null, func.Line, func.Column);
+                var fallbackToken = new Token(TokenType.NullLiteral, "null", null, func.Line, func.Column, 0, 0, "", SyntaxLevel.Medium);
+                return new LiteralExpression(fallbackToken);
             }
             
             private bool IsLastStatement(ReturnStatement ret, BlockStatement block)
@@ -482,18 +484,18 @@ namespace Ouroboros.Optimization
             private Expression CreateIIFE(FunctionDeclaration func, ExpressionCloner cloner)
             {
                 // Create a lambda expression that's immediately called
-                var lambdaParams = func.Parameters.Select(p => new Parameter
-                {
-                    Name = p.Name,
-                    Type = p.Type,
-                    DefaultValue = p.DefaultValue
-                }).ToList();
+                var lambdaParams = func.Parameters.Select(p => new Parameter(
+                    p.Type,
+                    p.Name,
+                    p.DefaultValue,
+                    ParameterModifier.None
+                )).ToList();
                 var lambdaBody = cloner.Visit(func.Body) as Statement;
-                var lambda = new LambdaExpression(lambdaParams, lambdaBody, func.Line, func.Column);
+                var lambda = new LambdaExpression(lambdaParams, lambdaBody);
                 
                 // Create call with mapped arguments
                 var args = func.Parameters.Select(p => parameterMap[p.Name]).ToList();
-                return new CallExpression(lambda, args, func.Line, func.Column);
+                return new CallExpression(lambda, args);
             }
         }
         
@@ -538,26 +540,26 @@ namespace Ouroboros.Optimization
             {
                 var left = Visit(expr.Left) as Expression;
                 var right = Visit(expr.Right) as Expression;
-                return new BinaryExpression(left, expr.Operator, right, expr.Line, expr.Column);
+                return new BinaryExpression(left, expr.Operator, right);
             }
             
             public override Expression VisitUnaryExpression(UnaryExpression expr)
             {
                 var operand = Visit(expr.Operand) as Expression;
-                return new UnaryExpression(expr.Operator, operand, expr.IsPrefix, expr.Line, expr.Column);
+                return new UnaryExpression(expr.Operator, operand, expr.IsPrefix);
             }
             
             public override Expression VisitCallExpression(CallExpression expr)
             {
                 var callee = Visit(expr.Callee) as Expression;
                 var args = expr.Arguments.Select(a => Visit(a) as Expression).ToList();
-                return new CallExpression(callee, args, expr.Line, expr.Column);
+                return new CallExpression(callee, args);
             }
             
             public override Statement VisitBlockStatement(BlockStatement stmt)
             {
                 var statements = stmt.Statements.Select(s => Visit(s) as Statement).ToList();
-                return new BlockStatement(statements, stmt.Line, stmt.Column);
+                return new BlockStatement(statements, stmt.Token);
             }
         }
     }
@@ -634,7 +636,7 @@ namespace Ouroboros.Optimization
                     unrolled.Add(stmt.Body);
                 }
                 
-                return new BlockStatement(unrolled, stmt.Line, stmt.Column);
+                return new BlockStatement(unrolled, stmt.Token);
             }
             
             private List<Statement> FindLoopInvariants(ForStatement stmt)
@@ -677,7 +679,10 @@ namespace Ouroboros.Optimization
                     case ExpressionStatement exprStmt:
                         if (exprStmt.Expression is AssignmentExpression assign)
                         {
-                            modified.Add(assign.Name);
+                            if (assign.Target is IdentifierExpression idExpr)
+                            {
+                                modified.Add(idExpr.Name);
+                            }
                         }
                         break;
                         
@@ -839,7 +844,7 @@ namespace Ouroboros.Optimization
                     return existing;
                 }
                 
-                var newExpr = new BinaryExpression(left, expr.Operator, right, expr.Line, expr.Column);
+                var newExpr = new BinaryExpression(left, expr.Operator, right);
                 expressions[key] = newExpr;
                 return newExpr;
             }
@@ -875,15 +880,15 @@ namespace Ouroboros.Optimization
             {
                 changed = false;
                 
-                // Pattern: PUSH 0, ADD -> NOP
+                // Pattern: Push 0, Add -> Nop
                 changed |= ReplacePattern(optimized, 
-                    new[] { (byte)Opcode.PUSH, 0, (byte)Opcode.ADD }, 
-                    new[] { (byte)Opcode.NOP, (byte)Opcode.NOP, (byte)Opcode.NOP });
+                    new byte[] { (byte)Opcode.Push, 0, (byte)Opcode.Add }, 
+                    new byte[] { (byte)Opcode.Nop, (byte)Opcode.Nop, (byte)Opcode.Nop });
                 
-                // Pattern: PUSH x, POP -> NOP NOP NOP
+                // Pattern: Push x, Pop -> Nop Nop Nop
                 changed |= ReplacePattern(optimized,
-                    new[] { (byte)Opcode.PUSH, 0, (byte)Opcode.POP },
-                    new[] { (byte)Opcode.NOP, (byte)Opcode.NOP, (byte)Opcode.NOP },
+                    new byte[] { (byte)Opcode.Push, 0, (byte)Opcode.Pop },
+                    new byte[] { (byte)Opcode.Nop, (byte)Opcode.Nop, (byte)Opcode.Nop },
                     matchValue: false);
                 
                 // Pattern: JMP next_instruction -> NOP
@@ -892,7 +897,7 @@ namespace Ouroboros.Optimization
                 // Remove NOPs
                 if (changed)
                 {
-                    optimized.RemoveAll(b => b == (byte)Opcode.NOP);
+                    optimized.RemoveAll(b => b == (byte)Opcode.Nop);
                 }
                 
             } while (changed);
@@ -939,13 +944,13 @@ namespace Ouroboros.Optimization
             
             for (int i = 0; i < bytecode.Count - 2; i++)
             {
-                if (bytecode[i] == (byte)Opcode.JMP)
+                if (bytecode[i] == (byte)Opcode.Jump)
                 {
                     int target = bytecode[i + 1];
                     if (target == i + 2)  // Jump to next instruction
                     {
-                        bytecode[i] = (byte)Opcode.NOP;
-                        bytecode[i + 1] = (byte)Opcode.NOP;
+                        bytecode[i] = (byte)Opcode.Nop;
+                        bytecode[i + 1] = (byte)Opcode.Nop;
                         changed = true;
                     }
                 }
@@ -1002,7 +1007,7 @@ namespace Ouroboros.Optimization
                     
                     switch (opcode)
                     {
-                        case Opcode.STORE_VAR:
+                        case Opcode.StoreLocal:
                             if (i + 1 < bytecode.Length)
                             {
                                 int varIndex = bytecode[++i];
@@ -1010,7 +1015,7 @@ namespace Ouroboros.Optimization
                             }
                             break;
                             
-                        case Opcode.LOAD_VAR:
+                        case Opcode.LoadLocal:
                             if (i + 1 < bytecode.Length)
                             {
                                 int varIndex = bytecode[++i];
@@ -1096,14 +1101,14 @@ namespace Ouroboros.Optimization
                     
                     switch (opcode)
                     {
-                        case Opcode.STORE_VAR:
+                        case Opcode.StoreLocal:
                             if (i + 1 < bytecode.Length)
                             {
                                 int varIndex = bytecode[++i];
                                 if (variableToRegister.TryGetValue(varIndex, out int register))
                                 {
                                     // Replace with register store
-                                    result[result.Count - 1] = (byte)Opcode.STORE_REG;
+                                    result[result.Count - 1] = (byte)Opcode.StoreRegister;
                                     result.Add((byte)register);
                                 }
                                 else
@@ -1114,14 +1119,14 @@ namespace Ouroboros.Optimization
                             }
                             break;
                             
-                        case Opcode.LOAD_VAR:
+                        case Opcode.LoadLocal:
                             if (i + 1 < bytecode.Length)
                             {
                                 int varIndex = bytecode[++i];
                                 if (variableToRegister.TryGetValue(varIndex, out int register))
                                 {
                                     // Replace with register load
-                                    result[result.Count - 1] = (byte)Opcode.LOAD_REG;
+                                    result[result.Count - 1] = (byte)Opcode.LoadRegister;
                                     result.Add((byte)register);
                                 }
                                 else
@@ -1204,19 +1209,19 @@ namespace Ouroboros.Optimization
         public virtual Statement VisitExpressionStatement(ExpressionStatement stmt)
         {
             var expr = Visit(stmt.Expression) as Expression;
-            return new ExpressionStatement(expr, stmt.Line, stmt.Column);
+            return new ExpressionStatement(expr);
         }
         
         public virtual Statement VisitVariableDeclaration(VariableDeclaration stmt)
         {
             var initializer = stmt.Initializer != null ? Visit(stmt.Initializer) as Expression : null;
-            return new VariableDeclaration(stmt.Type, stmt.Name, initializer, stmt.GenericArguments, stmt.Line, stmt.Column);
+            return new VariableDeclaration(stmt.Type, stmt.Token, initializer, stmt.IsConst, stmt.IsReadonly);
         }
         
         public virtual Statement VisitFunctionDeclaration(FunctionDeclaration stmt)
         {
-            var body = Visit(stmt.Body) as Statement;
-            return new FunctionDeclaration(stmt.Name, stmt.Parameters, stmt.ReturnType, body, stmt.Line, stmt.Column);
+            var body = Visit(stmt.Body) as BlockStatement;
+            return new FunctionDeclaration(stmt.Token, stmt.ReturnType, stmt.Parameters, body, stmt.TypeParameters, stmt.IsAsync, stmt.Modifiers);
         }
         
         public virtual Statement VisitClassDeclaration(ClassDeclaration stmt)

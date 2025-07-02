@@ -220,16 +220,16 @@ namespace Ouroboros.StdLib.Net
         private async Task<HttpResponse> SendHttpsRequestAsync(string method, string url, string? body, Dictionary<string, string>? headers)
         {
             // Fallback to System.Net.Http for HTTPS
-            using var client = new System.Net.Http.HttpClient();
+            using var client = new global::System.Net.Http.HttpClient();
             client.Timeout = TimeSpan.FromMilliseconds(timeout);
 
-            var request = new System.Net.Http.HttpRequestMessage(
-                new System.Net.Http.HttpMethod(method), 
+            var request = new global::System.Net.Http.HttpRequestMessage(
+                new global::System.Net.Http.HttpMethod(method), 
                 url);
 
             if (!string.IsNullOrEmpty(body))
             {
-                request.Content = new System.Net.Http.StringContent(body, Encoding.UTF8);
+                request.Content = new global::System.Net.Http.StringContent(body, Encoding.UTF8);
             }
 
             if (headers != null)

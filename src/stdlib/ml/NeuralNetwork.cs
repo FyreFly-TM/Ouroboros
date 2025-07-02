@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Math = System.Math;
 
 namespace Ouroboros.StdLib.ML
 {
@@ -37,7 +38,7 @@ namespace Ouroboros.StdLib.ML
             OutputSize = outputSize;
             
             // Xavier initialization
-            double scale = Math.Sqrt(2.0 / inputSize);
+            double scale = global::System.Math.Sqrt(2.0 / inputSize);
             weights = Tensor.RandomNormal(0, scale, outputSize, inputSize);
             bias = Tensor.Zeros(outputSize);
             
@@ -132,7 +133,7 @@ namespace Ouroboros.StdLib.ML
         public Tensor Forward(Tensor input)
         {
             lastInput = input;
-            return input.Apply(x => Math.Max(0, x));
+            return input.Apply(x => global::System.Math.Max(0, x));
         }
         
         public Tensor Backward(Tensor gradOutput)
@@ -164,7 +165,7 @@ namespace Ouroboros.StdLib.ML
         
         public Tensor Forward(Tensor input)
         {
-            lastOutput = input.Apply(x => 1.0 / (1.0 + Math.Exp(-x)));
+            lastOutput = input.Apply(x => 1.0 / (1.0 + global::System.Math.Exp(-x)));
             return lastOutput;
         }
         
@@ -190,7 +191,7 @@ namespace Ouroboros.StdLib.ML
         
         public Tensor Forward(Tensor input)
         {
-            lastOutput = input.Apply(Math.Tanh);
+            lastOutput = input.Apply(global::System.Math.Tanh);
             return lastOutput;
         }
         
@@ -227,13 +228,13 @@ namespace Ouroboros.StdLib.ML
                 double maxVal = double.MinValue;
                 for (int i = 0; i < numClasses; i++)
                 {
-                    maxVal = Math.Max(maxVal, input[b, i]);
+                    maxVal = global::System.Math.Max(maxVal, input[b, i]);
                 }
                 
                 double sum = 0;
                 for (int i = 0; i < numClasses; i++)
                 {
-                    output[b, i] = Math.Exp(input[b, i] - maxVal);
+                    output[b, i] = global::System.Math.Exp(input[b, i] - maxVal);
                     sum += output[b, i];
                 }
                 
@@ -348,7 +349,7 @@ namespace Ouroboros.StdLib.ML
                 {
                     if (target[b, i] > 0)
                     {
-                        loss -= target[b, i] * Math.Log(Math.Max(predicted[b, i], 1e-7));
+                        loss -= target[b, i] * global::System.Math.Log(global::System.Math.Max(predicted[b, i], 1e-7));
                     }
                     grad[b, i] = predicted[b, i] - target[b, i];
                 }
@@ -452,13 +453,13 @@ namespace Ouroboros.StdLib.ML
                 v[i] = v[i] * beta2 + gradients[i].Apply(x => x * x) * (1 - beta2);
                 
                 // Compute bias-corrected first moment estimate
-                var mHat = m[i] * (1.0 / (1 - Math.Pow(beta1, t)));
+                var mHat = m[i] * (1.0 / (1 - global::System.Math.Pow(beta1, t)));
                 
                 // Compute bias-corrected second raw moment estimate
-                var vHat = v[i] * (1.0 / (1 - Math.Pow(beta2, t)));
+                var vHat = v[i] * (1.0 / (1 - global::System.Math.Pow(beta2, t)));
                 
                 // Update parameters
-                parameters[i] = parameters[i] - mHat * learningRate * vHat.Apply(x => 1.0 / (Math.Sqrt(x) + epsilon));
+                parameters[i] = parameters[i] - mHat * learningRate * vHat.Apply(x => 1.0 / (global::System.Math.Sqrt(x) + epsilon));
             }
         }
     }
