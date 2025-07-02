@@ -6,6 +6,8 @@ using Ouroboros.Core.Lexer;
 using Ouroboros.Core.Parser;
 using Ouroboros.Core.Compiler;
 using Ouroboros.Core;
+using Ouroboros.Core.AST;
+using Ouroboros.Tokens;
 
 namespace Ouroboros.IDE
 {
@@ -285,12 +287,13 @@ namespace Ouroboros.IDE
             {
                 if (!usedVars.Contains(decl.Key) && !decl.Key.StartsWith("_"))
                 {
-                    unusedVars.Add(new Core.AST.VariableDeclaration
-                    {
-                        Name = decl.Key,
-                        Line = decl.Value.line,
-                        Column = decl.Value.column
-                    });
+                    // Create a dummy variable declaration to represent the unused variable
+                    var token = new Token(TokenType.Identifier, decl.Key, decl.Key, 
+                                        decl.Value.line, decl.Value.column, 
+                                        decl.Value.line, decl.Value.column, 
+                                        "", SyntaxLevel.Medium);
+                    var typeNode = new TypeNode("var");
+                    unusedVars.Add(new Core.AST.VariableDeclaration(typeNode, token));
                 }
             }
             
@@ -334,12 +337,13 @@ namespace Ouroboros.IDE
             
             foreach (var missing in typeVisitor.MissingAnnotations)
             {
-                missingTypes.Add(new Core.AST.VariableDeclaration
-                {
-                    Name = missing.context,
-                    Line = missing.line,
-                    Column = missing.column
-                });
+                // Create a dummy node to represent missing type annotation
+                var token = new Token(TokenType.Identifier, missing.context, missing.context,
+                                    missing.line, missing.column, 
+                                    missing.line, missing.column,
+                                    "", SyntaxLevel.Medium);
+                var typeNode = new TypeNode("var");
+                missingTypes.Add(new Core.AST.VariableDeclaration(typeNode, token));
             }
             
             return missingTypes;
@@ -377,8 +381,8 @@ namespace Ouroboros.IDE
             {
                 return new Range
                 {
-                    Start = new Position { Line = 0, Character = 0 },
-                    End = new Position { Line = 0, Character = 0 }
+                    Start = new Position(0, 0),
+                    End = new Position(0, 0)
                 };
             }
             
@@ -390,8 +394,8 @@ namespace Ouroboros.IDE
             
             return new Range
             {
-                Start = new Position { Line = startLine, Character = startChar },
-                End = new Position { Line = startLine, Character = endChar }
+                Start = new Position(startLine, startChar),
+                End = new Position(startLine, endChar)
             };
         }
 
@@ -758,11 +762,11 @@ namespace Ouroboros.IDE
     }
     
     // Base visitor class
-    internal abstract class AstVisitor
+    internal abstract class AstVisitor : Core.AST.IAstVisitor<object>
     {
         public virtual void Visit(Core.AST.AstNode node)
         {
-            node?.Accept(this);
+            node?.Accept<object>(this);
         }
         
         public virtual void VisitVariableDeclaration(Core.AST.VariableDeclaration decl) { }
