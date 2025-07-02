@@ -301,7 +301,7 @@ namespace Ouroboros.GPU.Vulkan
 
             DeviceInfo = new VulkanDeviceInfo
             {
-                DeviceName = Marshal.PtrToStringAnsi(properties.deviceName),
+                DeviceName = System.Text.Encoding.ASCII.GetString(properties.deviceName).TrimEnd('\0'),
                 VendorID = properties.vendorID,
                 DeviceID = properties.deviceID,
                 ApiVersion = properties.apiVersion,

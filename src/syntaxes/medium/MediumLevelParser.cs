@@ -264,6 +264,7 @@ namespace Ouroboros.Syntaxes.Medium
 
         private Statement ParseTryStatement()
         {
+            var tryToken = Previous(); // Get the 'try' token
             Statement tryBlock = ParseBlockStatement();
             
             List<CatchClause> catchClauses = new List<CatchClause>();
@@ -282,7 +283,8 @@ namespace Ouroboros.Syntaxes.Medium
                 }
                 
                 Statement catchBlock = ParseBlockStatement();
-                catchClauses.Add(new CatchClause(exceptionType, variableName, catchBlock));
+                var exceptionTypeNode = exceptionType != null ? new TypeNode(exceptionType) : null;
+                catchClauses.Add(new CatchClause(exceptionTypeNode, variableName, catchBlock));
             }
             
             if (Match(TokenType.Finally))
@@ -295,11 +297,12 @@ namespace Ouroboros.Syntaxes.Medium
                 throw Error(Current(), "Try statement must have at least one catch or finally clause");
             }
             
-            return new TryStatement(tryBlock, catchClauses, finallyBlock);
+            return new TryStatement(tryToken, tryBlock, catchClauses, finallyBlock);
         }
 
         private Statement ParseReturnStatement()
         {
+            var returnToken = Previous(); // Get the 'return' token
             Expression value = null;
             if (!Match(TokenType.Semicolon))
             {
@@ -307,7 +310,7 @@ namespace Ouroboros.Syntaxes.Medium
             }
             Consume(TokenType.Semicolon, "Expected ';' after return value");
             
-            return new ReturnStatement(value);
+            return new ReturnStatement(returnToken, value);
         }
 
         private Statement ParseBreakStatement()

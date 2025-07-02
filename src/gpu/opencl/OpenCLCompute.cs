@@ -53,7 +53,7 @@ namespace Ouroboros.GPU.OpenCL
             // Create context
             var contextProperties = new IntPtr[] { (IntPtr)CLContextProperties.Platform, platform, IntPtr.Zero };
             int errorCode;
-            context = OpenCLAPI.clCreateContext(contextProperties, 1, new[] { device }, null, IntPtr.Zero, out errorCode);
+            context = OpenCLAPI.clCreateContext(contextProperties, 1, new[] { device }, IntPtr.Zero, IntPtr.Zero, out errorCode);
             CheckError((CLError)errorCode);
 
             // Create command queue
@@ -74,7 +74,7 @@ namespace Ouroboros.GPU.OpenCL
             CheckError((CLError)errorCode);
 
             // Build program
-            var buildError = OpenCLAPI.clBuildProgram(program, 1, new[] { device }, buildOptions, null, IntPtr.Zero);
+            var buildError = OpenCLAPI.clBuildProgram(program, 1, new[] { device }, buildOptions, IntPtr.Zero, IntPtr.Zero);
             
             if (buildError != CLError.Success)
             {
@@ -140,9 +140,9 @@ namespace Ouroboros.GPU.OpenCL
             {
                 var arg = args[i];
                 
-                if (arg is OpenCLBuffer)
+                if (arg is OpenCLBuffer openCLBuffer)
                 {
-                    var buffer = ((dynamic)arg).Buffer;
+                    var buffer = openCLBuffer.Buffer;
                     CheckError(OpenCLAPI.clSetKernelArg(kernel.Kernel, (uint)i, (uint)IntPtr.Size, ref buffer));
                 }
                 else
@@ -162,8 +162,8 @@ namespace Ouroboros.GPU.OpenCL
 
             // Execute kernel
             CheckError(OpenCLAPI.clEnqueueNDRangeKernel(commandQueue, kernel.Kernel, 
-                (uint)globalWorkSize.Length, null, globalWorkSize, localWorkSize, 
-                0, null, IntPtr.Zero));
+                (uint)globalWorkSize.Length, IntPtr.Zero, globalWorkSize, localWorkSize, 
+                0, IntPtr.Zero, IntPtr.Zero));
 
             // Wait for completion
             CheckError(OpenCLAPI.clFinish(commandQueue));
