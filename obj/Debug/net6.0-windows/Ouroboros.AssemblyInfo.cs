@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ouroboros")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+109eb49c0c0ba46191863691d7af9b7b496af04f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bc21bd339cafab665d287fd0c3a95f34c90dbc48")]
 [assembly: System.Reflection.AssemblyProductAttribute("ouroboros")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ouroboros")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

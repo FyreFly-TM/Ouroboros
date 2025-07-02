@@ -1234,14 +1234,14 @@ namespace Ouroboros.Optimization
             var condition = Visit(stmt.Condition) as Expression;
             var thenBranch = Visit(stmt.ThenBranch) as Statement;
             var elseBranch = stmt.ElseBranch != null ? Visit(stmt.ElseBranch) as Statement : null;
-            return new IfStatement(condition, thenBranch, elseBranch, stmt.Line, stmt.Column);
+            return new IfStatement(stmt.Token, condition, thenBranch, elseBranch);
         }
         
         public virtual Statement VisitWhileStatement(WhileStatement stmt)
         {
             var condition = Visit(stmt.Condition) as Expression;
             var body = Visit(stmt.Body) as Statement;
-            return new WhileStatement(condition, body, stmt.Line, stmt.Column);
+            return new WhileStatement(stmt.Token, condition, body);
         }
         
         public virtual Statement VisitForStatement(ForStatement stmt)
@@ -1250,7 +1250,7 @@ namespace Ouroboros.Optimization
             var condition = stmt.Condition != null ? Visit(stmt.Condition) as Expression : null;
             var update = stmt.Update != null ? Visit(stmt.Update) as Expression : null;
             var body = Visit(stmt.Body) as Statement;
-            return new ForStatement(initializer, condition, update, body, stmt.Line, stmt.Column);
+            return new ForStatement(stmt.Token, initializer, condition, update, body);
         }
         
         public virtual Statement VisitReturnStatement(ReturnStatement stmt)

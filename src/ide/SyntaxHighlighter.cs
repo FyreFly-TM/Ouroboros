@@ -12,35 +12,7 @@ namespace Ouroboros.IDE
     /// </summary>
     public class SyntaxHighlighter
     {
-        private readonly Dictionary<TokenType, ConsoleColor> tokenColors = new()
-        {
-            // Literals
-            { TokenType.StringLiteral, ConsoleColor.Green },
-            { TokenType.IntegerLiteral, ConsoleColor.Cyan },
-            { TokenType.FloatLiteral, ConsoleColor.Cyan },
-            { TokenType.DoubleLiteral, ConsoleColor.Cyan },
-            { TokenType.CharLiteral, ConsoleColor.Green },
-            
-            // Keywords - just a subset for now
-            { TokenType.If, ConsoleColor.Blue },
-            { TokenType.Else, ConsoleColor.Blue },
-            { TokenType.While, ConsoleColor.Blue },
-            { TokenType.For, ConsoleColor.Blue },
-            { TokenType.Function, ConsoleColor.Blue },
-            { TokenType.Return, ConsoleColor.Blue },
-            { TokenType.Class, ConsoleColor.Blue },
-            
-            // Identifiers
-            { TokenType.Identifier, ConsoleColor.White },
-            
-            // Operators
-            { TokenType.Plus, ConsoleColor.Yellow },
-            { TokenType.Minus, ConsoleColor.Yellow },
-            { TokenType.Multiply, ConsoleColor.Yellow },
-            { TokenType.Divide, ConsoleColor.Yellow },
-            { TokenType.Assign, ConsoleColor.Yellow },
-        };
-
+        private readonly Dictionary<TokenType, string> tokenColors;
         private readonly Dictionary<string, string> keywordColors;
 
         public SyntaxHighlighter()
@@ -117,9 +89,9 @@ namespace Ouroboros.IDE
             foreach (var token in tokens)
             {
                 // Add any whitespace between tokens
-                if (token.Position > lastEnd)
+                if (token.StartPosition > lastEnd)
                 {
-                    var whitespace = code.Substring(lastEnd, token.Position - lastEnd);
+                    var whitespace = code.Substring(lastEnd, token.StartPosition - lastEnd);
                     html.Add(EscapeHtml(whitespace));
                 }
 
@@ -136,7 +108,7 @@ namespace Ouroboros.IDE
                     html.Add(EscapeHtml(token.Lexeme));
                 }
 
-                lastEnd = token.Position + token.Lexeme.Length;
+                lastEnd = token.StartPosition + token.Lexeme.Length;
             }
 
             // Add any remaining text
@@ -185,14 +157,15 @@ namespace Ouroboros.IDE
         {
             return token.Type switch
             {
-                TokenType.STRING => "string.quoted.double.ouroboros",
-                TokenType.NUMBER or TokenType.INTEGER or TokenType.DOUBLE or TokenType.FLOAT => "constant.numeric.ouroboros",
-                TokenType.COMMENT => "comment.line.double-slash.ouroboros",
-                TokenType.IDENTIFIER => IsType(token.Lexeme) ? "entity.name.type.ouroboros" : "variable.other.ouroboros",
-                TokenType.KEYWORD => GetKeywordScope(token.Lexeme),
-                TokenType.OPERATOR => "keyword.operator.ouroboros",
-                TokenType.UNIT_LITERAL => "constant.other.unit.ouroboros",
-                TokenType.BOOLEAN => "constant.language.boolean.ouroboros",
+                TokenType.StringLiteral => "string.quoted.double.ouroboros",
+                TokenType.IntegerLiteral or TokenType.FloatLiteral or TokenType.DoubleLiteral => "constant.numeric.ouroboros",
+                TokenType.Comment => "comment.line.double-slash.ouroboros",
+                TokenType.Identifier => IsType(token.Lexeme) ? "entity.name.type.ouroboros" : "variable.other.ouroboros",
+                // Keywords are many separate tokens, need to check if it's a keyword
+                TokenType.If or TokenType.Else or TokenType.While or TokenType.For or TokenType.Function => GetKeywordScope(token.Lexeme),
+                TokenType.Plus or TokenType.Minus or TokenType.Multiply or TokenType.Divide => "keyword.operator.ouroboros",
+                TokenType.UnitLiteral => "constant.other.unit.ouroboros",
+                TokenType.BooleanLiteral => "constant.language.boolean.ouroboros",
                 TokenType.NullLiteral => "constant.language.null.ouroboros",
                 _ => "source.ouroboros"
             };
@@ -216,16 +189,16 @@ namespace Ouroboros.IDE
 
         private string GetTokenColor(Token token)
         {
-            // Check if it's a special keyword first
-            if (token.Type == TokenType.KEYWORD && keywordColors.ContainsKey(token.Lexeme))
+            // Check if it's a special keyword first - keywords are individual tokens now
+            if (IsKeywordToken(token.Type) && keywordColors.ContainsKey(token.Lexeme))
             {
                 return keywordColors[token.Lexeme];
             }
 
             // Check if it's an identifier that represents a type
-            if (token.Type == TokenType.IDENTIFIER && IsType(token.Lexeme))
+            if (token.Type == TokenType.Identifier && IsType(token.Lexeme))
             {
-                return tokenColors[TokenType.TYPE];
+                return "#4EC9B0"; // Type color
             }
 
             // Use default token color
@@ -237,17 +210,24 @@ namespace Ouroboros.IDE
             // Simple heuristic: types start with uppercase
             return !string.IsNullOrEmpty(identifier) && char.IsUpper(identifier[0]);
         }
+        
+        private bool IsKeywordToken(TokenType tokenType)
+        {
+            // Check if the token type is a keyword
+            return tokenType >= TokenType.If && tokenType <= TokenType.Transform;
+        }
 
         private SemanticTokenType? GetSemanticTokenType(Token token)
         {
             return token.Type switch
             {
-                TokenType.KEYWORD => SemanticTokenType.Keyword,
-                TokenType.IDENTIFIER => IsType(token.Lexeme) ? SemanticTokenType.Type : SemanticTokenType.Variable,
-                TokenType.STRING => SemanticTokenType.String,
-                TokenType.NUMBER or TokenType.INTEGER or TokenType.DOUBLE or TokenType.FLOAT => SemanticTokenType.Number,
-                TokenType.COMMENT => SemanticTokenType.Comment,
-                TokenType.OPERATOR => SemanticTokenType.Operator,
+                // Keywords are many separate tokens
+                TokenType.If or TokenType.Else or TokenType.While or TokenType.For or TokenType.Function => SemanticTokenType.Keyword,
+                TokenType.Identifier => IsType(token.Lexeme) ? SemanticTokenType.Type : SemanticTokenType.Variable,
+                TokenType.StringLiteral => SemanticTokenType.String,
+                TokenType.IntegerLiteral or TokenType.FloatLiteral or TokenType.DoubleLiteral => SemanticTokenType.Number,
+                TokenType.Comment => SemanticTokenType.Comment,
+                TokenType.Plus or TokenType.Minus or TokenType.Multiply or TokenType.Divide => SemanticTokenType.Operator,
                 _ => null
             };
         }
@@ -258,7 +238,7 @@ namespace Ouroboros.IDE
 
             // Add modifiers based on context
             // This would need more sophisticated analysis in a real implementation
-            if (token.Type == TokenType.IDENTIFIER)
+            if (token.Type == TokenType.Identifier)
             {
                 if (char.IsUpper(token.Lexeme[0]))
                 {

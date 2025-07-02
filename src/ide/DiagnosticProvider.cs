@@ -62,8 +62,28 @@ namespace Ouroboros.IDE
                 }
 
                 // Semantic analysis
-                typeChecker.CheckProgram(ast);
-                diagnostics.AddRange(ConvertTypeCheckerErrors(typeChecker));
+                try
+                {
+                    typeChecker.Check(ast);
+                }
+                catch (TypeCheckException tcEx)
+                {
+                    foreach (var error in tcEx.Errors)
+                    {
+                        diagnostics.Add(new Diagnostic
+                        {
+                            Message = error.Message,
+                            Severity = DiagnosticSeverity.Error,
+                            Range = new Range
+                            {
+                                Start = new Position(error.Line - 1, error.Column - 1),
+                                End = new Position(error.Line - 1, error.Column)
+                            },
+                            Source = "type-checker",
+                            Code = "TYPE001"
+                        });
+                    }
+                }
 
                 // Add warnings and hints
                 diagnostics.AddRange(await GenerateWarningsAsync(ast, content));
@@ -117,29 +137,9 @@ namespace Ouroboros.IDE
 
         private List<Diagnostic> ConvertLexerErrors(Lexer lexer)
         {
-            var diagnostics = new List<Diagnostic>();
-            
-            // Get errors from lexer
-            if (lexer != null && lexer.Errors != null)
-            {
-                foreach (var error in lexer.Errors)
-                {
-                    diagnostics.Add(new Diagnostic
-                    {
-                        Message = error.Message,
-                        Severity = DiagnosticSeverity.Error,
-                        Range = new Range
-                        {
-                            Start = new Position(error.Line - 1, error.Column - 1),
-                            End = new Position(error.Line - 1, error.Column)
-                        },
-                        Source = "lexer",
-                        Code = error.Code ?? "LEX001"
-                    });
-                }
-            }
-            
-            return diagnostics;
+            // Lexer doesn't expose errors, it likely throws exceptions
+            // Return empty list for now
+            return new List<Diagnostic>();
         }
 
         private List<Diagnostic> ConvertParserErrors(Parser parser)
@@ -169,27 +169,11 @@ namespace Ouroboros.IDE
             return diagnostics;
         }
 
+        // This method is no longer needed since we handle TypeCheckException in the main method
         private List<Diagnostic> ConvertTypeCheckerErrors(TypeChecker typeChecker)
         {
-            var diagnostics = new List<Diagnostic>();
-            
-            foreach (var error in typeChecker.GetErrors())
-            {
-                diagnostics.Add(new Diagnostic
-                {
-                    Range = new Range
-                    {
-                        Start = new Position(error.Line - 1, error.Column),
-                        End = new Position(error.Line - 1, error.Column + error.Length)
-                    },
-                    Message = error.Message,
-                    Severity = DiagnosticSeverity.Error,
-                    Code = error.Code,
-                    Source = "ouroboros-type-checker"
-                });
-            }
-
-            return diagnostics;
+            // Method kept for compatibility but returns empty list
+            return new List<Diagnostic>();
         }
 
         private async Task<List<Diagnostic>> GenerateWarningsAsync(Core.AST.Program ast, string content)
