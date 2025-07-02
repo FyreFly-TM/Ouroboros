@@ -260,7 +260,7 @@ namespace Ouroboros.StdLib.Collections
                 return node; // Duplicate values not allowed
                 
             // Update height
-            node.Height = 1 + Math.Max(GetHeight(node.Left), GetHeight(node.Right));
+            node.Height = 1 + global::System.Math.Max(GetHeight(node.Left), GetHeight(node.Right));
             
             // Get balance factor
             int balance = GetBalance(node);
@@ -527,7 +527,11 @@ namespace Ouroboros.StdLib.Collections
                 {
                     newChild.Children.Add(fullChild.Children[j + degree]);
                 }
-                fullChild.Children.RemoveRange(degree, degree);
+                // Remove children from degree to end
+                while (fullChild.Children.Count > degree)
+                {
+                    fullChild.Children.RemoveAt(fullChild.Children.Count - 1);
+                }
             }
             
             // Move median key up to parent
@@ -535,7 +539,11 @@ namespace Ouroboros.StdLib.Collections
             parent.Children.Insert(index + 1, newChild);
             
             // Remove moved keys from full child
-            fullChild.Keys.RemoveRange(degree - 1, degree);
+            int removeCount = degree;
+            for (int i = 0; i < removeCount; i++)
+            {
+                fullChild.Keys.RemoveAt(degree - 1);
+            }
         }
         
         /// <summary>
