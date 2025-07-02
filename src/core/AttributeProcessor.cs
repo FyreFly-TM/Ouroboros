@@ -501,10 +501,10 @@ namespace Ouroboros.Core
             attributeContext["simd_enabled"] = true;
             
             // Enable SIMD optimizations
-            builder.EmitInstruction(Opcode.EnableSIMDOptimization);
-            builder.EmitInstruction(Opcode.EnableAutoVectorization);
-            builder.EmitInstruction(Opcode.SetVectorWidth, 256); // AVX2 by default
-            builder.EmitInstruction(Opcode.EnablePackedOperations);
+            builder.EmitInstruction(Opcode.EnableSIMDVectorization);
+            builder.EmitInstruction(Opcode.UseVectorInstructions);
+            builder.EmitInstruction(Opcode.OptimizeForSIMD);
+            builder.EmitInstruction(Opcode.VectorizeLoop);
         }
         
         private void ActivateParallelExecution(AstNode node)
@@ -513,10 +513,10 @@ namespace Ouroboros.Core
             attributeContext["parallel_enabled"] = true;
             
             // Enable parallel processing
-            builder.EmitInstruction(Opcode.EnableParallelization);
-            builder.EmitInstruction(Opcode.SetThreadPoolSize, Environment.ProcessorCount);
-            builder.EmitInstruction(Opcode.EnableTaskScheduling);
-            builder.EmitInstruction(Opcode.EnableDataParallelism);
+            builder.EmitInstruction(Opcode.EnableParallelExecution);
+            builder.EmitInstruction(Opcode.CreateThreadPool);
+            builder.EmitInstruction(Opcode.EnableWorkStealing);
+            builder.EmitInstruction(Opcode.BeginParallel);
         }
         
         private void ActivateDomainBlock(AstNode node)
@@ -525,10 +525,10 @@ namespace Ouroboros.Core
             attributeContext["domain_active"] = true;
             
             // Activate domain-specific parsing and semantics
-            builder.EmitInstruction(Opcode.EnterDomainContext);
-            builder.EmitInstruction(Opcode.EnableDomainOperators);
-            builder.EmitInstruction(Opcode.LoadDomainLibrary);
-            builder.EmitInstruction(Opcode.EnableDomainOptimizations);
+            builder.EmitInstruction(Opcode.EnterDomain);
+            builder.EmitInstruction(Opcode.EnableOperatorRedefinition);
+            builder.EmitInstruction(Opcode.CreateDomainScope);
+            builder.EmitInstruction(Opcode.EnableMathematicalNotation);
         }
         
         // ===== ADVANCED SYSTEM IMPLEMENTATIONS =====

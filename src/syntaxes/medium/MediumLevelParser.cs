@@ -22,7 +22,7 @@ namespace Ouroboros.Syntaxes.Medium
             this.tokens = tokens;
         }
 
-        public Program Parse()
+        public Core.AST.Program Parse()
         {
             var statements = new List<Statement>();
             
@@ -44,7 +44,7 @@ namespace Ouroboros.Syntaxes.Medium
                 }
             }
             
-            return new Program(statements);
+            return new Core.AST.Program(statements);
         }
 
         private Statement ParseDeclaration()
@@ -322,16 +322,18 @@ namespace Ouroboros.Syntaxes.Medium
 
         private Statement ParseContinueStatement()
         {
+            var continueToken = Previous();
             Consume(TokenType.Semicolon, "Expected ';' after 'continue'");
-            return new ContinueStatement();
+            return new ContinueStatement(continueToken);
         }
 
         private Statement ParseThrowStatement()
         {
+            var throwToken = Previous();
             Expression exception = ParseExpression();
             Consume(TokenType.Semicolon, "Expected ';' after throw expression");
             
-            return new ThrowStatement(exception);
+            return new ThrowStatement(throwToken, exception);
         }
 
         private Statement ParseExpressionStatement()
