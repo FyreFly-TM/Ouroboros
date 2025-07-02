@@ -1,15 +1,15 @@
 using System;
 using System.IO;
 using System.Text;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.Parser;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Runtime;
+using Ouro.Core.Lexer;
+using Ouro.Core.Parser;
+using Ouro.Core.Compiler;
+using Ouro.Runtime;
 
-namespace Ouroboros
+namespace Ouro
 {
     /// <summary>
-    /// Main entry point for the Ouroboros programming language
+    /// Main entry point for the Ouro programming language
     /// </summary>
     public class Program
     {
@@ -35,9 +35,9 @@ namespace Ouroboros
                 args = args.Length > 1 ? args[1..] : Array.Empty<string>();
             }
             
-            LogDebug("Ouroboros compiler starting...");
+            LogDebug("Ouro compiler starting...");
             
-            System.Console.WriteLine("Ouroboros Programming Language v1.0.0");
+            System.Console.WriteLine("Ouro Programming Language v1.0.0");
             System.Console.WriteLine("=====================================\n");
 
             if (args.Length == 0)
@@ -136,25 +136,25 @@ namespace Ouroboros
                     Console.WriteLine();
                     
                     // Convert Compiler.CompiledProgram to VM.CompiledProgram
-                    var vmProgram = new Ouroboros.Core.VM.CompiledProgram
+                    var vmProgram = new Ouro.Core.VM.CompiledProgram
                     {
-                        Bytecode = new Ouroboros.Core.VM.Bytecode
+                        Bytecode = new Ouro.Core.VM.Bytecode
                         {
                             Instructions = compiledProgram.Bytecode.Code.ToArray(),
                             ConstantPool = compiledProgram.Bytecode.Constants.ToArray(),
-                            Functions = new Ouroboros.Core.VM.FunctionInfo[0],
-                            Classes = new Ouroboros.Core.VM.ClassInfo[0],
-                            Interfaces = new Ouroboros.Core.VM.InterfaceInfo[0],
-                            Structs = new Ouroboros.Core.VM.StructInfo[0],
-                            Enums = new Ouroboros.Core.VM.EnumInfo[0],
-                            Components = new Ouroboros.Core.VM.ComponentInfo[0],
-                            Systems = new Ouroboros.Core.VM.SystemInfo[0],
-                            Entities = new Ouroboros.Core.VM.EntityInfo[0],
-                            ExceptionHandlers = new Ouroboros.Core.VM.ExceptionHandler[0]
+                            Functions = new Ouro.Core.VM.FunctionInfo[0],
+                            Classes = new Ouro.Core.VM.ClassInfo[0],
+                            Interfaces = new Ouro.Core.VM.InterfaceInfo[0],
+                            Structs = new Ouro.Core.VM.StructInfo[0],
+                            Enums = new Ouro.Core.VM.EnumInfo[0],
+                            Components = new Ouro.Core.VM.ComponentInfo[0],
+                            Systems = new Ouro.Core.VM.SystemInfo[0],
+                            Entities = new Ouro.Core.VM.EntityInfo[0],
+                            ExceptionHandlers = new Ouro.Core.VM.ExceptionHandler[0]
                         },
-                        SymbolTable = new Ouroboros.Core.VM.SymbolTable(),
+                        SymbolTable = new Ouro.Core.VM.SymbolTable(),
                         SourceFile = compiledProgram.SourceFile,
-                        Metadata = new Ouroboros.Core.VM.ProgramMetadata
+                        Metadata = new Ouro.Core.VM.ProgramMetadata
                         {
                             Version = "1.0.0",
                             CompilerVersion = compiledProgram.Metadata?.Version ?? "1.0.0",
@@ -275,15 +275,15 @@ namespace Ouroboros
 
         static void ShowHelp()
         {
-            Console.WriteLine("Usage: ouroboros [options] [file]");
+            Console.WriteLine("Usage: ouro [options] [file]");
             Console.WriteLine("\nOptions:");
             Console.WriteLine("  -h, --help     Show this help message");
             Console.WriteLine("  -v, --version  Show version information");
             Console.WriteLine("  --debug        Enable debug output");
             Console.WriteLine("  [file]         Run the specified .ouro file");
             Console.WriteLine("\nExamples:");
-            Console.WriteLine("  ouroboros hello.ouro       Run a file");
-            Console.WriteLine("  ouroboros examples/UIDemo.ouro  Run the UI demo");
+            Console.WriteLine("  ouro hello.ouro       Run a file");
+            Console.WriteLine("  ouro examples/UIDemo.ouro  Run the UI demo");
             Console.WriteLine("\nSupported Features:");
             Console.WriteLine("  • Three syntax levels (high, medium, low)");
             Console.WriteLine("  • Greek letters and mathematical symbols");
@@ -296,8 +296,8 @@ namespace Ouroboros
 
         static void ShowVersion()
         {
-            Console.WriteLine("Ouroboros Language v1.0.0");
-            Console.WriteLine("Copyright (c) 2025 Ouroboros Project");
+            Console.WriteLine("Ouro Language v1.0.0");
+            Console.WriteLine("Copyright (c) 2025 Ouro Project");
             Console.WriteLine("Licensed under MIT License");
             Console.WriteLine("\nRuntime Information:");
             Console.WriteLine($"  .NET Version: {Environment.Version}");
