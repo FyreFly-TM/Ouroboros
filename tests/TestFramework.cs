@@ -5,10 +5,10 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace Ouroboros.Testing
+namespace Ouro.Testing
 {
     /// <summary>
-    /// Lightweight testing framework for Ouroboros
+    /// Lightweight testing framework for Ouro
     /// </summary>
     public static class TestFramework
     {
@@ -24,7 +24,7 @@ namespace Ouroboros.Testing
             assembly ??= Assembly.GetExecutingAssembly();
             TotalTimer.Start();
             
-            Console.WriteLine($"🧪 Ouroboros Test Runner v1.0");
+            Console.WriteLine($"🧪 Ouro Test Runner v1.0");
             Console.WriteLine($"📦 Assembly: {assembly.GetName().Name}");
             Console.WriteLine($"🔍 Discovering tests...\n");
 

@@ -1,16 +1,16 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Ouroboros.Testing;
+using Ouro.Testing;
 
-namespace Ouroboros.Tests
+namespace Ouro.Tests
 {
     public class TestRunner
     {
         public static async Task<int> Main(string[] args)
         {
             Console.WriteLine("╔═══════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║            OUROBOROS TEST SUITE RUNNER v2.0               ║");
+            Console.WriteLine("║                OURO TEST SUITE RUNNER v2.0                ║");
             Console.WriteLine("╚═══════════════════════════════════════════════════════════╝\n");
 
             // Parse command line arguments
