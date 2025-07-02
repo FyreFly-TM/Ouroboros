@@ -4,10 +4,10 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Ouroboros.Core.Actors
+namespace Ouro.Core.Actors
 {
     /// <summary>
-    /// Actor system for Ouroboros - provides Erlang-style actors with supervision
+    /// Actor system for Ouro - provides Erlang-style actors with supervision
     /// Enables distributed computing with fault tolerance and message passing
     /// </summary>
     public class ActorSystem

@@ -4,10 +4,10 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Linq;
 
-namespace Ouroboros.Core.GPU
+namespace Ouro.Core.GPU
 {
     /// <summary>
-    /// GPU system for Ouroboros - enables GPU programming and SPIR-V compilation
+    /// GPU system for Ouro - enables GPU programming and SPIR-V compilation
     /// Supports CUDA-style kernels, Vulkan graphics, and compute shaders
     /// </summary>
     public class GPUSystem
@@ -135,7 +135,7 @@ namespace Ouroboros.Core.GPU
         }
         
         /// <summary>
-        /// Compile a GPU kernel from Ouroboros source
+        /// Compile a GPU kernel from Ouro source
         /// </summary>
         public CompiledKernel CompileKernel(string kernelSource, string entryPoint, GPUTarget target = GPUTarget.CUDA)
         {
@@ -160,7 +160,7 @@ namespace Ouroboros.Core.GPU
         }
         
         /// <summary>
-        /// Compile SPIR-V assembly from Ouroboros @asm spirv blocks
+        /// Compile SPIR-V assembly from Ouro @asm spirv blocks
         /// </summary>
         public SPIRVModule CompileSPIRVAssembly(string spirvAssembly, SPIRVType type)
         {

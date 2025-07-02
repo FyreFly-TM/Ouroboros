@@ -1,13 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Ouroboros.Core;
-using Ouroboros.StdLib.Math;
+using Ouro.Core;
+using Ouro.StdLib.Math;
 
-namespace Ouroboros.StdLib.Collections
+namespace Ouro.StdLib.Collections
 {
     /// <summary>
-    /// Queue (FIFO) implementation for Ouroboros
+    /// Queue (FIFO) implementation for Ouro
     /// </summary>
     public class Queue<T> : IEnumerable<T>
     {

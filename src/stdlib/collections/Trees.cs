@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Ouroboros.StdLib.Collections
+namespace Ouro.StdLib.Collections
 {
     /// <summary>
     /// Binary Tree Node

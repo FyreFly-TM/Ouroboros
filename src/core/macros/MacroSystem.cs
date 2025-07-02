@@ -2,15 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.Parser;
-using Ouroboros.Tokens;
+using Ouro.Core.AST;
+using Ouro.Core.Lexer;
+using Ouro.Core.Parser;
+using Ouro.Tokens;
 
-namespace Ouroboros.Core.Macros
+namespace Ouro.Core.Macros
 {
     /// <summary>
-    /// Macro system for Ouroboros with hygiene support
+    /// Macro system for Ouro with hygiene support
     /// </summary>
     public class MacroSystem
     {

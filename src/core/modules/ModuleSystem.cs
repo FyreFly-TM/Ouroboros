@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.Compiler;
+using Ouro.Core.AST;
+using Ouro.Core.Compiler;
 
-namespace Ouroboros.Core.Modules
+namespace Ouro.Core.Modules
 {
     /// <summary>
-    /// Module system for Ouroboros
+    /// Module system for Ouro
     /// </summary>
     public class ModuleSystem
     {
@@ -27,7 +27,7 @@ namespace Ouroboros.Core.Modules
             searchPaths.Add(Environment.CurrentDirectory);
             searchPaths.Add(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "stdlib"));
             
-            var envPath = Environment.GetEnvironmentVariable("OUROBOROS_PATH");
+            var envPath = Environment.GetEnvironmentVariable("OURO_PATH");
             if (!string.IsNullOrEmpty(envPath))
             {
                 searchPaths.AddRange(envPath.Split(Path.PathSeparator));

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Ouroboros.Core.Units
+namespace Ouro.Core.Units
 {
     /// <summary>
     /// Unit system for Ouroboros - provides compile-time dimensional analysis

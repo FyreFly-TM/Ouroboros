@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.Compiler;
+using Ouro.Core.AST;
+using Ouro.Core.Compiler;
 
-namespace Ouroboros.Core.Contracts
+namespace Ouro.Core.Contracts
 {
     /// <summary>
-    /// Contract programming system for Ouroboros
+    /// Contract programming system for Ouro
     /// </summary>
     public class ContractSystem
     {

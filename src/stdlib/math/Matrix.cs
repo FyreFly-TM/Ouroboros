@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 
-namespace Ouroboros.StdLib.Math
+namespace Ouro.StdLib.Math
 {
     /// <summary>
     /// A dynamic matrix class supporting various matrix operations

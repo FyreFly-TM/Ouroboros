@@ -1,9 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Ouroboros.Core;
+using Ouro.Core;
 
-namespace Ouroboros.StdLib.Collections
+namespace Ouro.StdLib.Collections
 {
     /// <summary>
     /// Stack (LIFO) implementation for Ouroboros

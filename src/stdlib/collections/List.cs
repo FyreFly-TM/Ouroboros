@@ -1,12 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Ouroboros.Core;
+using Ouro.Core;
 
-namespace Ouroboros.StdLib.Collections
+namespace Ouro.StdLib.Collections
 {
     /// <summary>
-    /// Dynamic array implementation for Ouroboros
+    /// Dynamic array implementation for Ouro
     /// </summary>
     public class List<T> : IEnumerable<T>
     {
