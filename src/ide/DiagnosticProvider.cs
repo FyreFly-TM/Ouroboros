@@ -149,7 +149,7 @@ namespace Ouroboros.IDE
             var diagnostics = new List<Diagnostic>();
             
             // Get errors from parser
-            if (parser != null && parser.Errors != null)
+            if (parser != null && parser.HadError)
             {
                 foreach (var error in parser.Errors)
                 {
@@ -646,6 +646,21 @@ namespace Ouroboros.IDE
         public string Code { get; set; }
     }
 
+    internal class TypeCheckException : Exception
+    {
+        public List<TypeCheckerError> Errors { get; }
+
+        public TypeCheckException(string message, List<TypeCheckerError> errors) : base(message)
+        {
+            Errors = errors ?? new List<TypeCheckerError>();
+        }
+
+        public TypeCheckException(List<TypeCheckerError> errors) : base("Type checking failed")
+        {
+            Errors = errors ?? new List<TypeCheckerError>();
+        }
+    }
+
     // Visitor classes for analysis
     internal class VariableDeclarationVisitor : AstVisitor
     {
@@ -654,7 +669,9 @@ namespace Ouroboros.IDE
         public override void VisitVariableDeclaration(Core.AST.VariableDeclaration decl)
         {
             DeclaredVariables[decl.Name] = (decl.Line, decl.Column);
-            base.VisitVariableDeclaration(decl);
+            // Visit initializer expression if present
+            if (decl.Initializer != null)
+                Visit(decl.Initializer);
         }
     }
     
@@ -665,7 +682,6 @@ namespace Ouroboros.IDE
         public override void VisitIdentifierExpression(Core.AST.IdentifierExpression expr)
         {
             UsedVariables.Add(expr.Name);
-            base.VisitIdentifierExpression(expr);
         }
     }
     
@@ -688,7 +704,10 @@ namespace Ouroboros.IDE
                     ));
                 }
             }
-            base.VisitCallExpression(expr);
+            // Visit callee and arguments
+            Visit(expr.Callee);
+            foreach (var arg in expr.Arguments)
+                Visit(arg);
         }
         
         private bool IsDeprecatedApi(string name)
@@ -718,7 +737,9 @@ namespace Ouroboros.IDE
                     decl.Column
                 ));
             }
-            base.VisitVariableDeclaration(decl);
+            // Visit initializer if present
+            if (decl.Initializer != null)
+                Visit(decl.Initializer);
         }
         
         public override void VisitFunctionDeclaration(Core.AST.FunctionDeclaration decl)
@@ -731,7 +752,9 @@ namespace Ouroboros.IDE
                     decl.Column
                 ));
             }
-            base.VisitFunctionDeclaration(decl);
+            // Visit function body
+            if (decl.Body != null)
+                Visit(decl.Body);
         }
     }
     
@@ -751,7 +774,6 @@ namespace Ouroboros.IDE
                     expr.Column
                 ));
             }
-            base.VisitIdentifierExpression(expr);
         }
         
         private bool IsValidIdentifierStyle(string name)
@@ -762,11 +784,77 @@ namespace Ouroboros.IDE
     }
     
     // Base visitor class
-    internal abstract class AstVisitor : Core.AST.IAstVisitor<object>
+    internal abstract class AstVisitor
     {
         public virtual void Visit(Core.AST.AstNode node)
         {
-            node?.Accept<object>(this);
+            if (node == null) return;
+            
+            // Use pattern matching to dispatch to appropriate methods
+            switch (node)
+            {
+                case Core.AST.VariableDeclaration decl:
+                    VisitVariableDeclaration(decl);
+                    break;
+                case Core.AST.IdentifierExpression expr:
+                    VisitIdentifierExpression(expr);
+                    break;
+                case Core.AST.CallExpression expr:
+                    VisitCallExpression(expr);
+                    break;
+                case Core.AST.FunctionDeclaration decl:
+                    VisitFunctionDeclaration(decl);
+                    break;
+                case Core.AST.ExpressionStatement stmt:
+                    Visit(stmt.Expression);
+                    break;
+                case Core.AST.BlockStatement block:
+                    foreach (var stmt in block.Statements)
+                        Visit(stmt);
+                    break;
+                case Core.AST.IfStatement ifStmt:
+                    Visit(ifStmt.Condition);
+                    Visit(ifStmt.ThenBranch);
+                    if (ifStmt.ElseBranch != null)
+                        Visit(ifStmt.ElseBranch);
+                    break;
+                case Core.AST.WhileStatement whileStmt:
+                    Visit(whileStmt.Condition);
+                    Visit(whileStmt.Body);
+                    break;
+                case Core.AST.ForStatement forStmt:
+                    if (forStmt.Initializer != null)
+                        Visit(forStmt.Initializer);
+                    if (forStmt.Condition != null)
+                        Visit(forStmt.Condition);
+                    if (forStmt.Update != null)
+                        Visit(forStmt.Update);
+                    Visit(forStmt.Body);
+                    break;
+                case Core.AST.ReturnStatement retStmt:
+                    if (retStmt.Value != null)
+                        Visit(retStmt.Value);
+                    break;
+                case Core.AST.BinaryExpression binExpr:
+                    Visit(binExpr.Left);
+                    Visit(binExpr.Right);
+                    break;
+                case Core.AST.UnaryExpression unExpr:
+                    Visit(unExpr.Operand);
+                    break;
+                case Core.AST.AssignmentExpression assignExpr:
+                    Visit(assignExpr.Target);
+                    Visit(assignExpr.Value);
+                    break;
+                case Core.AST.MemberExpression memExpr:
+                    Visit(memExpr.Object);
+                    break;
+                case Core.AST.ArrayExpression arrExpr:
+                    foreach (var elem in arrExpr.Elements)
+                        Visit(elem);
+                    break;
+                // Other expression and statement types can be added as needed
+            }
         }
         
         public virtual void VisitVariableDeclaration(Core.AST.VariableDeclaration decl) { }
