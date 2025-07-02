@@ -101,6 +101,7 @@ namespace Ouro.Core.VM
         MakeVector,
         MakeMatrix,
         MakeQuaternion,
+        MakeRange,
         LoadElement,
         StoreElement,
         LoadMember,

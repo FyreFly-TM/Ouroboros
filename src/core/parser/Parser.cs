@@ -376,7 +376,7 @@ namespace Ouro.Core.Parser
                 // Handle unsafe statements at declaration level
                 if (Match(TokenType.Unsafe)) return ParseUnsafeStatement();
 
-                // Collect modifiers
+                // Collect modifiers (including thread_local)
                 var modifiers = ParseModifiers();
 
                 // Parse declarations based on keyword
@@ -1569,15 +1569,123 @@ namespace Ouro.Core.Parser
                     throw Error(Current(), "Expected function name.");
                 }
                 
-                // Parse parameters
+                // Handle high-level natural language syntax: "function Main taking arguments"
+                if (_currentSyntaxLevel == SyntaxLevel.High && Check(TokenType.Taking))
+                {
+                    Advance(); // consume "taking"
+                    
+                    // Parse natural language parameters (just parameter names, no types)
+                    var highLevelParameters = new List<Parameter>();
+                    if (Check(TokenType.Identifier))
+                    {
+                        do
+                        {
+                            var paramName = Consume(TokenType.Identifier, "Expected parameter name");
+                            highLevelParameters.Add(new Parameter(new TypeNode("var"), paramName.Lexeme, null));
+                            
+                            // Handle "and" separator or end
+                            if (Check(TokenType.Identifier) && Current().Lexeme == "and")
+                            {
+                                Advance(); // consume "and"
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        } while (Check(TokenType.Identifier));
+                    }
+                    
+                    // No explicit return type in high-level syntax
+                    var highLevelReturnType = new TypeNode("void");
+                    
+                    // Parse function body for high-level syntax
+                    BlockStatement highLevelBody = null;
+                    if (Match(TokenType.LeftBrace))
+                    {
+                        highLevelBody = ParseBlock();
+                    }
+                    else
+                    {
+                        // Parse statements until "end function"
+                        var bodyStatements = new List<Statement>();
+                        while (!Check(TokenType.End) && !IsAtEnd())
+                        {
+                            bodyStatements.Add(ParseHighLevelStatement());
+                        }
+                        
+                        // Expect "end function"
+                        if (Match(TokenType.End) && Match(TokenType.Function))
+                        {
+                            highLevelBody = new BlockStatement(bodyStatements);
+                        }
+                        else
+                        {
+                            throw Error(Current(), "Expected 'end function' to close high-level function");
+                        }
+                    }
+
+                    bool highLevelIsAsync = modifiers.Contains(Modifier.Async);
+                    return new FunctionDeclaration(name, highLevelReturnType, highLevelParameters, highLevelBody, new List<TypeParameter>(), highLevelIsAsync, modifiers);
+                }
+                
+                // Parse parameters for regular syntax
                 Consume(TokenType.LeftParen, "Expected '(' after function name.");
                 
                 // Check if we should use Ouroboros-style parameters (name: type) or C# style (type name)
-                // Peek ahead to see if we have identifier followed by colon
+                // Enhanced check to handle &self, &mut self, and regular name: type patterns
                 List<Parameter> parameters;
-                if (!Check(TokenType.RightParen) && Current().Type == TokenType.Identifier && PeekNext()?.Type == TokenType.Colon)
+                bool useOuroborosStyle = false;
+                
+                if (!Check(TokenType.RightParen))
                 {
-                    // Ouroboros style: name: type
+                    // Check for &self or &mut self pattern
+                    if (Check(TokenType.BitwiseAnd))
+                    {
+                        var lookAhead = _current + 1;
+                        if (lookAhead < _tokens.Count)
+                        {
+                            // Check for &mut self or &self
+                            if (_tokens[lookAhead].Type == TokenType.Identifier && _tokens[lookAhead].Lexeme == "mut")
+                            {
+                                lookAhead++; // skip 'mut'
+                            }
+                            if (lookAhead < _tokens.Count && _tokens[lookAhead].Type == TokenType.Self)
+                            {
+                                useOuroborosStyle = true;
+                            }
+                        }
+                    }
+                    // Check for regular identifier: type pattern
+                    else if (Current().Type == TokenType.Identifier && PeekNext()?.Type == TokenType.Colon)
+                    {
+                        useOuroborosStyle = true;
+                    }
+                    // Additional check: if we have multiple parameters and any uses colon syntax
+                    else if (Current().Type == TokenType.Identifier)
+                    {
+                        // Look ahead to see if there's a colon somewhere in the parameter list
+                        var savedPos = _current;
+                        var parenDepth = 1; // We already consumed the opening paren
+                        var foundColon = false;
+                        _current++; // Skip the first identifier
+                        
+                        while (_current < _tokens.Count && parenDepth > 0 && !foundColon)
+                        {
+                            var token = _tokens[_current];
+                            if (token.Type == TokenType.LeftParen) parenDepth++;
+                            else if (token.Type == TokenType.RightParen) parenDepth--;
+                            else if (token.Type == TokenType.Colon && parenDepth == 1) foundColon = true;
+                            _current++;
+                        }
+                        
+                        _current = savedPos; // Restore position
+                        useOuroborosStyle = foundColon;
+                    }
+                }
+                
+                if (useOuroborosStyle)
+                {
+                    // Ouroboros style: name: type or &self
                     parameters = ParseOuroborosParameters();
                 }
                 else
@@ -1786,22 +1894,48 @@ namespace Ouro.Core.Parser
                     else if (Match(TokenType.In)) modifier = ParameterModifier.In;
                     else if (Match(TokenType.Params)) modifier = ParameterModifier.Params;
 
-                    // Parse parameter name
-                    var name = ConsumeIdentifier("Expected parameter name.");
-
-                    // Parse colon
-                    Consume(TokenType.Colon, "Expected ':' after parameter name.");
-                    
-                    // Parse parameter type
-                    var type = ParseType();
-
-                    Expression defaultValue = null;
-                    if (Match(TokenType.Assign))
+                    // Special handling for &self or &mut self parameters (Rust-style)
+                    if (Check(TokenType.BitwiseAnd))
                     {
-                        defaultValue = ParseAssignment();
+                        Advance(); // consume &
+                        bool isMutable = false;
+                        if (Check(TokenType.Identifier) && Current().Lexeme == "mut")
+                        {
+                            Advance(); // consume mut
+                            isMutable = true;
+                        }
+                        if (Check(TokenType.Self))
+                        {
+                            var selfToken = Advance();
+                            var selfType = new TypeNode("&self");
+                            if (isMutable) selfType = new TypeNode("&mut self");
+                            parameters.Add(new Parameter(selfType, "self", null, modifier));
+                        }
+                        else
+                        {
+                            // Not self, this is an error since we don't support & references as regular parameters in this syntax
+                            throw Error(Current(), "Expected 'self' after '&' in parameter list.");
+                        }
                     }
+                    else
+                    {
+                        // Parse parameter name
+                        var name = ConsumeIdentifier("Expected parameter name.");
 
-                    parameters.Add(new Parameter(type, name.Lexeme, defaultValue, modifier));
+                        // Parse colon
+                        Consume(TokenType.Colon, "Expected ':' after parameter name.");
+                        
+                        // Parse parameter type
+                        var type = ParseType();
+
+                        Expression defaultValue = null;
+                        if (Match(TokenType.Assign))
+                        {
+                            defaultValue = ParseAssignment();
+                        }
+
+                        parameters.Add(new Parameter(type, name.Lexeme, defaultValue, modifier));
+                    }
                 } while (Match(TokenType.Comma));
             }
 
@@ -1894,8 +2028,9 @@ namespace Ouro.Core.Parser
 
         private Statement ParseHighLevelStatement()
         {
-            // High-level parser is not available in this build, use fallback
-            Console.WriteLine($"DEBUG: High-level parser not available, using fallback");
+            // For now, use enhanced fallback parsing for high-level syntax
+            // TODO: Implement full natural language parser integration
+            Console.WriteLine($"DEBUG: Using enhanced high-level parsing fallback");
             return ParseHighLevelStatementFallback();
         }
 
@@ -2103,146 +2238,294 @@ namespace Ouro.Core.Parser
         
         private Statement ParseMediumLevelStatementEnhanced()
         {
-            Console.WriteLine($"DEBUG: Enhanced medium-level parsing at {Current().Type} '{Current().Lexeme}' line {Current().Line}");
-            Console.WriteLine($"DEBUG: ENTERING ParseMediumLevelStatementEnhanced method");
-            
             try
             {
+                Console.WriteLine($"DEBUG: ENTERING ParseMediumLevelStatementEnhanced method");
                 Console.WriteLine($"DEBUG: Inside try block");
-                // Skip any attributes before parsing the statement
+                // Skip attributes at the beginning
                 SkipAttributes();
                 Console.WriteLine($"DEBUG: After SkipAttributes, current token: {Current().Type} '{Current().Lexeme}'");
-                
-                        // Check for C# interop method signatures (but not native Ouroboros functions with C#-style syntax)
-        // Only treat as C# interop if explicitly marked or in interop context
-        if (IsCSharpMethodSignature() && !IsNativeOuroborosFunctionWithCSharpSyntax())
-        {
-            Console.WriteLine($"DEBUG: Detected C# interop method signature in enhanced parsing");
-            return ParseCSharpMethodWithOuroborosBody();
-        }
-            
-            // Check for syntax level markers (@high, @medium, @low, @asm)
-            if (Check(TokenType.HighLevel) || Check(TokenType.MediumLevel) || 
-                Check(TokenType.LowLevel) || Check(TokenType.Assembly) || Check(TokenType.SpirvAssembly))
-            {
-                Console.WriteLine($"DEBUG: Detected syntax level marker, delegating to main parser");
-                return ParseDeclaration();
-            }
-            Console.WriteLine($"DEBUG: Not a syntax level marker");
-            
-            // Check for generic function declarations: T FunctionName<T>(...)
-            if (IsGenericFunctionDeclaration())
-            {
-                Console.WriteLine($"DEBUG: Detected generic function declaration");
-                return ParseGenericFunctionDeclaration();
-            }
-            Console.WriteLine($"DEBUG: IsGenericFunctionDeclaration() returned false for {Current().Type} '{Current().Lexeme}'");
-            
-            // Check for type declarations
-            if (IsTypeDeclarationEnhanced())
-            {
-                Console.WriteLine($"DEBUG: Detected type declaration");
-                Console.WriteLine($"DEBUG: About to call ParseDeclaration() for {Current().Type} '{Current().Lexeme}'");
-                // Parse class, struct, interface, enum etc.
-                var result = ParseDeclaration();
-                Console.WriteLine($"DEBUG: ParseDeclaration() returned successfully");
-                return result;
-            }
-            
-            // Check for variable declarations with modern syntax
-            if (IsVariableDeclarationEnhanced())
-            {
-                Console.WriteLine($"DEBUG: Detected variable declaration");
-                return ParseVariableDeclarationEnhanced();
-            }
-            Console.WriteLine($"DEBUG: Not a variable declaration");
-            
-                        // Check for domain-scoped using blocks: using DomainName { ... }
-            if (Check(TokenType.Using) && IsUsingDomainBlock())
-            {
-                Console.WriteLine($"DEBUG: Detected domain-scoped using block");
-                return ParseUsingDomainBlock();
-            }
-            
-            // Check for const declarations in statement context
-            if (Check(TokenType.Const))
-            {
-                Console.WriteLine($"DEBUG: Detected const declaration in statement parsing");
-                return ParseConstDeclaration();
-            }
-            
-            // Check for macro declarations in statement context
-            if (Check(TokenType.Macro))
-            {
-                Console.WriteLine($"DEBUG: Detected macro declaration in statement parsing");
-                return ParseMacroDeclaration();
-            }
-            
-            // Check for trait declarations (treated as identifiers since no TokenType.Trait exists)
-            if (Check(TokenType.Identifier) && Current().Lexeme == "trait")
-            {
-                Console.WriteLine($"DEBUG: Detected trait declaration in statement parsing");
-                return ParseTraitDeclaration();
-            }
-            
-            // Check for implement blocks (trait implementations)
-            if (Check(TokenType.Identifier) && Current().Lexeme == "implement")
-            {
-                Console.WriteLine($"DEBUG: Detected implement block in statement parsing");
-                return ParseImplementDeclaration();
-            }
-            
-            // Check for destructor declarations
-            if (Check(TokenType.Identifier) && Current().Lexeme == "destructor")
-            {
-                Console.WriteLine($"DEBUG: Detected destructor declaration in statement parsing");
-                return ParseDestructorDeclaration();
-            }
-            
-            // Debug the print check specifically
-            Console.WriteLine($"DEBUG: About to check for fallback statements, current token: {Current().Type} '{Current().Lexeme}'");
-            Console.WriteLine($"DEBUG: Check(TokenType.Print) = {Check(TokenType.Print)}");
-            
-            // Handle specific control flow statements directly
-            if (Match(TokenType.While)) return ParseWhileStatement();
-            if (Match(TokenType.If)) return ParseIfStatement();
-            if (Match(TokenType.For)) return ParseForStatement();
-            if (Match(TokenType.Return)) return ParseReturnStatement();
-            if (Match(TokenType.Break)) return ParseBreakStatement();
-            if (Match(TokenType.Continue)) return ParseContinueStatement();
-            if (Match(TokenType.Throw)) return ParseThrowStatement();
-            if (Match(TokenType.Try)) return ParseTryStatement();
-            if (Match(TokenType.LeftBrace)) return ParseBlock();
-            
-                // Check for specific statement types that should use medium-level fallback
-            if (Check(TokenType.Print) || Check(TokenType.Loop) || Check(TokenType.Function) || Check(TokenType.Unsafe) ||
-                Check(TokenType.Import) || Check(TokenType.Using) || Check(TokenType.Class))
-            {
-                Console.WriteLine($"DEBUG: Using medium-level fallback for statement: {Current().Type}");
-                return ParseMediumLevelStatementFallback();
-            }
-            Console.WriteLine($"DEBUG: Not a medium-level fallback statement");
-            
-            // Parse as expression statement using enhanced parsing
-            Console.WriteLine($"DEBUG: Attempting to parse as expression statement: {Current().Type} '{Current().Lexeme}'");
-            
-            // Special handling for print statements that might not be caught by the fallback check
-            if (Current().Type == TokenType.Print)
-            {
-                Console.WriteLine($"DEBUG: Found print statement in expression parsing, redirecting to fallback");
-                return ParseMediumLevelStatementFallback();
-            }
-            
-            var expr = ParseExpression(); // Changed from ParseRangeOrExpression to ParseExpression to handle assignments
-            Console.WriteLine($"DEBUG: Successfully parsed expression, optional semicolon");
-            // Make semicolon optional - common in modern languages
-            Match(TokenType.Semicolon);
-            return new ExpressionStatement(expr);
+
+                // Handle control flow statements first - these have precedence over expressions
+                if (Match(TokenType.If))
+                {
+                    Console.WriteLine($"DEBUG: Found if statement, delegating to ParseIfStatement");
+                    return ParseIfStatement();
+                }
+                if (Match(TokenType.While)) 
+                {
+                    Console.WriteLine($"DEBUG: Found while statement, delegating to ParseWhileStatement");
+                    return ParseWhileStatement();
+                }
+                if (Match(TokenType.For)) 
+                {
+                    Console.WriteLine($"DEBUG: Found for statement, delegating to ParseForStatement");
+                    return ParseForStatement();
+                }
+                if (Match(TokenType.ForEach)) 
+                {
+                    Console.WriteLine($"DEBUG: Found foreach statement, delegating to ParseForEachStatement");
+                    return ParseForEachStatement();
+                }
+                if (Match(TokenType.Do)) 
+                {
+                    Console.WriteLine($"DEBUG: Found do statement, delegating to ParseDoWhileStatement");
+                    return ParseDoWhileStatement();
+                }
+                if (Match(TokenType.Switch)) 
+                {
+                    Console.WriteLine($"DEBUG: Found switch statement, delegating to ParseSwitchStatement");
+                    return ParseSwitchStatement();
+                }
+                if (Match(TokenType.Match)) 
+                {
+                    Console.WriteLine($"DEBUG: Found match statement, delegating to ParseMatchStatement");
+                    return ParseMatchStatement();
+                }
+
+                // Custom loops
+                if (Match(TokenType.Repeat)) 
+                {
+                    Console.WriteLine($"DEBUG: Found repeat statement, delegating to ParseRepeatStatement");
+                    return ParseRepeatStatement();
+                }
+                if (Match(TokenType.Iterate)) 
+                {
+                    Console.WriteLine($"DEBUG: Found iterate statement, delegating to ParseIterateStatement");
+                    return ParseIterateStatement();
+                }
+                if (Match(TokenType.Forever)) 
+                {
+                    Console.WriteLine($"DEBUG: Found forever statement, delegating to ParseForeverStatement");
+                    return ParseForeverStatement();
+                }
+                if (Match(TokenType.ParallelFor)) 
+                {
+                    Console.WriteLine($"DEBUG: Found parallel for statement, delegating to ParseParallelForStatement");
+                    return ParseParallelForStatement();
+                }
+
+                // Jump statements
+                if (Match(TokenType.Return)) 
+                {
+                    Console.WriteLine($"DEBUG: Found return statement, delegating to ParseReturnStatement");
+                    return ParseReturnStatement();
+                }
+                if (Match(TokenType.Break)) 
+                {
+                    Console.WriteLine($"DEBUG: Found break statement, delegating to ParseBreakStatement");
+                    return ParseBreakStatement();
+                }
+                if (Match(TokenType.Continue)) 
+                {
+                    Console.WriteLine($"DEBUG: Found continue statement, delegating to ParseContinueStatement");
+                    return ParseContinueStatement();
+                }
+                if (Match(TokenType.Throw)) 
+                {
+                    Console.WriteLine($"DEBUG: Found throw statement, delegating to ParseThrowStatement");
+                    return ParseThrowStatement();
+                }
+                if (Match(TokenType.Yield)) 
+                {
+                    Console.WriteLine($"DEBUG: Found yield statement, delegating to ParseYieldStatement");
+                    return ParseYieldStatement();
+                }
+
+                // Exception handling
+                if (Match(TokenType.Try)) 
+                {
+                    Console.WriteLine($"DEBUG: Found try statement, delegating to ParseTryStatement");
+                    return ParseTryStatement();
+                }
+
+                // Blocks and special constructs
+                if (Match(TokenType.LeftBrace)) 
+                {
+                    Console.WriteLine($"DEBUG: Found left brace, delegating to ParseBlock");
+                    return ParseBlock();
+                }
+                if (Match(TokenType.Unsafe)) 
+                {
+                    Console.WriteLine($"DEBUG: Found unsafe statement, delegating to ParseUnsafeStatement");
+                    return ParseUnsafeStatement();
+                }
+                if (Match(TokenType.Fixed)) 
+                {
+                    Console.WriteLine($"DEBUG: Found fixed statement, delegating to ParseFixedStatement");
+                    return ParseFixedStatement();
+                }
+                if (Match(TokenType.Lock)) 
+                {
+                    Console.WriteLine($"DEBUG: Found lock statement, delegating to ParseLockStatement");
+                    return ParseLockStatement();
+                }
+
+                // Using statements
+                if (Check(TokenType.Using))
+                {
+                    if (PeekNext()?.Type == TokenType.LeftParen)
+                    {
+                        Console.WriteLine($"DEBUG: Found using statement with parentheses");
+                        Match(TokenType.Using);
+                        return ParseUsingStatement();
+                    }
+                    else
+                    {
+                        Console.WriteLine($"DEBUG: Found using directive");
+                        Match(TokenType.Using);
+                        return ParseUsing();
+                    }
+                }
+
+                // Assembly
+                if (Match(TokenType.Assembly, TokenType.SpirvAssembly)) 
+                {
+                    Console.WriteLine($"DEBUG: Found assembly statement, delegating to ParseAssemblyStatement");
+                    return ParseAssemblyStatement();
+                }
+
+                // Check for syntax level markers like @high, @medium, @low, @asm
+                if (Check(TokenType.At))
+                {
+                    // Look ahead to see if this is a syntax level marker
+                    var nextToken = PeekNext();
+                    if (nextToken != null && (nextToken.Lexeme == "high" || nextToken.Lexeme == "medium" ||
+                                            nextToken.Lexeme == "low" || nextToken.Lexeme == "asm"))
+                    {
+                        Console.WriteLine($"DEBUG: Found syntax level marker, processing");
+                        ProcessSyntaxLevelAttributes();
+                        return ParseMediumLevelStatementEnhanced(); // Recursive call with new syntax level
+                    }
+                }
+
+                Console.WriteLine($"DEBUG: Not a syntax level marker");
+
+                // Check for generic function declarations
+                if (IsGenericFunctionDeclaration())
+                {
+                    Console.WriteLine($"DEBUG: Found generic function declaration");
+                    return ParseGenericFunctionDeclaration();
+                }
+
+                Console.WriteLine($"DEBUG: IsGenericFunctionDeclaration() returned false for {Current().Type} '{Current().Lexeme}'");
+
+                // Check for type declarations (class, struct, interface, enum, etc.)
+                if (IsTypeDeclarationEnhanced())
+                {
+                    Console.WriteLine($"DEBUG: Found type declaration");
+                    var modifiers = new List<Modifier>();
+                    
+                    if (Check(TokenType.Class))
+                    {
+                        Match(TokenType.Class);
+                        return ParseClass(modifiers);
+                    }
+                    else if (Check(TokenType.Struct))
+                    {
+                        Match(TokenType.Struct);
+                        return ParseStruct(modifiers);
+                    }
+                    else if (Check(TokenType.Interface))
+                    {
+                        Match(TokenType.Interface);
+                        return ParseInterface(modifiers);
+                    }
+                    else if (Check(TokenType.Enum))
+                    {
+                        Match(TokenType.Enum);
+                        return ParseEnum(modifiers);
+                    }
+                    else if (Check(TokenType.UnionKeyword))
+                    {
+                        Match(TokenType.UnionKeyword);
+                        return ParseUnion(modifiers);
+                    }
+                    else if (Check(TokenType.Domain))
+                    {
+                        Match(TokenType.Domain);
+                        return ParseDomain(modifiers);
+                    }
+                    else if (Check(TokenType.Module))
+                    {
+                        Match(TokenType.Module);
+                        return ParseModule(modifiers);
+                    }
+                }
+
+                // Check for variable declarations
+                if (IsVariableDeclarationEnhanced())
+                {
+                    Console.WriteLine($"DEBUG: Found variable declaration");
+                    return ParseVariableDeclarationEnhanced();
+                }
+
+                Console.WriteLine($"DEBUG: Not a variable declaration");
+
+                // Check for transaction blocks: transaction { ... }
+                if (Check(TokenType.Identifier) && Current().Lexeme == "transaction" && PeekNext()?.Type == TokenType.LeftBrace)
+                {
+                    Console.WriteLine($"DEBUG: Detected transaction block");
+                    return ParseTransactionBlock();
+                }
+
+                // Check for fallback statements specific to medium-level syntax
+                Console.WriteLine($"DEBUG: About to check for fallback statements, current token: {Current().Type} '{Current().Lexeme}'");
+                if (Check(TokenType.Print))
+                {
+                    Console.WriteLine($"DEBUG: Found print statement, delegating to fallback parser");
+                    return ParseMediumLevelStatementFallback();
+                }
+
+                Console.WriteLine($"DEBUG: Check(TokenType.Print) = False");
+                Console.WriteLine($"DEBUG: Not a medium-level fallback statement");
+
+                // Handle edge cases for tokens that shouldn't be parsed as expressions
+                if (Check(TokenType.Else))
+                {
+                    Console.WriteLine($"DEBUG: Found orphaned else token - this shouldn't happen in proper if-else parsing");
+                    throw Error(Current(), "Unexpected 'else' without matching 'if'.");
+                }
+
+                if (Check(TokenType.RightBrace))
+                {
+                    Console.WriteLine($"DEBUG: Found right brace - likely end of block, returning null statement to signal end");
+                    // Don't consume the right brace here - let the block parser handle it
+                    // Return a null statement to signal that we've reached the end of statements in this context
+                    return new ExpressionStatement(new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, 0, 0, 0, 0, "", _currentSyntaxLevel)));
+                }
+
+                // Parse as expression statement using enhanced parsing
+                Console.WriteLine($"DEBUG: Attempting to parse as expression statement: {Current().Type} '{Current().Lexeme}'");
+
+                // Special handling for print statements that might not be caught by the fallback check
+                if (Current().Type == TokenType.Print)
+                {
+                    Console.WriteLine($"DEBUG: Found print statement in expression parsing, redirecting to fallback");
+                    return ParseMediumLevelStatementFallback();
+                }
+
+                var expr = ParseExpression(); // Changed from ParseRangeOrExpression to ParseExpression to handle assignments
+                Console.WriteLine($"DEBUG: Successfully parsed expression, optional semicolon");
+                // Make semicolon optional - common in modern languages
+                Match(TokenType.Semicolon);
+                return new ExpressionStatement(expr);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"DEBUG: Exception in ParseMediumLevelStatementEnhanced: {ex.Message}");
                 Console.WriteLine($"DEBUG: Exception stack trace: {ex.StackTrace}");
+                
+                // Improved error recovery - try to skip to next statement
+                Console.WriteLine($"DEBUG: Attempting error recovery, current token: {Current().Type} '{Current().Lexeme}'");
+                
+                // If we hit a right brace, return a null statement to let the block parser handle it
+                if (Check(TokenType.RightBrace))
+                {
+                    Console.WriteLine($"DEBUG: Found right brace in error recovery, returning null statement");
+                    return new ExpressionStatement(new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, 0, 0, 0, 0, "", _currentSyntaxLevel)));
+                }
+                
                 // Fall back to medium-level fallback parser on error
                 return ParseMediumLevelStatementFallback();
             }
@@ -3226,9 +3509,9 @@ namespace Ouro.Core.Parser
                 _current = currentPos;
                 
                 if (isRustStyleFor)
-                {
-                    // Parse as range-based for loop
-                    var iteratorName = ConsumeIdentifierOrGreekLetter("Expected iterator variable name.");
+            {
+                // Parse as range-based for loop
+                var iteratorName = ConsumeIdentifierOrGreekLetter("Expected iterator variable name.");
                     
                     // Handle additional iterators (tuple destructuring)
                     while (Match(TokenType.Comma))
@@ -3237,18 +3520,18 @@ namespace Ouro.Core.Parser
                     }
                     
                     Consume(TokenType.In, "Expected 'in' after iterator variable(s).");
-                    var rangeExpression = ParseExpression(); // Parse the range (e.g., 0..a.len())
-                    
-                    var rangeBody = ParseStatement();
-                    
-                    // Convert range-based for loop to foreach statement
+                var rangeExpression = ParseExpression(); // Parse the range (e.g., 0..a.len())
+                
+                var rangeBody = ParseStatement();
+                
+                // Convert range-based for loop to foreach statement
                     var iteratorType = new TypeNode("var"); // Use var for type inference
-                    var forEach = new ForEachStatement(forToken, iteratorType, iteratorName, rangeExpression, rangeBody);
-                    
-                    // For now, return a ForStatement that wraps the ForEach behavior
-                    // In a full implementation, we'd have proper range iteration support
-                    var init = new VariableDeclaration(iteratorType, iteratorName, null, false, false);
-                    return new ForStatement(forToken, init, null, null, rangeBody);
+                var forEach = new ForEachStatement(forToken, iteratorType, iteratorName, rangeExpression, rangeBody);
+                
+                // For now, return a ForStatement that wraps the ForEach behavior
+                // In a full implementation, we'd have proper range iteration support
+                var init = new VariableDeclaration(iteratorType, iteratorName, null, false, false);
+                return new ForStatement(forToken, init, null, null, rangeBody);
                 }
             }
             
@@ -3443,7 +3726,29 @@ namespace Ouro.Core.Parser
 
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
-                statements.Add(ParseStatement());
+                try
+                {
+                    var statement = ParseStatement();
+                    
+                    // Filter out null statements (used for error recovery)
+                    if (statement != null && 
+                        !(statement is ExpressionStatement exprStmt && 
+                          exprStmt.Expression is LiteralExpression literalExpr &&
+                          literalExpr.Value is Token token && token.Type == TokenType.NullLiteral))
+                    {
+                        statements.Add(statement);
+                    }
+                }
+                catch (ParseException ex)
+                {
+                    Console.WriteLine($"DEBUG: ParseBlock caught exception: {ex.Message}");
+                    // Skip problematic tokens and try to continue
+                    if (!IsAtEnd() && !Check(TokenType.RightBrace))
+                    {
+                        Console.WriteLine($"DEBUG: Skipping token in error recovery: {Current().Type} '{Current().Lexeme}'");
+                        Advance();
+                    }
+                }
             }
 
             Consume(TokenType.RightBrace, "Expected '}' after block.");
@@ -3625,6 +3930,24 @@ namespace Ouro.Core.Parser
             var body = new BlockStatement(statements);
             
             return new UnsafeStatement(unsafeToken, body);
+        }
+
+        private BlockStatement ParseTransactionBlock()
+        {
+            var transactionToken = Consume(TokenType.Identifier, "Expected 'transaction' keyword.");
+            Consume(TokenType.LeftBrace, "Expected '{' after 'transaction'.");
+            
+            var statements = new List<Statement>();
+            while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            {
+                statements.Add(ParseStatement());
+            }
+            
+            Consume(TokenType.RightBrace, "Expected '}' after transaction block.");
+            
+            // For now, return as a regular block statement
+            // In a full implementation, this would be a specialized TransactionStatement
+            return new BlockStatement(statements, transactionToken);
         }
         
         private ForEachStatement ParseRangeBasedForLoop()
@@ -4101,7 +4424,9 @@ namespace Ouro.Core.Parser
 
         private Expression ParseEquality()
         {
+            Console.WriteLine($"DEBUG: ENTERING ParseEquality()");
             var expr = ParseComparison();
+            Console.WriteLine($"DEBUG: ParseEquality() - Got expression from ParseComparison: {expr?.GetType().Name}");
 
             while (Match(TokenType.Equal, TokenType.NotEqual, TokenType.NotEqual2,
                         TokenType.Element, TokenType.NotElement, TokenType.Identical, 
@@ -4112,12 +4437,15 @@ namespace Ouro.Core.Parser
                 expr = new BinaryExpression(expr, op, right);
             }
 
+            Console.WriteLine($"DEBUG: ParseEquality() returning: {expr?.GetType().Name}");
             return expr;
         }
 
         private Expression ParseComparison()
         {
+            Console.WriteLine($"DEBUG: ENTERING ParseComparison()");
             var expr = ParseRange();
+            Console.WriteLine($"DEBUG: ParseComparison() - Got expression from ParseRange: {expr?.GetType().Name}");
 
             // In high-level syntax, don't consume 'is' as a comparison operator
             // because it's used for natural language comparisons like "is greater than"
@@ -4172,27 +4500,43 @@ namespace Ouro.Core.Parser
                 }
             }
 
+            Console.WriteLine($"DEBUG: ParseComparison() returning: {expr?.GetType().Name}");
             return expr;
         }
 
         private Expression ParseRange()
         {
+            Console.WriteLine($"DEBUG: ENTERING ParseRange() with current token: {Current().Type} '{Current().Lexeme}'");
             var expr = ParseShift();
+            Console.WriteLine($"DEBUG: ParseRange() - Got expression from ParseShift: {expr?.GetType().Name}");
+            Console.WriteLine($"DEBUG: ParseRange() - About to check for range operators, current token: {Current().Type} '{Current().Lexeme}'");
             
             // Check for range operators
             if (Match(TokenType.Range))
             {
+                Console.WriteLine($"DEBUG: ParseRange() - Found Range operator!");
+                var op = Previous(); // Store the operator token before parsing the right operand
+                Console.WriteLine($"DEBUG: ParseRange() - Stored operator token: {op.Type} '{op.Lexeme}'");
                 var right = ParseShift();
-                return new BinaryExpression(expr, Previous(), right);
+                Console.WriteLine($"DEBUG: ParseRange() - ParseShift returned: {right?.GetType().Name}");
+                var rangeExpr = new BinaryExpression(expr, op, right);
+                Console.WriteLine($"DEBUG: ParseRange() - Created BinaryExpression with operator: {op.Type} '{op.Lexeme}'");
+                return rangeExpr;
             }
             
             // Check for spread operator (inclusive range)
             if (Match(TokenType.Spread))
             {
+                Console.WriteLine($"DEBUG: ParseRange() - Found Spread operator!");
+                var op = Previous(); // Store the operator token before parsing the right operand
+                Console.WriteLine($"DEBUG: ParseRange() - Stored spread operator token: {op.Type} '{op.Lexeme}'");
                 var right = ParseShift();
-                return new BinaryExpression(expr, Previous(), right);
+                var spreadExpr = new BinaryExpression(expr, op, right);
+                Console.WriteLine($"DEBUG: ParseRange() - Created BinaryExpression with spread operator: {op.Type} '{op.Lexeme}'");
+                return spreadExpr;
             }
             
+            Console.WriteLine($"DEBUG: ParseRange() - No range operators found, returning: {expr?.GetType().Name}");
             return expr;
         }
 
@@ -5473,6 +5817,15 @@ namespace Ouro.Core.Parser
                     // Parse the expression inside the braces
                     var exprCode = content.Substring(exprStart, i - exprStart);
                     
+                    // Handle format specifiers: {variable:format}
+                    string formatSpec = null;
+                    var colonIndex = exprCode.IndexOf(':');
+                    if (colonIndex >= 0)
+                    {
+                        formatSpec = exprCode.Substring(colonIndex + 1).Trim();
+                        exprCode = exprCode.Substring(0, colonIndex).Trim();
+                    }
+                    
                     // Create a mini-lexer/parser for the expression
                     // For now, we'll create a simple identifier or member access expression
                     var exprParts = exprCode.Split('.');
@@ -5498,6 +5851,19 @@ namespace Ouro.Core.Parser
                             var memberToken = new Token(TokenType.Identifier, memberName, memberName, stringToken.Line, stringToken.Column, 0, 0, stringToken.FileName, stringToken.SyntaxLevel);
                             expr = new MemberExpression(expr, dotToken, memberToken);
                         }
+                    }
+                    
+                    // If there's a format specifier, wrap the expression in a formatting call
+                    if (!string.IsNullOrEmpty(formatSpec))
+                    {
+                        // Create a call to ToString with the format specifier
+                        var toStringToken = new Token(TokenType.Identifier, "ToString", "ToString", stringToken.Line, stringToken.Column, 0, 0, stringToken.FileName, stringToken.SyntaxLevel);
+                        var dotToken = new Token(TokenType.Dot, ".", null, stringToken.Line, stringToken.Column, 0, 0, stringToken.FileName, stringToken.SyntaxLevel);
+                        var formatArg = new LiteralExpression(new Token(TokenType.StringLiteral, formatSpec, formatSpec, stringToken.Line, stringToken.Column, 0, 0, stringToken.FileName, stringToken.SyntaxLevel));
+                        expr = new CallExpression(
+                            new MemberExpression(expr, dotToken, toStringToken),
+                            new List<Expression> { formatArg }
+                        );
                     }
                     
                     parts.Add(expr);
@@ -6108,6 +6474,7 @@ namespace Ouro.Core.Parser
                 else if (Match(TokenType.Unsafe)) modifiers.Add(Modifier.Unsafe);
                 else if (Match(TokenType.Async)) modifiers.Add(Modifier.Async);
                 else if (Match(TokenType.Partial)) modifiers.Add(Modifier.Partial);
+                else if (Match(TokenType.ThreadLocal)) modifiers.Add(Modifier.Static); // Using Static as closest equivalent for thread_local
                 else break;
             }
 

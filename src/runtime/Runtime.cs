@@ -268,18 +268,32 @@ namespace Ouro.Runtime
                 Entities = new Ouro.Core.VM.EntityInfo[0],
                 ExceptionHandlers = new Ouro.Core.VM.ExceptionHandler[0]
             };
-            var compiledProgram = new Ouro.Core.VM.CompiledProgram 
-            { 
-                Bytecode = bytecodeObj,
-                SymbolTable = new Ouro.Core.VM.SymbolTable()
+            
+            // Create a Compiler.CompiledProgram for VM execution
+            var compilerProgram = new Ouro.Core.Compiler.CompiledProgram
+            {
+                Bytecode = new Ouro.Core.Compiler.Bytecode
+                {
+                    Code = bytecodeObj.Instructions?.ToList() ?? new List<byte>(),
+                    Constants = constants?.ToList() ?? new List<object>()
+                },
+                Functions = new Dictionary<string, Ouro.Core.Compiler.FunctionInfo>(),
+                SymbolTable = new Ouro.Core.Compiler.SymbolTable(),
+                SourceFile = "",
+                Metadata = new Ouro.Core.Compiler.CompilerMetadata
+                {
+                    Version = "1.0.0",
+                    CompileTime = DateTime.Now
+                }
             };
-            return vm.Execute(compiledProgram);
+            
+            return vm.Execute(compilerProgram);
         }
         
         /// <summary>
         /// Execute a compiled program
         /// </summary>
-        public object Execute(Ouro.Core.VM.CompiledProgram compiledProgram)
+        public object Execute(Ouro.Core.Compiler.CompiledProgram compiledProgram)
         {
             try
             {

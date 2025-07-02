@@ -165,8 +165,8 @@ namespace Ouro
                         }
                     };
                     
-                    // Execute the compiled program
-                    var result = runtime.Execute(vmProgram);
+                    // Execute the compiled program (use the original compiledProgram)
+                    var result = runtime.Execute(compiledProgram);
                     
                     Console.WriteLine();
                     if (result != null)

@@ -1,0 +1,7 @@
+@medium
+module RangeTest {
+    function test() {
+        var range = 1..5;
+        print range;
+    }
+} 

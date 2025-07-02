@@ -434,6 +434,17 @@ namespace Ouro.Core.Compiler
                     builder.Emit(Opcode.DotProduct3D);
                     break;
                     
+                // Range operators
+                case TokenType.Range: // .. operator (inclusive range)
+                    builder.Emit(Opcode.MakeRange, 0); // 0 = inclusive
+                    break;
+                    
+                case TokenType.Spread: // ... operator (exclusive range or spread)
+                    // For spread in expressions, treat as exclusive range
+                    // In other contexts (like function arguments), this would be handled differently
+                    builder.Emit(Opcode.MakeRange, 1); // 1 = exclusive
+                    break;
+                    
                 default:
                     throw new CompilerException($"Unknown binary operator: {expr.Operator.Type}");
             }

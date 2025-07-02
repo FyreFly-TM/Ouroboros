@@ -1359,105 +1359,105 @@ namespace Ouro.Core.Lexer
             // If no Rust-style suffix was found, check for traditional C-style suffixes
             if (suffix == "")
             {
-                // Check for unsigned/long suffixes first
-                bool isUnsigned = false;
-                bool isLong = false;
-                
-                // Look for U/u and L/l suffixes (can be combined as UL or LU)
-                while (!IsAtEnd() && (Peek() == 'u' || Peek() == 'U' || Peek() == 'l' || Peek() == 'L'))
+            // Check for unsigned/long suffixes first
+            bool isUnsigned = false;
+            bool isLong = false;
+            
+            // Look for U/u and L/l suffixes (can be combined as UL or LU)
+            while (!IsAtEnd() && (Peek() == 'u' || Peek() == 'U' || Peek() == 'l' || Peek() == 'L'))
+            {
+                if (Peek() == 'u' || Peek() == 'U')
                 {
-                    if (Peek() == 'u' || Peek() == 'U')
-                    {
-                        isUnsigned = true;
-                        Advance();
-                    }
-                    else if (Peek() == 'l' || Peek() == 'L')
-                    {
-                        isLong = true;
-                        Advance();
-                    }
+                    isUnsigned = true;
+                    Advance();
                 }
+                else if (Peek() == 'l' || Peek() == 'L')
+                {
+                    isLong = true;
+                    Advance();
+                }
+            }
 
                 if (Peek() == 'd' || Peek() == 'D')
-                {
-                    Advance();
-                    type = TokenType.DoubleLiteral;
-                    value = double.Parse(text, CultureInfo.InvariantCulture);
-                }
-                else if (Peek() == 'm' || Peek() == 'M')
-                {
-                    Advance();
-                    type = TokenType.DecimalLiteral;
-                    value = decimal.Parse(text, CultureInfo.InvariantCulture);
-                }
-                else if (isHex)
-                {
-                    type = TokenType.HexLiteral;
-                    // Remove underscores and the 0x prefix before converting
-                    string hexDigits = text.Substring(2).Replace("_", "");
-                    if (isUnsigned && isLong)
-                        value = Convert.ToUInt64(hexDigits, 16);
-                    else if (isUnsigned)
-                        value = Convert.ToUInt32(hexDigits, 16);
-                    else if (isLong)
-                        value = Convert.ToInt64(hexDigits, 16);
-                    else
-                        value = Convert.ToInt64(hexDigits, 16);
-                }
-                else if (isBinary)
-                {
-                    type = TokenType.BinaryLiteral;
-                    // Remove underscores and the 0b prefix before converting
-                    string binaryDigits = text.Substring(2).Replace("_", "");
-                    if (isUnsigned && isLong)
-                        value = Convert.ToUInt64(binaryDigits, 2);
-                    else if (isUnsigned)
-                        value = Convert.ToUInt32(binaryDigits, 2);
-                    else if (isLong)
-                        value = Convert.ToInt64(binaryDigits, 2);
-                    else
-                        value = Convert.ToInt64(binaryDigits, 2);
-                }
-                else if (isOctal)
-                {
-                    type = TokenType.OctalLiteral;
-                    if (isUnsigned && isLong)
-                        value = Convert.ToUInt64(text, 8);
-                    else if (isUnsigned)
-                        value = Convert.ToUInt32(text, 8);
-                    else if (isLong)
-                        value = Convert.ToInt64(text, 8);
-                    else
-                        value = Convert.ToInt64(text, 8);
-                }
-                else if (isFloat)
-                {
-                    type = TokenType.DoubleLiteral;
-                    value = double.Parse(text, CultureInfo.InvariantCulture);
-                }
+            {
+                Advance();
+                type = TokenType.DoubleLiteral;
+                value = double.Parse(text, CultureInfo.InvariantCulture);
+            }
+            else if (Peek() == 'm' || Peek() == 'M')
+            {
+                Advance();
+                type = TokenType.DecimalLiteral;
+                value = decimal.Parse(text, CultureInfo.InvariantCulture);
+            }
+            else if (isHex)
+            {
+                type = TokenType.HexLiteral;
+                // Remove underscores and the 0x prefix before converting
+                string hexDigits = text.Substring(2).Replace("_", "");
+                if (isUnsigned && isLong)
+                    value = Convert.ToUInt64(hexDigits, 16);
+                else if (isUnsigned)
+                    value = Convert.ToUInt32(hexDigits, 16);
+                else if (isLong)
+                    value = Convert.ToInt64(hexDigits, 16);
                 else
+                    value = Convert.ToInt64(hexDigits, 16);
+            }
+            else if (isBinary)
+            {
+                type = TokenType.BinaryLiteral;
+                // Remove underscores and the 0b prefix before converting
+                string binaryDigits = text.Substring(2).Replace("_", "");
+                if (isUnsigned && isLong)
+                    value = Convert.ToUInt64(binaryDigits, 2);
+                else if (isUnsigned)
+                    value = Convert.ToUInt32(binaryDigits, 2);
+                else if (isLong)
+                    value = Convert.ToInt64(binaryDigits, 2);
+                else
+                    value = Convert.ToInt64(binaryDigits, 2);
+            }
+            else if (isOctal)
+            {
+                type = TokenType.OctalLiteral;
+                if (isUnsigned && isLong)
+                    value = Convert.ToUInt64(text, 8);
+                else if (isUnsigned)
+                    value = Convert.ToUInt32(text, 8);
+                else if (isLong)
+                    value = Convert.ToInt64(text, 8);
+                else
+                value = Convert.ToInt64(text, 8);
+            }
+            else if (isFloat)
+            {
+                type = TokenType.DoubleLiteral;
+                value = double.Parse(text, CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                // Regular integer literal
+                try
                 {
-                    // Regular integer literal
-                    try
-                    {
-                        if (isUnsigned && isLong)
-                            value = ulong.Parse(text);
-                        else if (isUnsigned)
-                            value = uint.Parse(text);
-                        else if (isLong)
-                            value = long.Parse(text);
-                        else
-                            value = long.Parse(text);
-                    }
-                    catch (FormatException)
-                    {
-                        ReportError($"Invalid number format: '{text}' at line {_line}");
-                        value = 0L; // Default value
-                    }
-                    catch (OverflowException)
-                    {
-                        ReportError($"Number overflow: '{text}' at line {_line}");
-                        value = 0L; // Default value
+                    if (isUnsigned && isLong)
+                        value = ulong.Parse(text);
+                    else if (isUnsigned)
+                        value = uint.Parse(text);
+                    else if (isLong)
+                        value = long.Parse(text);
+                    else
+                        value = long.Parse(text);
+                }
+                catch (FormatException)
+                {
+                    ReportError($"Invalid number format: '{text}' at line {_line}");
+                    value = 0L; // Default value
+                }
+                catch (OverflowException)
+                {
+                    ReportError($"Number overflow: '{text}' at line {_line}");
+                    value = 0L; // Default value
                     }
                 }
             }

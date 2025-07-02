@@ -519,8 +519,8 @@ namespace Ouro.REPL
                 // Execute with better error handling
                 try
                 {
-                    // Execute the compiled program
-                    var result = await Task.Run(() => vm.Execute(vmProgram));
+                    // Execute the compiled program using the original compiler program
+                    var result = await Task.Run(() => vm.Execute(compilerProgram));
                     
                     // Update context
                     context.LastResult = result;
