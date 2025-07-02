@@ -440,14 +440,87 @@ namespace Ouroboros.REPL
                 }
 
                 // Compile
-                var program = compiler.Compile(ast);
+                var compilerProgram = compiler.Compile(ast);
+
+                // Convert from Compiler.CompiledProgram to VM.CompiledProgram
+                var vmProgram = new Core.VM.CompiledProgram
+                {
+                    Bytecode = new Core.VM.Bytecode
+                    {
+                        Instructions = compilerProgram.Bytecode.Code.ToArray(),
+                        ConstantPool = compilerProgram.Bytecode.Constants.ToArray(),
+                        Classes = compilerProgram.Bytecode.Classes?.Select(c => new Core.VM.ClassInfo
+                        {
+                            Name = c.Name,
+                            BaseClass = c.BaseClass,
+                            Interfaces = c.Interfaces,
+                            Fields = c.Fields?.Select(f => new Core.VM.FieldInfo
+                            {
+                                Name = f.Name,
+                                Type = f.Type,
+                                Modifiers = f.Modifiers
+                            }).ToList() ?? new List<Core.VM.FieldInfo>(),
+                            Methods = c.Methods?.Select(m => new Core.VM.MethodInfo
+                            {
+                                Name = m.Name,
+                                StartAddress = m.StartAddress,
+                                EndAddress = m.EndAddress,
+                                Modifiers = m.Modifiers
+                            }).ToList() ?? new List<Core.VM.MethodInfo>(),
+                            Properties = c.Properties?.Select(p => new Core.VM.PropertyInfo
+                            {
+                                Name = p.Name,
+                                Type = p.Type,
+                                GetterAddress = p.GetterAddress,
+                                GetterEndAddress = p.GetterEndAddress,
+                                SetterAddress = p.SetterAddress,
+                                SetterEndAddress = p.SetterEndAddress
+                            }).ToList() ?? new List<Core.VM.PropertyInfo>()
+                        }).ToArray() ?? Array.Empty<Core.VM.ClassInfo>(),
+                        Structs = compilerProgram.Bytecode.Structs?.Select(s => new Core.VM.StructInfo
+                        {
+                            Name = s.Name,
+                            Interfaces = s.Interfaces,
+                            Fields = s.Fields?.Select(f => new Core.VM.FieldInfo
+                            {
+                                Name = f.Name,
+                                Type = f.Type,
+                                Modifiers = f.Modifiers
+                            }).ToList() ?? new List<Core.VM.FieldInfo>(),
+                            Methods = s.Methods?.Select(m => new Core.VM.MethodInfo
+                            {
+                                Name = m.Name,
+                                StartAddress = m.StartAddress,
+                                EndAddress = m.EndAddress,
+                                Modifiers = m.Modifiers
+                            }).ToList() ?? new List<Core.VM.MethodInfo>()
+                        }).ToArray() ?? Array.Empty<Core.VM.StructInfo>(),
+                        Enums = compilerProgram.Bytecode.Enums?.Select(e => new Core.VM.EnumInfo
+                        {
+                            Name = e.Name,
+                            UnderlyingType = e.UnderlyingType,
+                            Members = e.Members?.Select(m => new Core.VM.EnumMemberInfo
+                            {
+                                Name = m.Name,
+                                Value = m.Value
+                            }).ToList() ?? new List<Core.VM.EnumMemberInfo>()
+                        }).ToArray() ?? Array.Empty<Core.VM.EnumInfo>()
+                    },
+                    SymbolTable = new Core.VM.SymbolTable(), // Create new VM SymbolTable - conversion would be complex
+                    SourceFile = compilerProgram.SourceFile,
+                    Metadata = new Core.VM.ProgramMetadata
+                    {
+                        Version = compilerProgram.Metadata?.Version ?? "1.0.0",
+                        CompilerVersion = "Ouroboros Compiler 1.0",
+                        CompileTime = compilerProgram.Metadata?.CompileTime ?? DateTime.Now
+                    }
+                };
 
                 // Execute with better error handling
                 try
                 {
                     // Execute the compiled program
-                    // Let the VM handle any necessary conversions
-                    var result = await Task.Run(() => vm.Execute(program));
+                    var result = await Task.Run(() => vm.Execute(vmProgram));
                     
                     // Update context
                     context.LastResult = result;

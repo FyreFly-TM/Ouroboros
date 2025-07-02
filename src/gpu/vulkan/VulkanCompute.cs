@@ -44,10 +44,13 @@ namespace Ouroboros.GPU.Vulkan
                 apiVersion = VkApiVersion11
             };
 
+            var pAppInfo = Marshal.AllocHGlobal(Marshal.SizeOf<VkApplicationInfo>());
+            Marshal.StructureToPtr(appInfo, pAppInfo, false);
+            
             var createInfo = new VkInstanceCreateInfo
             {
                 sType = VkStructureType.InstanceCreateInfo,
-                pApplicationInfo = appInfo,
+                pApplicationInfo = pAppInfo,
                 enabledExtensionCount = 0,
                 ppEnabledExtensionNames = IntPtr.Zero,
                 enabledLayerCount = 0,
@@ -55,6 +58,11 @@ namespace Ouroboros.GPU.Vulkan
             };
 
             CheckResult(VulkanAPI.vkCreateInstance(ref createInfo, IntPtr.Zero, out instance));
+            
+            // Clean up allocated memory
+            Marshal.FreeHGlobal(pAppInfo);
+            Marshal.FreeHGlobal(appInfo.pApplicationName);
+            Marshal.FreeHGlobal(appInfo.pEngineName);
         }
 
         private void SelectPhysicalDevice()

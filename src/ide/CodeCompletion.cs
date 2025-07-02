@@ -181,17 +181,9 @@ namespace Ouroboros.IDE
         private IEnumerable<CompletionItem> GetImportCompletions(CompletionContext context)
         {
             // Available modules
-            foreach (var module in typeChecker.GetAvailableModules())
-            {
-                yield return new CompletionItem
-                {
-                    Label = module.Name,
-                    Kind = CompletionItemKind.Module,
-                    Detail = module.Path,
-                    Documentation = module.Documentation,
-                    InsertText = module.Name
-                };
-            }
+            // TODO: Implement module enumeration when TypeChecker supports it
+            // For now, return empty list
+            yield break;
         }
 
         private CompletionItemKind GetCompletionKind(MemberInfo member)

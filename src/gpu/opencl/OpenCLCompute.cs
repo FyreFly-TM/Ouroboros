@@ -162,8 +162,8 @@ namespace Ouroboros.GPU.OpenCL
 
             // Execute kernel
             CheckError(OpenCLAPI.clEnqueueNDRangeKernel(commandQueue, kernel.Kernel, 
-                (uint)globalWorkSize.Length, IntPtr.Zero, globalWorkSize, localWorkSize, 
-                0, IntPtr.Zero, IntPtr.Zero));
+                (uint)globalWorkSize.Length, null, globalWorkSize, localWorkSize, 
+                0, null, IntPtr.Zero));
 
             // Wait for completion
             CheckError(OpenCLAPI.clFinish(commandQueue));
