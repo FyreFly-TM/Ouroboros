@@ -254,6 +254,7 @@ namespace Ouroboros.Core.VM
     LoadGridDim,
     SyncThreads,
     GPUFunctionCall,
+    EnableGPUOptimizations,
     
     // WebAssembly operations
     InitWasmContext,

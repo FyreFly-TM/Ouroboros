@@ -23,11 +23,14 @@ namespace Ouroboros.CodeGen
 
         private void InitializePasses()
         {
-            // Create function pass manager
-            functionPassManager = LLVM.CreateFunctionPassManagerForModule(context.Module);
-            
-            // Create module pass manager
-            modulePassManager = LLVM.CreatePassManager();
+            unsafe
+            {
+                // Create function pass manager
+                functionPassManager = LLVM.CreateFunctionPassManagerForModule(context.Module);
+                
+                // Create module pass manager
+                modulePassManager = LLVM.CreatePassManager();
+            }
 
             // Add passes based on optimization level
             switch (optimizationLevel)
@@ -50,21 +53,27 @@ namespace Ouroboros.CodeGen
                     break;
             }
 
-            // Initialize function pass manager
-            LLVM.InitializeFunctionPassManager(functionPassManager);
+            unsafe
+            {
+                // Initialize function pass manager
+                LLVM.InitializeFunctionPassManager(functionPassManager);
+            }
         }
 
         private void AddBasicOptimizations()
         {
-            // Basic cleanup passes
-            LLVM.AddPromoteMemoryToRegisterPass(functionPassManager);
-            LLVM.AddInstructionCombiningPass(functionPassManager);
-            LLVM.AddReassociatePass(functionPassManager);
-            LLVM.AddCFGSimplificationPass(functionPassManager);
-            
-            // Module-level optimizations
-            LLVM.AddGlobalDCEPass(modulePassManager);
-            LLVM.AddConstantMergePass(modulePassManager);
+            unsafe
+            {
+                // Basic cleanup passes
+                LLVM.AddPromoteMemoryToRegisterPass(functionPassManager);
+                LLVM.AddInstructionCombiningPass(functionPassManager);
+                LLVM.AddReassociatePass(functionPassManager);
+                LLVM.AddCFGSimplificationPass(functionPassManager);
+                
+                // Module-level optimizations
+                LLVM.AddGlobalDCEPass(modulePassManager);
+                LLVM.AddConstantMergePass(modulePassManager);
+            }
         }
 
         private void AddStandardOptimizations()
@@ -72,20 +81,23 @@ namespace Ouroboros.CodeGen
             // Include basic optimizations
             AddBasicOptimizations();
             
-            // Additional function-level optimizations
-            LLVM.AddGVNPass(functionPassManager);
-            LLVM.AddDeadStoreEliminationPass(functionPassManager);
-            LLVM.AddSCCPPass(functionPassManager);
-            LLVM.AddTailCallEliminationPass(functionPassManager);
-            LLVM.AddJumpThreadingPass(functionPassManager);
-            LLVM.AddLoopUnrollPass(functionPassManager);
-            LLVM.AddLoopVectorizePass(functionPassManager);
-            LLVM.AddSLPVectorizePass(functionPassManager);
-            
-            // Module-level optimizations
-            LLVM.AddFunctionInliningPass(modulePassManager);
-            LLVM.AddDeadArgEliminationPass(modulePassManager);
-            LLVM.AddGlobalOptimizerPass(modulePassManager);
+            unsafe
+            {
+                // Additional function-level optimizations
+                LLVM.AddGVNPass(functionPassManager);
+                LLVM.AddDeadStoreEliminationPass(functionPassManager);
+                LLVM.AddSCCPPass(functionPassManager);
+                LLVM.AddTailCallEliminationPass(functionPassManager);
+                LLVM.AddJumpThreadingPass(functionPassManager);
+                LLVM.AddLoopUnrollPass(functionPassManager);
+                LLVM.AddLoopVectorizePass(functionPassManager);
+                LLVM.AddSLPVectorizePass(functionPassManager);
+                
+                // Module-level optimizations
+                LLVM.AddFunctionInliningPass(modulePassManager);
+                LLVM.AddDeadArgEliminationPass(modulePassManager);
+                LLVM.AddGlobalOptimizerPass(modulePassManager);
+            }
         }
 
         private void AddAggressiveOptimizations()
@@ -93,43 +105,50 @@ namespace Ouroboros.CodeGen
             // Include standard optimizations
             AddStandardOptimizations();
             
-            // Aggressive function-level optimizations
-            LLVM.AddAggressiveDCEPass(functionPassManager);
-            LLVM.AddLoopUnrollAndJamPass(functionPassManager);
-            LLVM.AddLoopUnswitchPass(functionPassManager);
-            LLVM.AddIndVarSimplifyPass(functionPassManager);
-            LLVM.AddLoopDeletionPass(functionPassManager);
-            LLVM.AddLoopIdiomPass(functionPassManager);
-            LLVM.AddLoopRotatePass(functionPassManager);
-            LLVM.AddLICMPass(functionPassManager);
-            
-            // More aggressive inlining
-            LLVM.AddAlwaysInlinerPass(modulePassManager);
-            LLVM.AddArgumentPromotionPass(modulePassManager);
-            LLVM.AddIPSCCPPass(modulePassManager);
+            unsafe
+            {
+                // Aggressive function-level optimizations
+                LLVM.AddAggressiveDCEPass(functionPassManager);
+                LLVM.AddLoopUnrollAndJamPass(functionPassManager);
+                LLVM.AddIndVarSimplifyPass(functionPassManager);
+                LLVM.AddLoopDeletionPass(functionPassManager);
+                LLVM.AddLoopIdiomPass(functionPassManager);
+                LLVM.AddLoopRotatePass(functionPassManager);
+                LLVM.AddLICMPass(functionPassManager);
+                
+                // More aggressive inlining
+                LLVM.AddAlwaysInlinerPass(modulePassManager);
+                LLVM.AddIPSCCPPass(modulePassManager);
+            }
         }
 
         public void Optimize()
         {
-            // Run function passes on all functions
-            var function = LLVM.GetFirstFunction(context.Module);
-            while (function.HasValue)
+            unsafe
             {
-                LLVM.RunFunctionPassManager(functionPassManager, function.Value);
-                function = LLVM.GetNextFunction(function.Value);
+                // Run function passes on all functions
+                var function = LLVM.GetFirstFunction(context.Module);
+                while (function != null)
+                {
+                    LLVM.RunFunctionPassManager(functionPassManager, function);
+                    function = LLVM.GetNextFunction(function);
+                }
+                
+                // Finalize function pass manager
+                LLVM.FinalizeFunctionPassManager(functionPassManager);
+                
+                // Run module passes
+                LLVM.RunPassManager(modulePassManager, context.Module);
             }
-            
-            // Finalize function pass manager
-            LLVM.FinalizeFunctionPassManager(functionPassManager);
-            
-            // Run module passes
-            LLVM.RunPassManager(modulePassManager, context.Module);
         }
 
         public void Dispose()
         {
-            LLVM.DisposePassManager(functionPassManager);
-            LLVM.DisposePassManager(modulePassManager);
+            unsafe
+            {
+                LLVM.DisposePassManager(functionPassManager);
+                LLVM.DisposePassManager(modulePassManager);
+            }
         }
     }
 } 

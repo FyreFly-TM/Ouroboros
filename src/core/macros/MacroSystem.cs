@@ -553,37 +553,81 @@ namespace Ouroboros.Core.Macros
 
         private static void RegisterAssertMacro(MacroSystem macroSystem)
         {
-            // Implementation would create an if statement that throws on false condition
+            // assert!(condition) => if (!condition) throw new AssertionException("Assertion failed: condition");
+            var macro = new MacroDefinition("assert", 
+                new List<MacroParameter> { new MacroParameter("condition", MacroParameterType.Expression) },
+                null); // Body will be created dynamically
+            
+            macro.Type = MacroType.Statement;
+            macroSystem.DefineMacro("assert", macro);
         }
 
         private static void RegisterDebugMacro(MacroSystem macroSystem)
         {
-            // Implementation would create debug output statements
+            // debug!(expr) => Console.WriteLine($"Debug: {nameof(expr)} = {expr}");
+            var macro = new MacroDefinition("debug",
+                new List<MacroParameter> { new MacroParameter("expr", MacroParameterType.Expression) },
+                null); // Body will be created dynamically
+            
+            macro.Type = MacroType.Statement;
+            macroSystem.DefineMacro("debug", macro);
         }
 
         private static void RegisterTodoMacro(MacroSystem macroSystem)
         {
-            // Implementation would create a runtime exception with "not implemented" message
+            // todo!() => throw new NotImplementedException("TODO: Not implemented");
+            // todo!(message) => throw new NotImplementedException($"TODO: {message}");
+            var macro = new MacroDefinition("todo",
+                new List<MacroParameter> { new MacroParameter("message", MacroParameterType.Expression) { IsVariadic = true } },
+                null); // Body will be created dynamically
+            
+            macro.Type = MacroType.Expression;
+            macroSystem.DefineMacro("todo", macro);
         }
 
         private static void RegisterUnreachableMacro(MacroSystem macroSystem)
         {
-            // Implementation would create a runtime exception for unreachable code
+            // unreachable!() => throw new UnreachableException("This code should be unreachable");
+            var macro = new MacroDefinition("unreachable",
+                new List<MacroParameter>(),
+                null); // Body will be created dynamically
+            
+            macro.Type = MacroType.Expression;
+            macroSystem.DefineMacro("unreachable", macro);
         }
 
         private static void RegisterStringifyMacro(MacroSystem macroSystem)
         {
-            // Implementation would convert expressions to string literals
+            // stringify!(expr) => "expr" (converts expression to string literal)
+            var macro = new MacroDefinition("stringify",
+                new List<MacroParameter> { new MacroParameter("expr", MacroParameterType.Expression) },
+                null); // Body will be created dynamically
+            
+            macro.Type = MacroType.Expression;
+            macroSystem.DefineMacro("stringify", macro);
         }
 
         private static void RegisterVecMacro(MacroSystem macroSystem)
         {
-            // Implementation would create vector initialization expressions
+            // vec![1, 2, 3] => new Vector3(1, 2, 3)
+            // vec![x; n] => Vector.Repeat(x, n)
+            var macro = new MacroDefinition("vec",
+                new List<MacroParameter> { new MacroParameter("elements", MacroParameterType.Expression) { IsVariadic = true } },
+                null); // Body will be created dynamically
+            
+            macro.Type = MacroType.Expression;
+            macroSystem.DefineMacro("vec", macro);
         }
 
         private static void RegisterTryMacro(MacroSystem macroSystem)
         {
-            // Implementation would create try-catch error handling
+            // try!(expr) => expr.IsError ? return expr.Error : expr.Value
+            var macro = new MacroDefinition("try",
+                new List<MacroParameter> { new MacroParameter("expr", MacroParameterType.Expression) },
+                null); // Body will be created dynamically
+            
+            macro.Type = MacroType.Expression;
+            macroSystem.DefineMacro("try", macro);
         }
     }
 } 

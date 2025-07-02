@@ -260,7 +260,7 @@ namespace Ouroboros.CodeGen
             }
         }
 
-                private void InitializeDebugInfo(string outputPath)
+        private void InitializeDebugInfo(string outputPath)
         {
             // Debug info generation will be implemented in a future phase
             // For now, we'll focus on getting basic code generation working
@@ -279,7 +279,7 @@ namespace Ouroboros.CodeGen
             }
         }
 
-                private void GenerateClass(ClassDeclaration classDecl)
+        private void GenerateClass(ClassDeclaration classDecl)
         {
             // Generate struct type for class
             var fieldTypes = new List<LLVMTypeRef>();
@@ -296,11 +296,17 @@ namespace Ouroboros.CodeGen
                 }
             }
             
-            var fieldTypesArray = fieldTypes.ToArray();
-            var structType = LLVM.StructTypeInContext(llvmContext.Context, fieldTypesArray, (uint)fieldTypesArray.Length, 0);
-            // Store type mapping for later use
-            var structName = classDecl.Name + "_struct";
-            // Note: StructSetName may not be available in newer LLVM versions
+            unsafe
+            {
+                var fieldTypesArray = fieldTypes.ToArray();
+                fixed (LLVMTypeRef* pFieldTypes = fieldTypesArray)
+                {
+                    var structType = LLVM.StructTypeInContext(llvmContext.Context, (LLVMOpaqueType**)pFieldTypes, (uint)fieldTypesArray.Length, 0);
+                    // Store type mapping for later use
+                    var structName = classDecl.Name + "_struct";
+                    // Note: StructSetName may not be available in newer LLVM versions
+                }
+            }
             
             // Generate methods
             foreach (var member in classDecl.Members)
@@ -355,7 +361,7 @@ namespace Ouroboros.CodeGen
             
             foreach (var member in classDecl.Members)
             {
-                if (member is FunctionDeclaration method && method.IsVirtual)
+                if (member is FunctionDeclaration method && method.Modifiers != null && method.Modifiers.Contains(Modifier.Virtual))
                 {
                     var mangledName = $"{classDecl.Name}_{method.Name}";
                     if (irBuilder.TryGetFunction(mangledName, out var funcRef))
@@ -367,10 +373,22 @@ namespace Ouroboros.CodeGen
             
             if (vtableEntries.Count > 0)
             {
-                var vtableType = LLVM.ArrayType(llvmContext.GetType("ptr"), (uint)vtableEntries.Count);
-                var vtable = LLVM.AddGlobal(llvmContext.Module, vtableType, $"{classDecl.Name}_vtable");
-                LLVM.SetInitializer(vtable, LLVM.ConstArray(llvmContext.GetType("ptr"), vtableEntries.ToArray()));
-                LLVM.SetGlobalConstant(vtable, true);
+                unsafe
+                {
+                    var vtableType = LLVM.ArrayType(llvmContext.GetType("ptr"), (uint)vtableEntries.Count);
+                    var mangledVTableName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi($"{classDecl.Name}_vtable");
+                    var vtable = LLVM.AddGlobal(llvmContext.Module, vtableType, (sbyte*)mangledVTableName);
+                    
+                    var vtableEntriesArray = vtableEntries.ToArray();
+                    fixed (LLVMValueRef* pEntries = vtableEntriesArray)
+                    {
+                        var constantArray = LLVM.ConstArray(llvmContext.GetType("ptr"), (LLVMOpaqueValue**)pEntries, (uint)vtableEntriesArray.Length);
+                        LLVM.SetInitializer(vtable, constantArray);
+                    }
+                    LLVM.SetGlobalConstant(vtable, 1);
+                    
+                    System.Runtime.InteropServices.Marshal.FreeHGlobal(mangledVTableName);
+                }
             }
         }
 
@@ -390,124 +408,199 @@ namespace Ouroboros.CodeGen
 
         private void GenerateAllocFunction()
         {
-            var allocType = LLVM.FunctionType(
-                llvmContext.GetType("ptr"),
-                new[] { llvmContext.GetType("i64") },
-                false);
-            
-            var allocFunc = LLVM.AddFunction(llvmContext.Module, "ouroboros_alloc", allocType);
-            var entry = LLVM.AppendBasicBlockInContext(llvmContext.Context, allocFunc, "entry");
-            LLVM.PositionBuilderAtEnd(llvmContext.Builder, entry);
-            
-            // Call system malloc
-            var mallocType = LLVM.FunctionType(
-                llvmContext.GetType("ptr"),
-                new[] { llvmContext.GetType("i64") },
-                false);
-            var malloc = LLVM.AddFunction(llvmContext.Module, "malloc", mallocType);
-            
-            var size = LLVM.GetParam(allocFunc, 0);
-            var result = LLVM.BuildCall(llvmContext.Builder, malloc, new[] { size }, "alloc_result");
-            
-            // Add GC tracking here in the future
-            
-            LLVM.BuildRet(llvmContext.Builder, result);
+            unsafe
+            {
+                var allocType = LLVM.FunctionType(
+                    llvmContext.GetType("ptr"),
+                    new[] { llvmContext.GetType("i64") },
+                    0); // IsVarArg = false
+                
+                var allocFuncName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("ouroboros_alloc");
+                var allocFunc = LLVM.AddFunction(llvmContext.Module, (sbyte*)allocFuncName, allocType);
+                var entryName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("entry");
+                var entry = LLVM.AppendBasicBlockInContext(llvmContext.Context, allocFunc, (sbyte*)entryName);
+                LLVM.PositionBuilderAtEnd(llvmContext.Builder, entry);
+                
+                // Call system malloc
+                var mallocType = LLVM.FunctionType(
+                    llvmContext.GetType("ptr"),
+                    new[] { llvmContext.GetType("i64") },
+                    0); // IsVarArg = false
+                var mallocName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("malloc");
+                var malloc = LLVM.AddFunction(llvmContext.Module, (sbyte*)mallocName, mallocType);
+                
+                var size = LLVM.GetParam(allocFunc, 0);
+                var allocResultName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("alloc_result");
+                var result = LLVM.BuildCall2(llvmContext.Builder, mallocType, malloc, new[] { size }, 1, (sbyte*)allocResultName);
+                
+                // Add GC tracking here in the future
+                
+                LLVM.BuildRet(llvmContext.Builder, result);
+                
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(allocFuncName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(entryName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(mallocName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(allocResultName);
+            }
         }
 
         private void GenerateFreeFunction()
         {
-            var freeType = LLVM.FunctionType(
-                llvmContext.GetType("void"),
-                new[] { llvmContext.GetType("ptr") },
-                false);
-            
-            var freeFunc = LLVM.AddFunction(llvmContext.Module, "ouroboros_free", freeType);
-            var entry = LLVM.AppendBasicBlockInContext(llvmContext.Context, freeFunc, "entry");
-            LLVM.PositionBuilderAtEnd(llvmContext.Builder, entry);
-            
-            // Call system free
-            var sysFreeType = LLVM.FunctionType(
-                llvmContext.GetType("void"),
-                new[] { llvmContext.GetType("ptr") },
-                false);
-            var sysFree = LLVM.AddFunction(llvmContext.Module, "free", sysFreeType);
-            
-            var ptr = LLVM.GetParam(freeFunc, 0);
-            LLVM.BuildCall(llvmContext.Builder, sysFree, new[] { ptr }, "");
-            
-            LLVM.BuildRetVoid(llvmContext.Builder);
+            unsafe
+            {
+                var freeType = LLVM.FunctionType(
+                    llvmContext.GetType("void"),
+                    new[] { llvmContext.GetType("ptr") },
+                    0); // IsVarArg = false
+                
+                var freeFuncName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("ouroboros_free");
+                var freeFunc = LLVM.AddFunction(llvmContext.Module, (sbyte*)freeFuncName, freeType);
+                var entryName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("entry");
+                var entry = LLVM.AppendBasicBlockInContext(llvmContext.Context, freeFunc, (sbyte*)entryName);
+                LLVM.PositionBuilderAtEnd(llvmContext.Builder, entry);
+                
+                // Call system free
+                var sysFreeType = LLVM.FunctionType(
+                    llvmContext.GetType("void"),
+                    new[] { llvmContext.GetType("ptr") },
+                    0); // IsVarArg = false
+                var sysFreeName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("free");
+                var sysFree = LLVM.AddFunction(llvmContext.Module, (sbyte*)sysFreeName, sysFreeType);
+                
+                var ptr = LLVM.GetParam(freeFunc, 0);
+                var emptyName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("");
+                LLVM.BuildCall2(llvmContext.Builder, sysFreeType, sysFree, new[] { ptr }, 1, (sbyte*)emptyName);
+                
+                LLVM.BuildRetVoid(llvmContext.Builder);
+                
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(freeFuncName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(entryName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(sysFreeName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(emptyName);
+            }
         }
 
         private void GenerateGCFunctions()
         {
-            // Generate garbage collection stub
-            var gcCollectType = LLVM.FunctionType(llvmContext.GetType("void"), new LLVMTypeRef[0], false);
-            var gcCollect = LLVM.AddFunction(llvmContext.Module, "ouroboros_gc_collect", gcCollectType);
-            var entry = LLVM.AppendBasicBlockInContext(llvmContext.Context, gcCollect, "entry");
-            LLVM.PositionBuilderAtEnd(llvmContext.Builder, entry);
-            
-            // For now, just return - implement real GC later
-            LLVM.BuildRetVoid(llvmContext.Builder);
+            unsafe
+            {
+                // Generate garbage collection stub
+                var gcCollectType = LLVM.FunctionType(llvmContext.GetType("void"), new LLVMTypeRef[0], 0); // IsVarArg = false
+                var gcCollectName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("ouroboros_gc_collect");
+                var gcCollect = LLVM.AddFunction(llvmContext.Module, (sbyte*)gcCollectName, gcCollectType);
+                var entryName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("entry");
+                var entry = LLVM.AppendBasicBlockInContext(llvmContext.Context, gcCollect, (sbyte*)entryName);
+                LLVM.PositionBuilderAtEnd(llvmContext.Builder, entry);
+                
+                // For now, just return - implement real GC later
+                LLVM.BuildRetVoid(llvmContext.Builder);
+                
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(gcCollectName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(entryName);
+            }
         }
 
         private void GenerateExceptionFunctions()
         {
-            // Generate exception throwing function
-            var throwType = LLVM.FunctionType(
-                llvmContext.GetType("void"),
-                new[] { llvmContext.GetType("ptr") },
-                false);
-            
-            var throwFunc = LLVM.AddFunction(llvmContext.Module, "ouroboros_throw", throwType);
-            var entry = LLVM.AppendBasicBlockInContext(llvmContext.Context, throwFunc, "entry");
-            LLVM.PositionBuilderAtEnd(llvmContext.Builder, entry);
-            
-            // Print error and exit
-            var printfType = LLVM.FunctionType(
-                llvmContext.GetType("i32"),
-                new[] { llvmContext.GetType("ptr") },
-                true); // varargs
-            var printf = LLVM.AddFunction(llvmContext.Module, "printf", printfType);
-            
-            var formatStr = LLVM.BuildGlobalStringPtr(llvmContext.Builder, "Exception: %s\n", "exception_format");
-            var exceptionMsg = LLVM.GetParam(throwFunc, 0);
-            LLVM.BuildCall(llvmContext.Builder, printf, new[] { formatStr, exceptionMsg }, "");
-            
-            // Exit with error code
-            var exitType = LLVM.FunctionType(
-                llvmContext.GetType("void"),
-                new[] { llvmContext.GetType("i32") },
-                false);
-            var exit = LLVM.AddFunction(llvmContext.Module, "exit", exitType);
-            LLVM.BuildCall(llvmContext.Builder, exit, new[] { LLVM.ConstInt(llvmContext.GetType("i32"), 1, false) }, "");
-            
-            LLVM.BuildUnreachable(llvmContext.Builder);
+            unsafe
+            {
+                // Generate exception throwing function
+                var throwType = LLVM.FunctionType(
+                    llvmContext.GetType("void"),
+                    new[] { llvmContext.GetType("ptr") },
+                    0); // IsVarArg = false
+                
+                var throwFuncName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("ouroboros_throw");
+                var throwFunc = LLVM.AddFunction(llvmContext.Module, (sbyte*)throwFuncName, throwType);
+                var entryName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("entry");
+                var entry = LLVM.AppendBasicBlockInContext(llvmContext.Context, throwFunc, (sbyte*)entryName);
+                LLVM.PositionBuilderAtEnd(llvmContext.Builder, entry);
+                
+                // Print error and exit
+                var printfType = LLVM.FunctionType(
+                    llvmContext.GetType("i32"),
+                    new[] { llvmContext.GetType("ptr") },
+                    1); // varargs
+                var printfName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("printf");
+                var printf = LLVM.AddFunction(llvmContext.Module, (sbyte*)printfName, printfType);
+                
+                var formatStrName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("exception_format");
+                var formatStr = LLVM.BuildGlobalStringPtr(llvmContext.Builder, "Exception: %s\n", (sbyte*)formatStrName);
+                var exceptionMsg = LLVM.GetParam(throwFunc, 0);
+                
+                var printfArgs = new[] { formatStr, exceptionMsg };
+                fixed (LLVMValueRef* pArgs = printfArgs)
+                {
+                    var emptyName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("");
+                    LLVM.BuildCall2(llvmContext.Builder, printfType, printf, (LLVMOpaqueValue**)pArgs, (uint)printfArgs.Length, (sbyte*)emptyName);
+                    System.Runtime.InteropServices.Marshal.FreeHGlobal(emptyName);
+                }
+                
+                // Exit with error code
+                var exitType = LLVM.FunctionType(
+                    llvmContext.GetType("void"),
+                    new[] { llvmContext.GetType("i32") },
+                    0); // IsVarArg = false
+                var exitName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("exit");
+                var exit = LLVM.AddFunction(llvmContext.Module, (sbyte*)exitName, exitType);
+                var exitArg = LLVM.ConstInt(llvmContext.GetType("i32"), 1, 0);
+                var exitEmptyName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("");
+                LLVM.BuildCall2(llvmContext.Builder, exitType, exit, new[] { exitArg }, 1, (sbyte*)exitEmptyName);
+                
+                LLVM.BuildUnreachable(llvmContext.Builder);
+                
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(throwFuncName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(entryName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(printfName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(formatStrName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(exitName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(exitEmptyName);
+            }
         }
 
         private void GenerateIOFunctions()
         {
-            // Generate print function
-            var printType = LLVM.FunctionType(
-                llvmContext.GetType("void"),
-                new[] { llvmContext.GetType("ptr") },
-                false);
-            
-            var printFunc = LLVM.AddFunction(llvmContext.Module, "ouroboros_print", printType);
-            var entry = LLVM.AppendBasicBlockInContext(llvmContext.Context, printFunc, "entry");
-            LLVM.PositionBuilderAtEnd(llvmContext.Builder, entry);
-            
-            // Call printf
-            var printfType = LLVM.FunctionType(
-                llvmContext.GetType("i32"),
-                new[] { llvmContext.GetType("ptr") },
-                true); // varargs
-            var printf = LLVM.AddFunction(llvmContext.Module, "printf", printfType);
-            
-            var formatStr = LLVM.BuildGlobalStringPtr(llvmContext.Builder, "%s\n", "print_format");
-            var str = LLVM.GetParam(printFunc, 0);
-            LLVM.BuildCall(llvmContext.Builder, printf, new[] { formatStr, str }, "");
-            
-            LLVM.BuildRetVoid(llvmContext.Builder);
+            unsafe
+            {
+                // Generate print function
+                var printType = LLVM.FunctionType(
+                    llvmContext.GetType("void"),
+                    new[] { llvmContext.GetType("ptr") },
+                    0); // IsVarArg = false
+                
+                var printFuncName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("ouroboros_print");
+                var printFunc = LLVM.AddFunction(llvmContext.Module, (sbyte*)printFuncName, printType);
+                var entryName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("entry");
+                var entry = LLVM.AppendBasicBlockInContext(llvmContext.Context, printFunc, (sbyte*)entryName);
+                LLVM.PositionBuilderAtEnd(llvmContext.Builder, entry);
+                
+                // Call printf
+                var printfType = LLVM.FunctionType(
+                    llvmContext.GetType("i32"),
+                    new[] { llvmContext.GetType("ptr") },
+                    1); // varargs
+                var printfName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("printf");
+                var printf = LLVM.AddFunction(llvmContext.Module, (sbyte*)printfName, printfType);
+                
+                var formatStrName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("print_format");
+                var formatStr = LLVM.BuildGlobalStringPtr(llvmContext.Builder, "%s\n", (sbyte*)formatStrName);
+                var str = LLVM.GetParam(printFunc, 0);
+                
+                var printfArgs = new[] { formatStr, str };
+                fixed (LLVMValueRef* pArgs = printfArgs)
+                {
+                    var emptyName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("");
+                    LLVM.BuildCall2(llvmContext.Builder, printfType, printf, (LLVMOpaqueValue**)pArgs, (uint)printfArgs.Length, (sbyte*)emptyName);
+                    System.Runtime.InteropServices.Marshal.FreeHGlobal(emptyName);
+                }
+                
+                LLVM.BuildRetVoid(llvmContext.Builder);
+                
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(printFuncName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(entryName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(printfName);
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(formatStrName);
+            }
         }
 
         private void GenerateMainEntryPoint(Core.AST.Program program)

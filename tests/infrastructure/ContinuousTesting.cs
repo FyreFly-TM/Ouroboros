@@ -403,30 +403,138 @@ namespace Ouroboros.Testing.Infrastructure
         private async Task<TestExecutionResult> RunAllTests()
         {
             var assembly = Assembly.LoadFrom(Path.Combine(testWatcher.Path, "bin", "Debug", "net6.0", "Ouroboros.Tests.dll"));
-            var exitCode = await TestFramework.RunAllTests(assembly);
-
-            return new TestExecutionResult
+            
+            // Capture output
+            var output = new List<string>();
+            var originalOut = Console.Out;
+            var originalErr = Console.Error;
+            
+            try
             {
-                Success = exitCode == 0,
-                TotalTests = TestFramework.TotalTests,
-                PassedTests = TestFramework.PassedTests,
-                FailedTests = TestFramework.FailedTests,
-                SkippedTests = TestFramework.SkippedTests,
-                Output = new List<string>() // TODO: Capture test output
-            };
+                using (var outputCapture = new StringWriter())
+                using (var errorCapture = new StringWriter())
+                {
+                    Console.SetOut(outputCapture);
+                    Console.SetError(errorCapture);
+                    
+                    var exitCode = await TestFramework.RunAllTests(assembly);
+                    
+                    output.AddRange(outputCapture.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries));
+                    output.AddRange(errorCapture.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries));
+                    
+                    return new TestExecutionResult
+                    {
+                        Success = exitCode == 0,
+                        TotalTests = TestFramework.TotalTests,
+                        PassedTests = TestFramework.PassedTests,
+                        FailedTests = TestFramework.FailedTests,
+                        SkippedTests = TestFramework.SkippedTests,
+                        Output = output
+                    };
+                }
+            }
+            finally
+            {
+                Console.SetOut(originalOut);
+                Console.SetError(originalErr);
+            }
         }
 
         private async Task<TestExecutionResult> RunSpecificTests(string[] testFiles)
         {
-            // TODO: Implement running specific test files
-            // For now, run all tests
-            return await RunAllTests();
+            // Filter test classes based on file names
+            var testClassNames = testFiles
+                .Select(f => Path.GetFileNameWithoutExtension(f))
+                .Where(name => !string.IsNullOrEmpty(name))
+                .ToList();
+            
+            var assembly = Assembly.LoadFrom(Path.Combine(testWatcher.Path, "bin", "Debug", "net6.0", "Ouroboros.Tests.dll"));
+            
+            // Capture output
+            var output = new List<string>();
+            var originalOut = Console.Out;
+            var originalErr = Console.Error;
+            
+            try
+            {
+                using (var outputCapture = new StringWriter())
+                using (var errorCapture = new StringWriter())
+                {
+                    Console.SetOut(outputCapture);
+                    Console.SetError(errorCapture);
+                    
+                    // Run only tests from specified classes
+                    var exitCode = await TestFramework.RunTestsByFilter(assembly, 
+                        type => testClassNames.Any(name => type.Name.Contains(name)));
+                    
+                    output.AddRange(outputCapture.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries));
+                    output.AddRange(errorCapture.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries));
+                    
+                    return new TestExecutionResult
+                    {
+                        Success = exitCode == 0,
+                        TotalTests = TestFramework.TotalTests,
+                        PassedTests = TestFramework.PassedTests,
+                        FailedTests = TestFramework.FailedTests,
+                        SkippedTests = TestFramework.SkippedTests,
+                        Output = output
+                    };
+                }
+            }
+            finally
+            {
+                Console.SetOut(originalOut);
+                Console.SetError(originalErr);
+            }
         }
 
         private void UpdateTestHistory(TestRunResult result)
         {
-            // TODO: Implement test history tracking
-            // Could store results in a database or file for trend analysis
+            // Store test history in a JSON file for trend analysis
+            var historyPath = Path.Combine(testWatcher.Path, ".test-history.json");
+            var history = new List<TestHistoryEntry>();
+            
+            // Load existing history
+            if (File.Exists(historyPath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(historyPath);
+                    history = System.Text.Json.JsonSerializer.Deserialize<List<TestHistoryEntry>>(json) ?? new List<TestHistoryEntry>();
+                }
+                catch { /* Ignore corrupted history */ }
+            }
+            
+            // Add new entry
+            history.Add(new TestHistoryEntry
+            {
+                Timestamp = result.StartTime,
+                Duration = result.Duration,
+                Success = result.Success,
+                TotalTests = result.TotalTests,
+                PassedTests = result.PassedTests,
+                FailedTests = result.FailedTests,
+                SkippedTests = result.SkippedTests,
+                TestType = result.Request.Type.ToString(),
+                Reason = result.Request.Reason
+            });
+            
+            // Keep only last 100 entries
+            if (history.Count > 100)
+            {
+                history = history.Skip(history.Count - 100).ToList();
+            }
+            
+            // Save updated history
+            try
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(history, new System.Text.Json.JsonSerializerOptions 
+                { 
+                    WriteIndented = true 
+                });
+                File.WriteAllText(historyPath, json);
+            }
+            catch { /* Ignore save errors */ }
         }
 
         private void PrintTestSummary(TestRunResult result)
@@ -547,5 +655,18 @@ namespace Ouroboros.Testing.Infrastructure
         Full,      // Run all tests
         Affected,  // Run tests affected by source changes
         Single     // Run a single test file
+    }
+
+    public class TestHistoryEntry
+    {
+        public DateTime Timestamp { get; set; }
+        public TimeSpan Duration { get; set; }
+        public bool Success { get; set; }
+        public int TotalTests { get; set; }
+        public int PassedTests { get; set; }
+        public int FailedTests { get; set; }
+        public int SkippedTests { get; set; }
+        public string TestType { get; set; }
+        public string Reason { get; set; }
     }
 } 

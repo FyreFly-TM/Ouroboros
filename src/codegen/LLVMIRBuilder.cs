@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using LLVMSharp;
 using LLVMSharp.Interop;
 using Ouroboros.Core.VM;
@@ -42,9 +43,17 @@ namespace Ouroboros.CodeGen
 
         private void DeclareRuntimeFunction(string name, LLVMTypeRef returnType, params LLVMTypeRef[] paramTypes)
         {
-            var functionType = LLVM.FunctionType(returnType, paramTypes, (uint)paramTypes.Length, 0);
-            var function = LLVM.AddFunction(llvmContext.Module, name, functionType);
-            functions[name] = function;
+            unsafe
+            {
+                fixed (LLVMTypeRef* pParamTypes = paramTypes)
+                {
+                    var functionType = LLVM.FunctionType(returnType, (LLVMOpaqueType**)pParamTypes, (uint)paramTypes.Length, 0);
+                    var namePtr = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi(name);
+                    var function = LLVM.AddFunction(llvmContext.Module, (sbyte*)namePtr, functionType);
+                    functions[name] = function;
+                    System.Runtime.InteropServices.Marshal.FreeHGlobal(namePtr);
+                }
+            }
         }
 
         public void BuildFunction(FunctionDeclaration funcDecl, byte[] bytecode)
@@ -54,47 +63,67 @@ namespace Ouroboros.CodeGen
                 .Select(p => MapTypeToLLVM(p.Type))
                 .ToArray();
             var returnType = MapTypeToLLVM(funcDecl.ReturnType);
-            var functionType = LLVM.FunctionType(returnType, paramTypes, (uint)paramTypes.Length, 0);
-
-            // Create function
-            currentFunction = LLVM.AddFunction(llvmContext.Module, funcDecl.Name, functionType);
-            functions[funcDecl.Name] = currentFunction;
-
-            // Create entry block
-            currentBlock = LLVM.AppendBasicBlockInContext(llvmContext.Context, currentFunction, "entry");
-            LLVM.PositionBuilderAtEnd(llvmContext.Builder, currentBlock);
-
-            // Set parameter names and store in named values
-            for (int i = 0; i < funcDecl.Parameters.Count; i++)
+            
+            unsafe
             {
-                var param = LLVM.GetParam(currentFunction, (uint)i);
-                var paramName = funcDecl.Parameters[i].Name;
-                LLVM.SetValueName2(param, paramName, (uint)paramName.Length);
-                
-                // Allocate stack space for parameter
-                var alloca = CreateAlloca(paramTypes[i], paramName);
-                LLVM.BuildStore(llvmContext.Builder, param, alloca);
-                llvmContext.SetNamedValue(paramName, alloca);
+                fixed (LLVMTypeRef* pParamTypes = paramTypes)
+                {
+                    var functionType = LLVM.FunctionType(returnType, (LLVMOpaqueType**)pParamTypes, (uint)paramTypes.Length, 0);
+
+                    // Create function
+                    var namePtr = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi(funcDecl.Name);
+                    currentFunction = LLVM.AddFunction(llvmContext.Module, (sbyte*)namePtr, functionType);
+                    functions[funcDecl.Name] = currentFunction;
+                    System.Runtime.InteropServices.Marshal.FreeHGlobal(namePtr);
+
+                    // Create entry block
+                    var entryName = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi("entry");
+                    currentBlock = LLVM.AppendBasicBlockInContext(llvmContext.Context, currentFunction, (sbyte*)entryName);
+                    LLVM.PositionBuilderAtEnd(llvmContext.Builder, currentBlock);
+                    System.Runtime.InteropServices.Marshal.FreeHGlobal(entryName);
+
+                    // Set parameter names and store in named values
+                    for (int i = 0; i < funcDecl.Parameters.Count; i++)
+                    {
+                        var param = LLVM.GetParam(currentFunction, (uint)i);
+                        var paramName = funcDecl.Parameters[i].Name;
+                        var paramNamePtr = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi(paramName);
+                        LLVM.SetValueName2(param, (sbyte*)paramNamePtr, (uint)paramName.Length);
+                        System.Runtime.InteropServices.Marshal.FreeHGlobal(paramNamePtr);
+                        
+                        // Allocate stack space for parameter
+                        var alloca = CreateAlloca(paramTypes[i], paramName);
+                        LLVM.BuildStore(llvmContext.Builder, param, alloca);
+                        llvmContext.SetNamedValue(paramName, alloca);
+                    }
+                }
             }
 
             // Build function body from bytecode
             BuildFromBytecode(bytecode);
 
             // Add return if not present
-            if (!LLVM.GetBasicBlockTerminator(currentBlock).HasValue)
+            unsafe
             {
-                if (returnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
+                var terminator = LLVM.GetBasicBlockTerminator(currentBlock);
+                if (terminator == null)
                 {
-                    LLVM.BuildRetVoid(llvmContext.Builder);
-                }
-                else
-                {
-                    LLVM.BuildRet(llvmContext.Builder, LLVM.ConstNull(returnType));
+                    if (returnType.Kind == LLVMTypeKind.LLVMVoidTypeKind)
+                    {
+                        LLVM.BuildRetVoid(llvmContext.Builder);
+                    }
+                    else
+                    {
+                        LLVM.BuildRet(llvmContext.Builder, LLVM.ConstNull(returnType));
+                    }
                 }
             }
 
             // Verify function
-            LLVM.VerifyFunction(currentFunction, LLVMVerifierFailureAction.LLVMPrintMessageAction);
+            unsafe
+            {
+                LLVM.VerifyFunction(currentFunction, LLVMVerifierFailureAction.LLVMPrintMessageAction);
+            }
         }
 
         public bool TryGetFunction(string name, out LLVMValueRef function)
@@ -116,32 +145,108 @@ namespace Ouroboros.CodeGen
         {
             switch (opcode)
             {
-                case Opcode.LoadConst:
+                case Opcode.LoadConstant:
                     BuildLoadConst(bytecode, ref pc);
                     break;
                     
-                case Opcode.LoadVar:
+                case Opcode.LoadLocal:
                     BuildLoadVar(bytecode, ref pc);
                     break;
                     
-                case Opcode.StoreVar:
+                case Opcode.StoreLocal:
                     BuildStoreVar(bytecode, ref pc);
                     break;
                     
                 case Opcode.Add:
-                    BuildBinaryOp(LLVM.BuildAdd, LLVM.BuildFAdd);
+                    BuildBinaryOp((b, l, r, n) => 
+                    {
+                        unsafe
+                        {
+                            var namePtr = Marshal.StringToHGlobalAnsi(n);
+                            var result = LLVM.BuildAdd(b, l, r, (sbyte*)namePtr);
+                            Marshal.FreeHGlobal(namePtr);
+                            return result;
+                        }
+                    }, 
+                    (b, l, r, n) => 
+                    {
+                        unsafe
+                        {
+                            var namePtr = Marshal.StringToHGlobalAnsi(n);
+                            var result = LLVM.BuildFAdd(b, l, r, (sbyte*)namePtr);
+                            Marshal.FreeHGlobal(namePtr);
+                            return result;
+                        }
+                    });
                     break;
                     
                 case Opcode.Subtract:
-                    BuildBinaryOp(LLVM.BuildSub, LLVM.BuildFSub);
+                    BuildBinaryOp((b, l, r, n) =>
+                    {
+                        unsafe
+                        {
+                            var namePtr = Marshal.StringToHGlobalAnsi(n);
+                            var result = LLVM.BuildSub(b, l, r, (sbyte*)namePtr);
+                            Marshal.FreeHGlobal(namePtr);
+                            return result;
+                        }
+                    },
+                    (b, l, r, n) =>
+                    {
+                        unsafe
+                        {
+                            var namePtr = Marshal.StringToHGlobalAnsi(n);
+                            var result = LLVM.BuildFSub(b, l, r, (sbyte*)namePtr);
+                            Marshal.FreeHGlobal(namePtr);
+                            return result;
+                        }
+                    });
                     break;
                     
                 case Opcode.Multiply:
-                    BuildBinaryOp(LLVM.BuildMul, LLVM.BuildFMul);
+                    BuildBinaryOp((b, l, r, n) =>
+                    {
+                        unsafe
+                        {
+                            var namePtr = Marshal.StringToHGlobalAnsi(n);
+                            var result = LLVM.BuildMul(b, l, r, (sbyte*)namePtr);
+                            Marshal.FreeHGlobal(namePtr);
+                            return result;
+                        }
+                    },
+                    (b, l, r, n) =>
+                    {
+                        unsafe
+                        {
+                            var namePtr = Marshal.StringToHGlobalAnsi(n);
+                            var result = LLVM.BuildFMul(b, l, r, (sbyte*)namePtr);
+                            Marshal.FreeHGlobal(namePtr);
+                            return result;
+                        }
+                    });
                     break;
                     
                 case Opcode.Divide:
-                    BuildBinaryOp(LLVM.BuildSDiv, LLVM.BuildFDiv);
+                    BuildBinaryOp((b, l, r, n) =>
+                    {
+                        unsafe
+                        {
+                            var namePtr = Marshal.StringToHGlobalAnsi(n);
+                            var result = LLVM.BuildSDiv(b, l, r, (sbyte*)namePtr);
+                            Marshal.FreeHGlobal(namePtr);
+                            return result;
+                        }
+                    },
+                    (b, l, r, n) =>
+                    {
+                        unsafe
+                        {
+                            var namePtr = Marshal.StringToHGlobalAnsi(n);
+                            var result = LLVM.BuildFDiv(b, l, r, (sbyte*)namePtr);
+                            Marshal.FreeHGlobal(namePtr);
+                            return result;
+                        }
+                    });
                     break;
                     
                 case Opcode.Call:
@@ -178,7 +283,7 @@ namespace Ouroboros.CodeGen
             
             // For now, push a dummy constant
             // In real implementation, would look up from constant pool
-            var constValue = LLVM.ConstInt(llvmContext.GetType("i32"), (ulong)constIndex, false);
+            var constValue = LLVM.ConstInt(llvmContext.GetType("i32"), (ulong)constIndex, 0);
             valueStack.Push(constValue);
         }
 
@@ -193,8 +298,14 @@ namespace Ouroboros.CodeGen
             
             if (varPtr != null)
             {
-                var value = LLVM.BuildLoad(llvmContext.Builder, varPtr, varName + "_load");
-                valueStack.Push(value);
+                unsafe
+                {
+                    var loadName = varName + "_load";
+                    var namePtr = Marshal.StringToHGlobalAnsi(loadName);
+                    var value = LLVM.BuildLoad2(llvmContext.Builder, LLVM.TypeOf(varPtr), varPtr, (sbyte*)namePtr);
+                    Marshal.FreeHGlobal(namePtr);
+                    valueStack.Push(value);
+                }
             }
         }
 

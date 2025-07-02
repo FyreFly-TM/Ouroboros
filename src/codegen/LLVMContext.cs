@@ -71,44 +71,57 @@ namespace Ouroboros.CodeGen
             var targetTriplePtr = LLVM.GetDefaultTargetTriple();
             var targetTriple = Marshal.PtrToStringAnsi((IntPtr)targetTriplePtr);
             
-            // Convert target triple string back to sbyte* for SetTarget
-            var targetTripleBytes = System.Text.Encoding.UTF8.GetBytes(targetTriple + '\0');
-            fixed (byte* pTargetTriple = targetTripleBytes)
-            {
-                LLVM.SetTarget(module, (sbyte*)pTargetTriple);
-            }
-            
             LLVM.DisposeMessage(targetTriplePtr);
 
             // Set data layout
-            LLVM.GetTargetFromTriple(targetTriple, out var target, out var errorString);
+            LLVMTargetRef target;
+            sbyte* errorString = null;
             
-            if (!string.IsNullOrEmpty(errorString))
+            var targetTripleCStr = Marshal.StringToHGlobalAnsi(targetTriple);
+            try
             {
-                throw new InvalidOperationException($"Failed to get target: {errorString}");
-            }
-
-            // Convert strings to sbyte* for LLVM API
-            var cpuBytes = System.Text.Encoding.UTF8.GetBytes("generic\0");
-            var featuresBytes = System.Text.Encoding.UTF8.GetBytes("\0");
-            
-            fixed (byte* pCpu = cpuBytes)
-            fixed (byte* pFeatures = featuresBytes)
-            {
-                var targetMachine = LLVM.CreateTargetMachine(
-                    target,
-                    targetTriple.ToString(),
-                    (sbyte*)pCpu,
-                    (sbyte*)pFeatures,
-                    LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault,
-                    LLVMRelocMode.LLVMRelocDefault,
-                    LLVMCodeModel.LLVMCodeModelDefault
-                );
-
-                var dataLayout = LLVM.CreateTargetDataLayout(targetMachine);
-                LLVM.SetModuleDataLayout(module, dataLayout);
+                LLVMTargetRef* targetPtr = &target;
+                LLVM.GetTargetFromTriple((sbyte*)targetTripleCStr, (LLVMTarget**)targetPtr, &errorString);
                 
-                LLVM.DisposeTargetMachine(targetMachine);
+                if (errorString != null)
+                {
+                    var errorMessage = Marshal.PtrToStringAnsi((IntPtr)errorString);
+                    LLVM.DisposeMessage(errorString);
+                    throw new InvalidOperationException($"Failed to get target: {errorMessage}");
+                }
+
+                // Convert strings to sbyte* for LLVM API
+                var cpuCStr = Marshal.StringToHGlobalAnsi("generic");
+                var featuresCStr = Marshal.StringToHGlobalAnsi("");
+                var targetTripleForMachine = Marshal.StringToHGlobalAnsi(targetTriple);
+                
+                try
+                {
+                    var targetMachine = LLVM.CreateTargetMachine(
+                        target,
+                        (sbyte*)targetTripleForMachine,
+                        (sbyte*)cpuCStr,
+                        (sbyte*)featuresCStr,
+                        LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault,
+                        LLVMRelocMode.LLVMRelocDefault,
+                        LLVMCodeModel.LLVMCodeModelDefault
+                    );
+
+                    var dataLayout = LLVM.CreateTargetDataLayout(targetMachine);
+                    LLVM.SetModuleDataLayout(module, dataLayout);
+                    
+                    LLVM.DisposeTargetMachine(targetMachine);
+                }
+                finally
+                {
+                    Marshal.FreeHGlobal(cpuCStr);
+                    Marshal.FreeHGlobal(featuresCStr);
+                    Marshal.FreeHGlobal(targetTripleForMachine);
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(targetTripleCStr);
             }
         }
 
@@ -152,7 +165,13 @@ namespace Ouroboros.CodeGen
 
         public bool VerifyModule()
         {
-            return LLVM.VerifyModule(module, LLVMVerifierFailureAction.LLVMPrintMessageAction, out var error);
+            sbyte* error = null;
+            var result = LLVM.VerifyModule(module, LLVMVerifierFailureAction.LLVMPrintMessageAction, &error);
+            if (error != null)
+            {
+                LLVM.DisposeMessage(error);
+            }
+            return result == 0;
         }
 
         public void DumpModule()

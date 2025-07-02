@@ -13,6 +13,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Include="System" />
+    <Using Include="System.Collections.Generic" />
+    <Using Include="System.Linq" />
+    <Using Include="System.Threading.Tasks" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Core -->
     <Compile Include="src/Program.cs" />
     <Compile Include="src/core/**/*.cs" />
@@ -38,6 +45,7 @@
     <Compile Remove="src/stdlib/concurrency/Atomics.cs" />
     <Compile Remove="src/syntaxes/low/LowLevelParser.cs" />
     <Compile Remove="src/syntaxes/high/HighLevelParser.cs" />
+    <Compile Remove="src/stdlib/collections/Dictionary.cs" />
   </ItemGroup>
 
   <ItemGroup>
