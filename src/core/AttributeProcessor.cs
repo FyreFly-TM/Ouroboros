@@ -539,10 +539,10 @@ namespace Ouroboros.Core
             attributeContext["actor_enabled"] = true;
             
             // Configure actor system
-            builder.EmitInstruction(Opcode.InitializeActorSystem);
-            builder.EmitInstruction(Opcode.CreateActorMailbox);
-            builder.EmitInstruction(Opcode.EnableMessagePassing);
-            builder.EmitInstruction(Opcode.SetupActorScheduler);
+                                builder.EmitInstruction(Opcode.InitializeActorSystem);
+                    builder.EmitInstruction(Opcode.CreateActorMailbox);
+                    builder.EmitInstruction(Opcode.EnableMessagePassing);
+                    builder.EmitInstruction(Opcode.SetupActorScheduler);
         }
         
         private void ActivateSmartContract(AstNode node)
