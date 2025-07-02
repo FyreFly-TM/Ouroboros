@@ -83,8 +83,7 @@ namespace Ouroboros.Syntaxes.Medium
                         {
                             // It's a function
                             current = checkpoint;
-                            // Function declaration not implemented yet
-                            throw new NotImplementedException("Function declaration parsing not implemented");
+                            return ParseFunctionDeclaration();
                         }
                     }
                 }
@@ -102,7 +101,7 @@ namespace Ouroboros.Syntaxes.Medium
             if (Match(TokenType.If)) return ParseIfStatement();
             if (Match(TokenType.While)) return ParseWhileStatement();
             if (Match(TokenType.For)) return ParseForStatement();
-            if (Match(TokenType.Do)) throw new NotImplementedException("Do-while parsing not implemented");
+            if (Match(TokenType.Do)) return ParseDoWhileStatement();
             if (Match(TokenType.Switch)) return ParseSwitchStatement();
             if (Match(TokenType.Return)) return ParseReturnStatement();
             if (Match(TokenType.Break)) return ParseBreakStatement();
@@ -175,6 +174,37 @@ namespace Ouroboros.Syntaxes.Medium
             Statement body = ParseStatement();
             
             return new WhileStatement(whileToken, condition, body);
+        }
+
+        private Statement ParseDoWhileStatement()
+        {
+            var doToken = Previous();
+            
+            // Parse body
+            Statement body = ParseStatement();
+            
+            // Expect 'while'
+            Consume(TokenType.While, "Expected 'while' after do-while body");
+            
+            // Parse condition
+            Consume(TokenType.LeftParen, "Expected '(' after 'while'");
+            Expression condition = ParseExpression();
+            Consume(TokenType.RightParen, "Expected ')' after condition");
+            
+            // Expect semicolon
+            Consume(TokenType.Semicolon, "Expected ';' after do-while statement");
+            
+            // Convert to a while loop with the body executed at least once
+            // do { body } while (condition) => { body; while (condition) { body } }
+            var statements = new List<Statement>();
+            
+            // Add the body once
+            statements.Add(body);
+            
+            // Add the while loop
+            statements.Add(new WhileStatement(doToken, condition, body));
+            
+            return new BlockStatement(statements);
         }
 
         private Statement ParseForStatement()
@@ -1669,6 +1699,92 @@ namespace Ouroboros.Syntaxes.Medium
         }
 
         #endregion
+
+        private Statement ParseFunctionDeclaration()
+        {
+            // Parse modifiers
+            var modifiers = new List<Modifier>();
+            while (IsModifier())
+            {
+                modifiers.Add(ParseModifier());
+            }
+            
+            // Parse return type
+            TypeNode returnType = ParseType();
+            
+            // Parse function name
+            Token name = Consume(TokenType.Identifier, "Expected function name");
+            
+            // Parse generic type parameters if any
+            List<Core.AST.TypeParameter>? typeParameters = null;
+            if (Match(TokenType.Less))
+            {
+                var localTypeParams = new List<TypeParameter>();
+                do
+                {
+                    var paramName = Consume(TokenType.Identifier, "Expected type parameter name").Lexeme;
+                    Variance variance = Variance.Invariant;
+                    if (Match(TokenType.Plus))
+                        variance = Variance.Covariant;
+                    else if (Match(TokenType.Minus))
+                        variance = Variance.Contravariant;
+                        
+                    List<TypeNode>? constraints = null;
+                    if (Match(TokenType.Colon))
+                    {
+                        constraints = new List<TypeNode>();
+                        do
+                        {
+                            constraints.Add(ParseType());
+                        } while (Match(TokenType.Plus));
+                    }
+                    
+                    localTypeParams.Add(new TypeParameter(paramName, variance, constraints));
+                } while (Match(TokenType.Comma));
+                
+                Consume(TokenType.Greater, "Expected '>' after type parameters");
+                typeParameters = ConvertTypeParameters(localTypeParams);
+            }
+            
+            // Parse parameters
+            Consume(TokenType.LeftParen, "Expected '(' after function name");
+            var parameters = new List<Parameter>();
+            
+            if (!Check(TokenType.RightParen))
+            {
+                do
+                {
+                    TypeNode paramType = ParseType();
+                    Token paramName = Consume(TokenType.Identifier, "Expected parameter name");
+                    Expression? defaultValue = null;
+                    
+                    if (Match(TokenType.Assign))
+                    {
+                        defaultValue = ParseExpression();
+                    }
+                    
+                    parameters.Add(new Parameter(paramType, paramName.Lexeme, defaultValue, ParameterModifier.None));
+                } while (Match(TokenType.Comma));
+            }
+            
+            Consume(TokenType.RightParen, "Expected ')' after parameters");
+            
+            // Parse function body
+            Statement body = ParseBlockStatement();
+            
+            // Check if function is async
+            bool isAsync = modifiers.Contains(Modifier.Async);
+            
+            return new FunctionDeclaration(
+                name,
+                returnType,
+                parameters,
+                body as BlockStatement ?? throw new ParseException("Function body must be a block statement"),
+                typeParameters,
+                isAsync,
+                modifiers
+            );
+        }
     }
 
     // Pattern classes for pattern matching

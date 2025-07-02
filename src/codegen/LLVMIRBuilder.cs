@@ -331,7 +331,7 @@ namespace Ouroboros.CodeGen
             }
         }
 
-        private void BuildBinaryOp(
+        private unsafe void BuildBinaryOp(
             Func<LLVMBuilderRef, LLVMValueRef, LLVMValueRef, string, LLVMValueRef> intOp,
             Func<LLVMBuilderRef, LLVMValueRef, LLVMValueRef, string, LLVMValueRef> floatOp)
         {
@@ -357,7 +357,7 @@ namespace Ouroboros.CodeGen
             }
         }
 
-        private void BuildCall(byte[] bytecode, ref int pc)
+        private unsafe void BuildCall(byte[] bytecode, ref int pc)
         {
             var funcIndex = BitConverter.ToInt32(bytecode, pc);
             pc += 4;
@@ -376,11 +376,30 @@ namespace Ouroboros.CodeGen
             var funcName = $"func_{funcIndex}";
             if (functions.TryGetValue(funcName, out var function))
             {
-                var result = LLVM.BuildCall(llvmContext.Builder, function, args, "call_result");
-                if (LLVM.GetReturnType(LLVM.GetElementType(LLVM.TypeOf(function))).Kind != LLVMTypeKind.LLVMVoidTypeKind)
+                var funcType = LLVM.GetElementType(LLVM.TypeOf(function));
+                var namePtr = Marshal.StringToHGlobalAnsi("call_result");
+                
+                if (args.Length > 0)
                 {
-                    valueStack.Push(result);
+                    fixed (LLVMValueRef* pArgs = args)
+                    {
+                        var result = LLVM.BuildCall2(llvmContext.Builder, funcType, function, pArgs, (uint)args.Length, (sbyte*)namePtr);
+                        if (LLVM.GetReturnType(funcType).Kind != LLVMTypeKind.LLVMVoidTypeKind)
+                        {
+                            valueStack.Push(result);
+                        }
+                    }
                 }
+                else
+                {
+                    var result = LLVM.BuildCall2(llvmContext.Builder, funcType, function, null, 0, (sbyte*)namePtr);
+                    if (LLVM.GetReturnType(funcType).Kind != LLVMTypeKind.LLVMVoidTypeKind)
+                    {
+                        valueStack.Push(result);
+                    }
+                }
+                
+                Marshal.FreeHGlobal(namePtr);
             }
         }
 
@@ -406,7 +425,7 @@ namespace Ouroboros.CodeGen
             LLVM.BuildBr(llvmContext.Builder, targetBlock);
         }
 
-        private void BuildConditionalJump(byte[] bytecode, ref int pc, bool jumpIfTrue)
+        private unsafe void BuildConditionalJump(byte[] bytecode, ref int pc, bool jumpIfTrue)
         {
             var target = BitConverter.ToInt32(bytecode, pc);
             pc += 4;
@@ -419,13 +438,17 @@ namespace Ouroboros.CodeGen
                 if (LLVM.TypeOf(condition).Kind != LLVMTypeKind.LLVMIntegerTypeKind ||
                     LLVM.GetIntTypeWidth(LLVM.TypeOf(condition)) != 1)
                 {
+                    var namePtr = Marshal.StringToHGlobalAnsi("tobool");
                     condition = LLVM.BuildICmp(llvmContext.Builder, LLVMIntPredicate.LLVMIntNE,
-                        condition, LLVM.ConstNull(LLVM.TypeOf(condition)), "tobool");
+                        condition, LLVM.ConstNull(LLVM.TypeOf(condition)), (sbyte*)namePtr);
+                    Marshal.FreeHGlobal(namePtr);
                 }
                 
                 if (!jumpIfTrue)
                 {
-                    condition = LLVM.BuildNot(llvmContext.Builder, condition, "not_cond");
+                    var notNamePtr = Marshal.StringToHGlobalAnsi("not_cond");
+                    condition = LLVM.BuildNot(llvmContext.Builder, condition, (sbyte*)notNamePtr);
+                    Marshal.FreeHGlobal(notNamePtr);
                 }
                 
                 var thenBlock = GetOrCreateBasicBlock(target);
@@ -437,31 +460,36 @@ namespace Ouroboros.CodeGen
             }
         }
 
-        private LLVMBasicBlockRef GetOrCreateBasicBlock(int label)
+        private unsafe LLVMBasicBlockRef GetOrCreateBasicBlock(int label)
         {
             if (!basicBlocks.TryGetValue(label, out var block))
             {
-                block = LLVM.AppendBasicBlockInContext(llvmContext.Context, currentFunction, $"label_{label}");
+                var namePtr = Marshal.StringToHGlobalAnsi($"label_{label}");
+                block = LLVM.AppendBasicBlockInContext(llvmContext.Context, currentFunction, (sbyte*)namePtr);
+                Marshal.FreeHGlobal(namePtr);
                 basicBlocks[label] = block;
             }
             return block;
         }
 
-        private LLVMValueRef CreateAlloca(LLVMTypeRef type, string name)
+        private unsafe LLVMValueRef CreateAlloca(LLVMTypeRef type, string name)
         {
             var entryBlock = LLVM.GetEntryBasicBlock(currentFunction);
             var tmpBuilder = LLVM.CreateBuilderInContext(llvmContext.Context);
             
-            if (LLVM.GetFirstInstruction(entryBlock).HasValue)
+            var firstInst = LLVM.GetFirstInstruction(entryBlock);
+            if (firstInst != null)
             {
-                LLVM.PositionBuilderBefore(tmpBuilder, LLVM.GetFirstInstruction(entryBlock).Value);
+                LLVM.PositionBuilderBefore(tmpBuilder, firstInst);
             }
             else
             {
                 LLVM.PositionBuilderAtEnd(tmpBuilder, entryBlock);
             }
             
-            var alloca = LLVM.BuildAlloca(tmpBuilder, type, name);
+            var namePtr = Marshal.StringToHGlobalAnsi(name);
+            var alloca = LLVM.BuildAlloca(tmpBuilder, type, (sbyte*)namePtr);
+            Marshal.FreeHGlobal(namePtr);
             LLVM.DisposeBuilder(tmpBuilder);
             
             return alloca;
