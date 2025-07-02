@@ -9,7 +9,7 @@ namespace Ouroboros.CodeGen
     /// <summary>
     /// Manages LLVM context and module creation for native code generation
     /// </summary>
-    public class LLVMContext : IDisposable
+    public unsafe class LLVMContext : IDisposable
     {
         private readonly LLVMContextRef context;
         private readonly LLVMModuleRef module;
@@ -24,17 +24,27 @@ namespace Ouroboros.CodeGen
 
         public LLVMContext(string moduleName)
         {
-            context = LLVM.ContextCreate();
-            module = LLVM.ModuleCreateWithNameInContext(moduleName, context);
-            builder = LLVM.CreateBuilderInContext(context);
-            namedValues = new Dictionary<string, LLVMValueRef>();
-            typeCache = new Dictionary<string, LLVMTypeRef>();
-            
-            InitializeBuiltinTypes();
-            InitializeTargetInfo();
+            unsafe
+            {
+                context = LLVM.ContextCreate();
+                
+                // Convert string to sbyte* for LLVM API
+                var moduleNameBytes = System.Text.Encoding.UTF8.GetBytes(moduleName + '\0');
+                fixed (byte* pModuleName = moduleNameBytes)
+                {
+                    module = LLVM.ModuleCreateWithNameInContext((sbyte*)pModuleName, context);
+                }
+                
+                builder = LLVM.CreateBuilderInContext(context);
+                namedValues = new Dictionary<string, LLVMValueRef>();
+                typeCache = new Dictionary<string, LLVMTypeRef>();
+                
+                InitializeBuiltinTypes();
+                InitializeTargetInfo();
+            }
         }
 
-        private void InitializeBuiltinTypes()
+        private unsafe void InitializeBuiltinTypes()
         {
             // Cache common LLVM types
             typeCache["void"] = LLVM.VoidTypeInContext(context);
@@ -48,7 +58,7 @@ namespace Ouroboros.CodeGen
             typeCache["ptr"] = LLVM.PointerType(LLVM.Int8TypeInContext(context), 0);
         }
 
-        private void InitializeTargetInfo()
+        private unsafe void InitializeTargetInfo()
         {
             // Initialize target information
             LLVM.InitializeAllTargetInfos();
@@ -58,28 +68,48 @@ namespace Ouroboros.CodeGen
             LLVM.InitializeAllAsmPrinters();
 
             // Set target triple
-            var targetTriple = LLVM.GetDefaultTargetTriple();
-            LLVM.SetTarget(module, targetTriple);
+            var targetTriplePtr = LLVM.GetDefaultTargetTriple();
+            var targetTriple = Marshal.PtrToStringAnsi((IntPtr)targetTriplePtr);
+            
+            // Convert target triple string back to sbyte* for SetTarget
+            var targetTripleBytes = System.Text.Encoding.UTF8.GetBytes(targetTriple + '\0');
+            fixed (byte* pTargetTriple = targetTripleBytes)
+            {
+                LLVM.SetTarget(module, (sbyte*)pTargetTriple);
+            }
+            
+            LLVM.DisposeMessage(targetTriplePtr);
 
             // Set data layout
-            var target = LLVM.GetTargetFromTriple(targetTriple, out var error, out var errorMsg);
-            if (!string.IsNullOrEmpty(errorMsg))
+            LLVM.GetTargetFromTriple(targetTriple, out var target, out var errorString);
+            
+            if (!string.IsNullOrEmpty(errorString))
             {
-                throw new InvalidOperationException($"Failed to get target: {errorMsg}");
+                throw new InvalidOperationException($"Failed to get target: {errorString}");
             }
 
-            var targetMachine = LLVM.CreateTargetMachine(
-                target,
-                targetTriple,
-                "generic",
-                "",
-                LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault,
-                LLVMRelocMode.LLVMRelocDefault,
-                LLVMCodeModel.LLVMCodeModelDefault
-            );
+            // Convert strings to sbyte* for LLVM API
+            var cpuBytes = System.Text.Encoding.UTF8.GetBytes("generic\0");
+            var featuresBytes = System.Text.Encoding.UTF8.GetBytes("\0");
+            
+            fixed (byte* pCpu = cpuBytes)
+            fixed (byte* pFeatures = featuresBytes)
+            {
+                var targetMachine = LLVM.CreateTargetMachine(
+                    target,
+                    targetTriple.ToString(),
+                    (sbyte*)pCpu,
+                    (sbyte*)pFeatures,
+                    LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault,
+                    LLVMRelocMode.LLVMRelocDefault,
+                    LLVMCodeModel.LLVMCodeModelDefault
+                );
 
-            var dataLayout = LLVM.CreateTargetDataLayout(targetMachine);
-            LLVM.SetModuleDataLayout(module, dataLayout);
+                var dataLayout = LLVM.CreateTargetDataLayout(targetMachine);
+                LLVM.SetModuleDataLayout(module, dataLayout);
+                
+                LLVM.DisposeTargetMachine(targetMachine);
+            }
         }
 
         public LLVMTypeRef GetType(string typeName)
