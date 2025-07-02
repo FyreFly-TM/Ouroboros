@@ -1256,26 +1256,26 @@ namespace Ouroboros.Optimization
         public virtual Statement VisitReturnStatement(ReturnStatement stmt)
         {
             var value = stmt.Value != null ? Visit(stmt.Value) as Expression : null;
-            return new ReturnStatement(value, stmt.Line, stmt.Column);
+            return new ReturnStatement(stmt.Token, value);
         }
         
         public virtual Statement VisitBlockStatement(BlockStatement stmt)
         {
             var statements = stmt.Statements.Select(s => Visit(s) as Statement).ToList();
-            return new BlockStatement(statements, stmt.Line, stmt.Column);
+            return new BlockStatement(statements, stmt.Token);
         }
         
         public virtual Expression VisitBinaryExpression(BinaryExpression expr)
         {
             var left = Visit(expr.Left) as Expression;
             var right = Visit(expr.Right) as Expression;
-            return new BinaryExpression(left, expr.Operator, right, expr.Line, expr.Column);
+            return new BinaryExpression(left, expr.Operator, right);
         }
         
         public virtual Expression VisitUnaryExpression(UnaryExpression expr)
         {
             var operand = Visit(expr.Operand) as Expression;
-            return new UnaryExpression(expr.Operator, operand, expr.IsPrefix, expr.Line, expr.Column);
+            return new UnaryExpression(expr.Operator, operand, expr.IsPrefix);
         }
         
         public virtual Expression VisitLiteralExpression(LiteralExpression expr)
