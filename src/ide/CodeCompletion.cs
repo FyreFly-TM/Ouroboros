@@ -121,23 +121,13 @@ namespace Ouroboros.IDE
         private IEnumerable<CompletionItem> GetMemberCompletions(CompletionContext context)
         {
             // Get type of the object
-            var objectType = typeChecker.GetSymbolType(context.ObjectName);
+            var objectType = typeChecker.LookupVariable(context.ObjectName);
             if (objectType == null)
                 yield break;
 
-            // Get members of the type
-            var members = typeChecker.GetTypeMembers(objectType);
-            foreach (var member in members)
-            {
-                yield return new CompletionItem
-                {
-                    Label = member.Name,
-                    Kind = GetCompletionKind(member),
-                    Detail = $"{member.Type}",
-                    Documentation = member.Documentation,
-                    InsertText = member.Name
-                };
-            }
+            // TODO: Implement member lookup when TypeChecker supports it
+            // For now, return empty list
+            yield break;
         }
 
         private IEnumerable<CompletionItem> GetTypeCompletions(CompletionContext context)
@@ -155,17 +145,8 @@ namespace Ouroboros.IDE
             }
 
             // User-defined types
-            foreach (var type in typeChecker.GetAvailableTypes())
-            {
-                yield return new CompletionItem
-                {
-                    Label = type.Name,
-                    Kind = CompletionItemKind.Class,
-                    Detail = type.FullName,
-                    Documentation = type.Documentation,
-                    InsertText = type.Name
-                };
-            }
+            // TODO: Implement type enumeration when TypeChecker supports it
+            // For now, we only have built-in types
         }
 
         private IEnumerable<CompletionItem> GetStatementCompletions(CompletionContext context)
@@ -183,31 +164,10 @@ namespace Ouroboros.IDE
             }
 
             // Variables in scope
-            foreach (var variable in typeChecker.GetVariablesInScope())
-            {
-                yield return new CompletionItem
-                {
-                    Label = variable.Name,
-                    Kind = CompletionItemKind.Variable,
-                    Detail = variable.Type,
-                    Documentation = variable.Documentation,
-                    InsertText = variable.Name
-                };
-            }
+            // TODO: Implement scope enumeration when TypeChecker supports it
 
             // Functions
-            foreach (var function in typeChecker.GetAvailableFunctions())
-            {
-                yield return new CompletionItem
-                {
-                    Label = function.Name,
-                    Kind = CompletionItemKind.Function,
-                    Detail = function.Signature,
-                    Documentation = function.Documentation,
-                    InsertText = function.Name + "($0)",
-                    InsertTextFormat = InsertTextFormat.Snippet
-                };
-            }
+            // TODO: Implement function enumeration when TypeChecker supports it
         }
 
         private IEnumerable<CompletionItem> GetExpressionCompletions(CompletionContext context)
