@@ -138,17 +138,40 @@ namespace Ouroboros.StdLib.ML
         
         public Tensor Backward(Tensor gradOutput)
         {
+            // ReLU derivative: 1 if x > 0, 0 otherwise
             var gradInput = Tensor.Zeros(gradOutput.Shape);
+            var flatGrad = new double[gradOutput.Size];
+            var flatInput = new double[lastInput.Size];
+            var flatGradOutput = new double[gradOutput.Size];
             
-            for (int i = 0; i < gradOutput.Size; i++)
+            // Flatten tensors for easier element-wise operations
+            int idx = 0;
+            for (int i = 0; i < lastInput.Shape[0]; i++)
             {
-                if (lastInput.Reshape(gradOutput.Size)[0] > 0)
+                for (int j = 0; j < (lastInput.Shape.Length > 1 ? lastInput.Shape[1] : 1); j++)
                 {
-                    // Simplified - need proper indexing
+                    if (lastInput.Shape.Length == 1)
+                    {
+                        flatInput[idx] = lastInput[i];
+                        flatGradOutput[idx] = gradOutput[i];
+                    }
+                    else
+                    {
+                        flatInput[idx] = lastInput[i, j];
+                        flatGradOutput[idx] = gradOutput[i, j];
+                    }
+                    idx++;
                 }
             }
             
-            return gradInput;
+            // Apply ReLU gradient
+            for (int i = 0; i < flatInput.Length; i++)
+            {
+                flatGrad[i] = flatInput[i] > 0 ? flatGradOutput[i] : 0;
+            }
+            
+            // Reshape back
+            return new Tensor(flatGrad, gradOutput.Shape);
         }
         
         public void UpdateWeights(double learningRate) { }
