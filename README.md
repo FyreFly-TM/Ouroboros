@@ -1,7 +1,7 @@
-# 🔄 Ouroboros Programming Language
+# 🔄 Ouro Programming Language
 
 <p align="center">
-  <img src="docs/assets/ouroboros-logo.png" alt="Ouroboros Logo" width="200"/>
+  <img src="docs/assets/ouro-logo.png" alt="Ouro Logo" width="200"/>
   <br>
   <em>The Eternal Language - Where End Meets Beginning</em>
 </p>
@@ -24,9 +24,9 @@
 
 ## 🌟 Overview
 
-Ouroboros is a revolutionary multi-paradigm programming language designed to be the ultimate C/C++ replacement. It seamlessly blends natural language programming, traditional syntax, advanced mathematical notation, and assembly-level control into a unified, expressive system.
+Ouro is a revolutionary multi-paradigm programming language designed to be the ultimate C/C++ replacement. It seamlessly blends natural language programming, traditional syntax, advanced mathematical notation, and assembly-level control into a unified, expressive system.
 
-### Why Ouroboros?
+### Why Ouro?
 
 - **🚀 Zero-Overhead Abstractions**: Compile to native code with performance matching or exceeding C++
 - **🧠 Multi-Level Syntax**: Choose your abstraction level - from natural language to assembly
@@ -37,7 +37,7 @@ Ouroboros is a revolutionary multi-paradigm programming language designed to be 
 
 ## 🏗️ Architecture Overview
 
-Ouroboros features a sophisticated multi-stage compilation pipeline that supports four distinct syntax levels:
+Ouro features a sophisticated multi-stage compilation pipeline that supports four distinct syntax levels:
 
 ```mermaid
 graph TB
@@ -143,7 +143,7 @@ graph LR
 
 ## 🎯 Key Differentiators
 
-| Feature | Ouroboros | C++ | Rust | Python |
+| Feature | Ouro | C++ | Rust | Python |
 |---------|-----------|-----|------|--------|
 | Natural Language Syntax | ✅ | ❌ | ❌ | ❌ |
 | Mathematical Notation | ✅ Native | ❌ | ❌ | ⚠️ Limited |
@@ -159,39 +159,39 @@ graph LR
 
 ```bash
 # Windows (PowerShell)
-iwr -useb https://ouroboros-lang.org/install.ps1 | iex
+iwr -useb https://ouro-lang.org/install.ps1 | iex
 
 # macOS/Linux
-curl -fsSL https://ouroboros-lang.org/install.sh | sh
+curl -fsSL https://ouro-lang.org/install.sh | sh
 
 # Or build from source
-git clone https://github.com/ouroboros-lang/ouroboros.git
-cd ouroboros
+git clone https://github.com/ouro-lang/ouro.git
+cd ouro
 ./build.sh  # or build.ps1 on Windows
 ```
 
 ### Your First Program
 
-```ouroboros
+```ouro
 @high
-print "Hello, Ouroboros! 🔄"
+print "Hello, Ouro! 🔄"
 ```
 
 Run it:
 ```bash
-ouroboros hello.ouro
+ouro hello.ouro
 ```
 
 ## 🎨 Features
 
 ### 🔤 Four Syntax Levels
 
-Ouroboros offers unprecedented flexibility with four distinct syntax levels that can be mixed within the same file:
+Ouro offers unprecedented flexibility with four distinct syntax levels that can be mixed within the same file:
 
 #### 1️⃣ High-Level Syntax (`@high`)
 Natural language programming that reads like English:
 
-```ouroboros
+```ouro
 @high
 define calculate factorial of number:
     if number is less than or equal to 1 then
@@ -207,7 +207,7 @@ print "The factorial of 5 is " + factorial of 5
 #### 2️⃣ Medium-Level Syntax (`@medium`)
 Modern programming syntax with advanced features:
 
-```ouroboros
+```ouro
 @medium
 class BankAccount {
     private balance: decimal[USD] = 0[USD];
@@ -232,7 +232,7 @@ class BankAccount {
 #### 3️⃣ Low-Level Syntax (`@low`)
 Systems programming with fine control:
 
-```ouroboros
+```ouro
 @low
 struct PacketHeader {
     version: u8;
@@ -250,7 +250,7 @@ unsafe function parse_packet(data: *u8, len: usize): PacketHeader {
 #### 4️⃣ Assembly-Level Syntax (`@assembly`)
 Direct machine code when you need it:
 
-```ouroboros
+```ouro
 @assembly
 function fast_memcpy(dest: *void, src: *void, n: usize) {
     asm {
@@ -266,7 +266,7 @@ function fast_memcpy(dest: *void, src: *void, n: usize) {
 
 Write mathematics naturally with full Unicode support:
 
-```ouroboros
+```ouro
 @medium
 // Calculus
 let derivative = ∂/∂x (x³ + 2x² - 5x + 3);
@@ -298,7 +298,7 @@ let conjugate = z̄;
 
 Prevent unit errors at compile time:
 
-```ouroboros
+```ouro
 @medium
 // Physical calculations with automatic unit checking
 let distance = 100[km];
@@ -323,7 +323,7 @@ let my_eth = my_btc * exchange_rate;  // 37.5[ETH]
 ### 🧠 Advanced Type System
 
 #### Contracts and Invariants
-```ouroboros
+```ouro
 @medium
 class SortedList<T> where T: Comparable {
     private items: List<T>;
@@ -343,7 +343,7 @@ class SortedList<T> where T: Comparable {
 ```
 
 #### Dependent Types
-```ouroboros
+```ouro
 @medium
 // Vector with compile-time known length
 function dot_product<n: nat>(a: Vec<n>, b: Vec<n>): real {
@@ -362,7 +362,7 @@ function multiply<m,n,p: nat>(
 ### 🚀 Modern Concurrency
 
 #### Async/Await
-```ouroboros
+```ouro
 @medium
 async function fetch_user_data(id: int): User {
     let profile = await http.get($"https://api.example.com/users/{id}");
@@ -379,7 +379,7 @@ let users = await parallel_map(user_ids, fetch_user_data);
 ```
 
 #### Actor Model
-```ouroboros
+```ouro
 @medium
 actor Counter {
     private count: int = 0;
@@ -401,9 +401,9 @@ let total = await counter ? get_count();  // Returns 2
 
 ### 🎮 GPU Programming
 
-Write GPU kernels directly in Ouroboros:
+Write GPU kernels directly in Ouro:
 
-```ouroboros
+```ouro
 @gpu
 kernel matrix_multiply<T: Numeric>(
     A: Matrix<T>, 
@@ -430,7 +430,7 @@ let result = gpu_execute(matrix_multiply, matrixA, matrixB);
 
 Powerful pattern matching with exhaustiveness checking:
 
-```ouroboros
+```ouro
 @medium
 enum Shape {
     Circle(radius: float),
@@ -462,7 +462,7 @@ match value {
 
 ### 🌍 Hello World in All Syntax Levels
 
-```ouroboros
+```ouro
 // High-level
 @high
 print "Hello, World! 🌍"
@@ -499,7 +499,7 @@ function main() {
 
 ### 🧮 Scientific Calculator with Units
 
-```ouroboros
+```ouro
 @medium
 import math.*;
 import units.*;
@@ -538,7 +538,7 @@ print $"Frequency: {freq in [THz]} THz";
 
 ### 🎮 Game Engine Component
 
-```ouroboros
+```ouro
 @medium
 // Entity-Component-System architecture
 component Transform {
@@ -583,7 +583,7 @@ system RenderSystem {
 
 ### 🤖 Machine Learning Example
 
-```ouroboros
+```ouro
 @medium
 import ml.*;
 
@@ -636,7 +636,7 @@ model.train(X_train, y_train, epochs: 1000);
 
 ### 🌐 Web Server
 
-```ouroboros
+```ouro
 @medium
 import net.http.*;
 import async.*;
@@ -690,7 +690,7 @@ await server.start();
 
 ### 🔐 Cryptography Example
 
-```ouroboros
+```ouro
 @medium
 import crypto.*;
 
@@ -899,8 +899,8 @@ Features:
 - ✅ Debugging support
 
 #### Other Editors
-- **Vim/Neovim**: Install `ouroboros.vim` plugin
-- **Emacs**: Install `ouroboros-mode`
+- **Vim/Neovim**: Install `ouro.vim` plugin
+- **Emacs**: Install `ouro-mode`
 - **Sublime Text**: Install via Package Control
 - **IntelliJ IDEA**: Available in JetBrains Marketplace
 
