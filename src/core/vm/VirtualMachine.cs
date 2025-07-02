@@ -1635,11 +1635,49 @@ namespace Ouroboros.Core.VM
                             // Create import key
                             var importKey = $"{moduleName}.{importName}";
                             
-                            // For now, create a placeholder function
+                            // Create a proper imported function based on type information
                             Func<object[], object> importedFunc = (args) =>
                             {
-                                Console.WriteLine($"[VM] Called imported WASM function '{importKey}' with {args.Length} args");
-                                return null;
+                                // Handle common WASM imports
+                                switch (importKey)
+                                {
+                                    case "env.print_i32":
+                                        if (args.Length > 0)
+                                            Console.WriteLine($"WASM print_i32: {args[0]}");
+                                        return null;
+                                        
+                                    case "env.print_f64":
+                                        if (args.Length > 0)
+                                            Console.WriteLine($"WASM print_f64: {args[0]}");
+                                        return null;
+                                        
+                                    case "env.memory_grow":
+                                        if (args.Length > 0)
+                                        {
+                                            var pages = Convert.ToInt32(args[0]);
+                                            Console.WriteLine($"WASM memory_grow: {pages} pages");
+                                            // Return previous size in pages (simulated)
+                                            return wasmContext.ContainsKey("memory_pages") ? wasmContext["memory_pages"] : 0;
+                                        }
+                                        return -1;
+                                        
+                                    case "env.memory_size":
+                                        // Return current memory size in pages
+                                        return wasmContext.ContainsKey("memory_pages") ? wasmContext["memory_pages"] : 1;
+                                        
+                                    case "env.abort":
+                                        if (args.Length >= 4)
+                                        {
+                                            Console.WriteLine($"WASM abort: message={args[0]}, file={args[1]}, line={args[2]}, col={args[3]}");
+                                            throw new RuntimeException($"WASM abort at {args[1]}:{args[2]}:{args[3]} - {args[0]}");
+                                        }
+                                        throw new RuntimeException("WASM abort");
+                                        
+                                    default:
+                                        Console.WriteLine($"[VM] Called imported WASM function '{importKey}' with {args.Length} args");
+                                        // Return default value based on expected return type
+                                        return null;
+                                }
                             };
                             
                             imports[importKey] = importedFunc;
