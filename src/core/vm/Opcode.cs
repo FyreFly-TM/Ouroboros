@@ -1,4 +1,4 @@
-namespace Ouroboros.Core.VM
+namespace Ouro.Core.VM
 {
     /// <summary>
     /// Opcodes for the Ouroboros Virtual Machine

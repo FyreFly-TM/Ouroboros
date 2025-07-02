@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core.VM;
+using Ouro.Core.VM;
 
-namespace Ouroboros.Core.Compiler
+namespace Ouro.Core.Compiler
 {
     /// <summary>
     /// Optimizes bytecode for better performance

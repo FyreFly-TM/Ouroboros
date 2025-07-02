@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core.VM;
-using Ouroboros.Core.AST;
+using Ouro.Core.VM;
+using Ouro.Core.AST;
 
-namespace Ouroboros.Core.Compiler
+namespace Ouro.Core.Compiler
 {
     /// <summary>
     /// Builds bytecode instructions for the VM

@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Globalization;
-using Ouroboros.Tokens;
+using Ouro.Tokens;
 
-namespace Ouroboros.Core.Lexer
+namespace Ouro.Core.Lexer
 {
     /// <summary>
-    /// The main lexer for the Ouroboros language
+    /// The main lexer for the Ouro language
     /// Handles tokenization of all syntax levels including Greek symbols and math notation
     /// </summary>
     public class Lexer

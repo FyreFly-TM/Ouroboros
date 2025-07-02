@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Ouroboros.Core.Compiler;
-using Ouroboros.StdLib.Math;
-using static Ouroboros.StdLib.Math.MathSymbols;
+using Ouro.Core.Compiler;
+using Ouro.StdLib.Math;
+using static Ouro.StdLib.Math.MathSymbols;
 
-namespace Ouroboros.Core.VM
+namespace Ouro.Core.VM
 {
     /// <summary>
-    /// The Ouroboros Virtual Machine
+    /// The Ouro Virtual Machine
     /// </summary>
     public class VirtualMachine
     {

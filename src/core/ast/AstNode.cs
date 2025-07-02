@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using Ouroboros.Tokens;
+using Ouro.Tokens;
 
-namespace Ouroboros.Core.AST
+namespace Ouro.Core.AST
 {
     /// <summary>
-    /// Base class for all AST nodes in the Ouroboros language
+    /// Base class for all AST nodes in the Ouro language
     /// </summary>
     public abstract class AstNode
     {

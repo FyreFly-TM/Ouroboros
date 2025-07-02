@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.VM;
-using Ouroboros.Tokens;
+using Ouro.Core.AST;
+using Ouro.Core.VM;
+using Ouro.Tokens;
 
-namespace Ouroboros.Core.Compiler
+namespace Ouro.Core.Compiler
 {
     /// <summary>
     /// Main compiler that generates bytecode from AST

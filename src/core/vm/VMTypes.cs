@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Ouroboros.Core.AST;
+using Ouro.Core.AST;
 
-namespace Ouroboros.Core.VM
+namespace Ouro.Core.VM
 {
     /// <summary>
     /// VM instruction representation

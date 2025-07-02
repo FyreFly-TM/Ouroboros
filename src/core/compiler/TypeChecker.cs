@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.VM;
-using Ouroboros.Tokens;
+using Ouro.Core.AST;
+using Ouro.Core.VM;
+using Ouro.Tokens;
 
-namespace Ouroboros.Core.Compiler
+namespace Ouro.Core.Compiler
 {
     /// <summary>
     /// Type checker for semantic analysis (simplified version)
@@ -33,7 +33,7 @@ namespace Ouroboros.Core.Compiler
             inferenceEngine = new TypeInferenceEngine(this);
         }
         
-        public Ouroboros.Core.AST.Program Check(Ouroboros.Core.AST.Program ast)
+        public Ouro.Core.AST.Program Check(Ouro.Core.AST.Program ast)
         {
             ast.Accept(this);
             
@@ -108,7 +108,7 @@ namespace Ouroboros.Core.Compiler
         }
         
         // Visitor implementations
-        public TypeNode VisitProgram(Ouroboros.Core.AST.Program program) 
+        public TypeNode VisitProgram(Ouro.Core.AST.Program program) 
         { 
             foreach (var s in program.Statements) 
                 s.Accept(this); 

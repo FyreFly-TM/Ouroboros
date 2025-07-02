@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Globalization;
-using Ouroboros.Tokens;
-using Ouroboros.Core.AST;
+using Ouro.Tokens;
+using Ouro.Core.AST;
 
-namespace Ouroboros.Core.Parser
+namespace Ouro.Core.Parser
 {
     /// <summary>
-    /// Recursive descent parser for the Ouroboros language
+    /// Recursive descent parser for the Ouro language
     /// Supports all three syntax levels: High, Medium, and Low
     /// </summary>
     public class Parser
@@ -49,7 +49,7 @@ namespace Ouroboros.Core.Parser
             }
         }
 
-        public Ouroboros.Core.AST.Program Parse()
+        public Ouro.Core.AST.Program Parse()
         {
             var statements = new List<Statement>();
             var errorCount = 0;
@@ -124,7 +124,7 @@ namespace Ouroboros.Core.Parser
                 throw new ParseException($"Too many parse errors (>{maxErrors}). Aborting parse.", Current());
             }
 
-            return new Ouroboros.Core.AST.Program(statements);
+            return new Ouro.Core.AST.Program(statements);
         }
         
         private readonly List<ParseException> _parseErrors = new List<ParseException>();
@@ -229,15 +229,15 @@ namespace Ouroboros.Core.Parser
             
             // Consume the opening brace
             Consume(TokenType.LeftBrace, "Expected '{' to start method body.");
-            Console.WriteLine($"DEBUG: Entered method body, parsing Ouroboros code");
+            Console.WriteLine($"DEBUG: Entered method body, parsing Ouro code");
             
-            // Parse the method body as Ouroboros statements
+            // Parse the method body as Ouro statements
             var statements = new List<Statement>();
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
                 try
                 {
-                    // Parse each statement in the method body as Ouroboros code
+                    // Parse each statement in the method body as Ouro code
                     var statement = ParseStatement();
                     statements.Add(statement);
                     Console.WriteLine($"DEBUG: Parsed Ouroboros statement in C# method body");
