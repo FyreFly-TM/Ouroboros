@@ -587,7 +587,7 @@ namespace Ouroboros.Syntaxes.Medium
             }
             
             // Range pattern
-            if (IsNumber(Current().Lexeme))
+            if (IsNumericLiteral(Current()))
             {
                 var start = ParseExpression();
                 if (Match(TokenType.Range))
@@ -700,6 +700,13 @@ namespace Ouroboros.Syntaxes.Medium
                    Check(TokenType.String) || Check(TokenType.Char) ||
                    Check(TokenType.Byte) || Check(TokenType.Short) ||
                    Check(TokenType.Long) || Check(TokenType.Void);
+        }
+        
+        private bool IsNumericLiteral(Token token)
+        {
+            return token.Type == TokenType.IntegerLiteral || 
+                   token.Type == TokenType.FloatLiteral || 
+                   token.Type == TokenType.DoubleLiteral;
         }
 
         private Statement ParseClassDeclaration()
@@ -1815,9 +1822,11 @@ namespace Ouroboros.Syntaxes.Medium
                 new ConditionalExpression(
                     new BinaryExpression(Object, 
                         new Token(TokenType.NotEqual, "!=", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
-                        new LiteralExpression(new Token(TokenType.Null, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))),
-                    new MemberExpression(Object, MemberName),
-                    new LiteralExpression(new Token(TokenType.Null, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))));
+                        new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))),
+                    new MemberExpression(Object, 
+                        new Token(TokenType.Dot, ".", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
+                        new Token(TokenType.Identifier, MemberName, MemberName, Line, Column, 0, 0, "", SyntaxLevel.Medium)),
+                    new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))));
         }
     }
 
@@ -1840,7 +1849,7 @@ namespace Ouroboros.Syntaxes.Medium
                 new ConditionalExpression(
                     new BinaryExpression(Left,
                         new Token(TokenType.NotEqual, "!=", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
-                        new LiteralExpression(new Token(TokenType.Null, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))),
+                        new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))),
                     Left,
                     Right));
         }
