@@ -3,15 +3,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Core.Parser;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.VM;
-using Ouroboros.CodeGen;
-using Ouroboros.Testing;
-using Ouroboros.Runtime;
+using Ouro.Core.Compiler;
+using Ouro.Core.Parser;
+using Ouro.Core.Lexer;
+using Ouro.Core.VM;
+using Ouro.CodeGen;
+using Ouro.Testing;
+using Ouro.Runtime;
 
-namespace Ouroboros.Tests.Integration
+namespace Ouro.Tests.Integration
 {
     [TestClass]
     public class CompilerIntegrationTests
@@ -23,7 +23,7 @@ namespace Ouroboros.Tests.Integration
         
         public void Setup()
         {
-            testOutputDir = Path.Combine(Path.GetTempPath(), "ouroboros_tests", Guid.NewGuid().ToString());
+            testOutputDir = Path.Combine(Path.GetTempPath(), "ouro_tests", Guid.NewGuid().ToString());
             Directory.CreateDirectory(testOutputDir);
             compiler = new Compiler();
             vm = new VirtualMachine();

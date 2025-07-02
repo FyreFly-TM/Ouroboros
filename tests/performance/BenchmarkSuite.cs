@@ -4,12 +4,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.Parser;
-using Ouroboros.Core.VM;
-using Ouroboros.Runtime;
-using Ouroboros.Testing;
+using Ouro.Core.Compiler;
+using Ouro.Core.Lexer;
+using Ouro.Core.Parser;
+using Ouro.Core.VM;
+using Ouro.Runtime;
+using Ouro.Testing;
 
 namespace Ouroboros.Tests.Performance
 {

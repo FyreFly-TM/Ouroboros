@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core.Parser;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.AST;
-using Ouroboros.Testing;
-using Ouroboros.Tokens;
+using Ouro.Core.Parser;
+using Ouro.Core.Lexer;
+using Ouro.Core.AST;
+using Ouro.Testing;
+using Ouro.Tokens;
 
-namespace Ouroboros.Tests.Unit
+namespace Ouro.Tests.Unit
 {
     [TestClass]
     public class ParserTests

@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Ouroboros.StdLib.Collections;
-using Ouroboros.StdLib.Math;
-using Ouroboros.StdLib.IO;
-using Ouroboros.StdLib.System;
-using Ouroboros.StdLib.Net;
-using Ouroboros.Testing;
+using Ouro.StdLib.Collections;
+using Ouro.StdLib.Math;
+using Ouro.StdLib.IO;
+using Ouro.StdLib.System;
+using Ouro.StdLib.Net;
+using Ouro.Testing;
 
-namespace Ouroboros.Tests.Unit
+namespace Ouro.Tests.Unit
 {
     [TestClass]
     public class StandardLibraryTests
@@ -146,7 +146,7 @@ namespace Ouroboros.Tests.Unit
         {
             var fs = new FileSystem();
             var testFile = "test_file.txt";
-            var content = "Hello, Ouroboros!";
+            var content = "Hello, Ouro!";
             
             await fs.WriteTextAsync(testFile, content);
             Assert.IsTrue(fs.Exists(testFile));
@@ -196,8 +196,8 @@ namespace Ouroboros.Tests.Unit
             Assert.AreEqual("Hello", parts[0]);
             Assert.AreEqual("World!", parts[1]);
             
-            var replaced = str.Replace("World", "Ouroboros");
-            Assert.AreEqual("Hello, Ouroboros!", replaced);
+            var replaced = str.Replace("World", "Ouro");
+            Assert.AreEqual("Hello, Ouro!", replaced);
         }
         
         [Test("Async operations")]

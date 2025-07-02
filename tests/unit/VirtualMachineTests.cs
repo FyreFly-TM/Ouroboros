@@ -1,9 +1,9 @@
 using System;
-using Ouroboros.Core.VM;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Testing;
+using Ouro.Core.VM;
+using Ouro.Core.Compiler;
+using Ouro.Testing;
 
-namespace Ouroboros.Tests.Unit
+namespace Ouro.Tests.Unit
 {
     [TestClass]
     public class VirtualMachineTests

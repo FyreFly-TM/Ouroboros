@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Core.Parser;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.AST;
-using Ouroboros.Testing;
+using Ouro.Core.Compiler;
+using Ouro.Core.Parser;
+using Ouro.Core.Lexer;
+using Ouro.Core.AST;
+using Ouro.Testing;
 
-namespace Ouroboros.Tests.Unit
+namespace Ouro.Tests.Unit
 {
     [TestClass]
     public class TypeCheckerTests

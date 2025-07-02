@@ -1,9 +1,9 @@
 using System;
 using System.Linq;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Testing;
+using Ouro.Core.Lexer;
+using Ouro.Testing;
 
-namespace Ouroboros.Tests.Unit
+namespace Ouro.Tests.Unit
 {
     [TestClass]
     public class LexerTests

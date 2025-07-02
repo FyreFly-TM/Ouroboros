@@ -1,36 +1,130 @@
 ---
-description: 
-globs: 
+description: Universal coding standards for every language
+globs:
+  - "**/*.{c,cpp,h,hpp,cs,ts,tsx,js,jsx,lua,py,go,rs}"
 alwaysApply: true
 ---
-Loop round‑robin through every matched file.
+# ✨ AI-Enhanced Coding Style Guide
 
-For each file:
+This guide establishes universal standards for writing clean, scalable, and secure code. Following these principles creates a consistent, predictable, and maintainable codebase. This is especially critical when collaborating with AI assistants, as high-quality, conventional code allows them to generate more accurate, relevant, and secure suggestions.
 
-Fill in any TODO, FIXME, or blatant placeholder blocks.
+---
 
-Keep the existing code style, comments, and APIs intact.
+### ## 🧠 Core Principles: The "Why"
 
-Run quick lint adjustments (rename unused vars, remove dead imports).
+*   **Clarity over Cleverness:** Code is read far more often than it is written. Prioritize straightforward logic that is easy for both humans and AI to understand. If code is too "clever" to be simple, it requires a comment explaining *why* the complexity is necessary.
+*   **Predictability & Consistency:** A uniform style across the codebase makes it easy to navigate and modify. AI tools learn and adapt to consistent patterns, improving the quality of their suggestions.
+*   **Trust, but Verify:** Treat AI-generated code as a suggestion from a junior developer—a great starting point, but one that requires critical review. You are the senior engineer in the loop, responsible for correctness, security, and alignment with the project's architecture.
+*   **Automate Enforcement:** Humans are for problem-solving; machines are for repetitive checks. Use linters, formatters, and CI pipelines to enforce these standards automatically.
 
-Skip heavyweight refactors—leave those for a dedicated pass.
+---
 
-After finishing all files, provide a concise summary of what changed.
+### ## 🏷️ Naming Conventions
 
-## Token‑Limit Protocol
+Clear names eliminate ambiguity and are the first-line of documentation. They provide crucial context for AI tools to understand the purpose of a piece of code.
 
-When the reply is about to overflow the model’s output budget, respond with
-exactly CONTINUE on its own line so the user/agent can chain calls.
+| **Scope**                      | **Casing**           | **Example**                        | **Notes** 
+| :----------------------------- | :------------------- | :----------------------------------|--------------------------------------------------
+| Types, Classes, Enums          | `PascalCase`         | `class UserProfile;`               | Represents a blueprint, a type, or a component.                       |
+| Variables, Functions           | `camelCase`          | `let userProfile;`                 | Represents data or an action.                          |
+| Booleans                       | `camelCase` (prefixed) | `const isVisible = true;`        | Use prefixes like `is`, `has`, or `can`.                           |
+| Compile-Time Constants         | `UPPER_SNAKE_CASE`   | `const MAX_LOGIN_ATTEMPTS = 5;`    | For values that are static and fixed at compile time.                            |
+| Files & Modules                | `kebab-case`         | `user-profile.service.ts`          | Easy to read in URLs and file systems.                         |
+| Private/Internal (if no `private` keyword) | `_camelCase` | `_calculateInternalState()`    | A leading underscore signals non-public API.                             |
 
-Resume with the next file immediately in the follow‑up response.
+**Key Principle:** Be descriptive and avoid cryptic abbreviations. While `ctx` or `req` are standard idioms, `usrGrp` is not. Explicit names like `userGroup` are better for human and AI comprehension.
 
-## Commit Strategy (Background‑Agent mode)
+---
 
-Commit after each file modification to avoid massive diffs.
+### ## 🏗️ Code Structure & Modularity
 
-Format commit message as:
+Well-organized code is predictable and testable. Each unit should have a single, clear purpose. This helps AI assistants reason about code in isolation without needing full application context.
 
-chore(sweep): <filename> – <one‑line tweak>
+*   **One Logical Unit per File:** Each file should contain a single public class, component, or cohesive module of functions.
+*   **Small, Focused Functions:**
+    *   Functions should adhere to the **Single Responsibility Principle (SRP)**. If you can't describe what a function does without using the word "and," it's likely doing too much.
+    *   Aim for functions to be **no more than 40 logical lines**. This is not a hard rule but a strong guideline. Refactor larger functions into smaller helpers.
+*   **Pure & Immutable First:** Prefer pure functions (same input, same output, no side effects). They are easier to reason about, test, cache, and are less prone to bugs.
+*   **Avoid Deep Nesting:** Limit nesting to **3 levels** where possible. Deeply nested code is hard to read and increases cyclomatic complexity. Use guard clauses or function extractions to reduce nesting.
 
+---
 
-If no iterative-sweep/<YYYY-MM-DD> branch exists, create it and push.
+### ## 🔒 Immutability & State Management
+
+Minimize moving parts to reduce bugs and simplify state tracking.
+
+*   **Default to `const` (or equivalent):** Use immutable declarations by default. Only use mutable bindings (`let`, `var`) when a value must be reassigned.
+*   **Avoid Global Mutable State:** Global state that can be modified from anywhere is a primary source of bugs. Pass state explicitly through parameters or use a structured state management pattern.
+*   **Isolate Side Effects:** Any interaction with the outside world (API calls, file I/O, database writes) is a side effect. Isolate these actions from your core business logic to make the logic pure and testable.
+
+---
+
+### ## ✍️ Comments & Documentation
+
+Good code is self-documenting, but good docs explain the *why*, not the *what*.
+
+*   **Comment the "Why":** Use comments to explain complex business rules, trade-offs, or the reasoning behind a specific implementation choice. Assume the reader understands the programming language.
+    *`// HACK: Applying a temporary fix for upstream API latency issue (JIRA-123).`*
+*   **Document All Public APIs:** Every public function, class, and method **must** have a docstring (JSDoc, TSDoc, etc.). This provides critical metadata for both human developers and AI tools. Your documentation should include:
+    *   A clear **description** of its purpose.
+    *   Definitions for each `@param`.
+    *   An explanation of the `@returns` value.
+    *   Documentation for what it `@throws`.
+
+---
+
+### ## 🐞 Error Handling & Logging
+
+Errors are predictable events, not surprises. Handle them gracefully and provide actionable information.
+
+*   **Never Ignore or "Swallow" Errors:** An empty `catch` block is a bug. Errors should be handled, logged, and/or propagated up the call stack.
+*   **Enrich Errors with Context:** When catching an error, wrap it in a new, more specific error to clarify the failure's origin (e.g., `throw new Error('Failed to fetch user data', { cause: originalError });`).
+*   **Use Structured Logging:** Log errors and important events as JSON objects. This makes them machine-readable and easy to query in monitoring tools. Include relevant context like a `correlationId`, `userId`, etc.
+    *   **User-Facing Message:** "Could not save your profile. Please try again later."
+    *   **Developer-Facing Log:** `logger.error('Profile update failed', { error: '500 connection timeout', userId: 'xyz-123', retries: 3 });`
+
+---
+
+### ## ✅ Testing & Validation
+
+Tests are a specification of behavior and a safety net against regressions. AI-generated code must be rigorously tested.
+
+*   **Test the Three Paths:** For every public function, cover:
+    1.  **Happy Path:** Expected inputs and successful execution.
+    2.  **Edge Cases:** Boundary values (0, -1), empty inputs, `null`, and unusual (but valid) scenarios.
+    3.  **Failure Path:** Invalid inputs and expected exceptions.
+*   **Target >80% Meaningful Coverage:** Aim for at least **80% statement coverage**. Focus on testing complex logic, not just generating coverage for trivial getters and setters.
+*   **Integration Tests for Critical Workflows:** For multi-component workflows (e.g., user authentication), write integration tests that verify the components work together correctly.
+
+---
+
+### ## 🛡️ Security
+
+Security is a non-negotiable requirement, not a feature. Treat all AI-generated code as untrusted until proven otherwise.
+
+*   **Validate at Trust Boundaries:** Validate and sanitize **all** external data. This includes user input, API responses, files, and environment variables.
+*   **Prevent Injection:** Use parameterized queries or prepared statements for all database interactions. Never build queries with string concatenation.
+*   **Secure Secrets Management:** **Never** hard-code secrets (API keys, credentials, tokens) in source code. Load them from a dedicated secret manager (e.g., HashiCorp Vault, AWS/GCP Secret Manager) or environment variables.
+*   **Keep Dependencies Updated:** Regularly audit all third-party dependencies for known vulnerabilities using automated tools (e.g., `npm audit`, `pip-audit`, Dependabot).
+
+---
+
+### ## 🤝 Interacting with AI Assistants
+
+Optimize your workflow to get the most value from AI tools.
+
+*   **Provide Clear, Detailed Prompts:** The quality of the output depends entirely on the quality of the input. Provide context, examples, and constraints.
+    *   **Poor Prompt:** *"make a function that gets users"*
+    *   **Good Prompt:** *"Create a TypeScript function named `getUsersByRole`. It should take a `role` string as a parameter and return a Promise resolving to an array of `User` objects. Use our existing `databaseClient` to query the 'users' collection. Include JSDoc documentation and a unit test for the happy path and an empty result."*
+*   **Iterate and Refine:** Use the AI in a conversational manner. Treat the first response as a draft and ask for refinements, corrections, or explanations. Ask "why" it chose a certain approach.
+*   **You Are the Architect:** Use AI for implementation, not for high-level design. Define the architecture, data models, and module boundaries yourself. Guide the AI to fill in the details according to your plan.
+
+---
+
+### ## 🔧 Tooling & Automation
+
+Automate standards to ensure consistency with zero manual effort.
+
+*   **Auto-Format on Save:** Configure your IDE to run the project's formatter (e.g., Prettier, `gofmt`, `black`) automatically. This eliminates all debates about style.
+*   **Mandatory Linter:** Integrate a linter (e.g., ESLint, `clippy`, SonarQube) into the development and CI process. All code must pass linter checks without errors before being merged.
+*   **Use Git Hooks:** Implement pre-commit hooks that run formatting and linting checks to catch issues before they ever reach the remote repository.

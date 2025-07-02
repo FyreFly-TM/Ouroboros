@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Core.Parser;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.VM;
-using Ouroboros.Testing;
-using Ouroboros.CodeGen;
+using Ouro.Core.Compiler;
+using Ouro.Core.Parser;
+using Ouro.Core.Lexer;
+using Ouro.Core.AST;
+using Ouro.Core.VM;
+using Ouro.Testing;
+using Ouro.CodeGen;
 
-namespace Ouroboros.Tests.Unit
+namespace Ouro.Tests.Unit
 {
     [TestClass]
     public class CodeGeneratorTests
