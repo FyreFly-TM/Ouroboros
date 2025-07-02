@@ -151,17 +151,20 @@ namespace Ouroboros.IDE
             {
                 foreach (var error in parser.Errors)
                 {
+                    var line = error.Token?.Line ?? 1;
+                    var column = error.Token?.Column ?? 1;
+                    
                     diagnostics.Add(new Diagnostic
                     {
                         Message = error.Message,
                         Severity = DiagnosticSeverity.Error,
                         Range = new Range
                         {
-                            Start = new Position(error.Line - 1, error.Column - 1),
-                            End = new Position(error.Line - 1, error.Column)
+                            Start = new Position(line - 1, column - 1),
+                            End = new Position(line - 1, column)
                         },
                         Source = "parser",
-                        Code = error.Code ?? "PARSE001"
+                        Code = "PARSE001"
                     });
                 }
             }
@@ -613,15 +616,19 @@ namespace Ouroboros.IDE
 
     internal class DeprecatedUsage
     {
+        public Core.AST.AstNode Node { get; set; }
         public string Message { get; set; }
         public int Line { get; set; }
         public int Column { get; set; }
+        public Dictionary<string, string> Data { get; set; }
     }
 
     internal class StyleIssue
     {
+        public Core.AST.AstNode Node { get; set; }
         public string Message { get; set; }
         public string Suggestion { get; set; }
+        public string Code { get; set; }
         public int Line { get; set; }
         public int Column { get; set; }
     }
