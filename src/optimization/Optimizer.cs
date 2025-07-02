@@ -4,6 +4,7 @@ using System.Linq;
 using Ouroboros.Core;
 using Ouroboros.Core.AST;
 using Ouroboros.Core.Compiler;
+using Ouroboros.Core.VM;
 using Ouroboros.Tokens;
 
 namespace Ouroboros.Optimization
@@ -187,7 +188,7 @@ namespace Ouroboros.Optimization
                     try
                     {
                         object result = EvaluateBinary(expr.Operator, leftLit.Value, rightLit.Value);
-                        return new LiteralExpression(result, expr.Line, expr.Column);
+                        return new LiteralExpression(new Token(expr.Token.Type, result.ToString(), result, expr.Line, expr.Column, 0, 0, expr.FileName, expr.SyntaxLevel));
                     }
                     catch
                     {
@@ -195,7 +196,7 @@ namespace Ouroboros.Optimization
                     }
                 }
                 
-                return new BinaryExpression(left, expr.Operator, right, expr.Line, expr.Column);
+                return new BinaryExpression(left, expr.Operator, right);
             }
             
             private object EvaluateBinary(Token op, object left, object right)
