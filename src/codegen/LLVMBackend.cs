@@ -296,10 +296,11 @@ namespace Ouroboros.CodeGen
                 }
             }
             
-            var structType = LLVM.StructTypeInContext(llvmContext.Context, fieldTypes.ToArray(), (uint)fieldTypes.Count, false);
+            var fieldTypesArray = fieldTypes.ToArray();
+            var structType = LLVM.StructTypeInContext(llvmContext.Context, fieldTypesArray, (uint)fieldTypesArray.Length, 0);
             // Store type mapping for later use
             var structName = classDecl.Name + "_struct";
-            LLVM.StructSetName(structType, structName);
+            // Note: StructSetName may not be available in newer LLVM versions
             
             // Generate methods
             foreach (var member in classDecl.Members)
@@ -320,14 +321,23 @@ namespace Ouroboros.CodeGen
             var mangledName = $"{classDecl.Name}_{method.Name}";
             
             // Create function declaration with 'this' parameter
+            var thisParam = new Parameter(
+                new TypeNode(classDecl.Name), 
+                "this", 
+                null,
+                ParameterModifier.None
+            );
+            
+            var allParams = new List<Parameter> { thisParam }.Concat(method.Parameters).ToList();
+            
             var funcDecl = new FunctionDeclaration(
-                mangledName,
-                new List<Parameter> { new Parameter { Name = "this", Type = new TypeNode(classDecl.Name) } }
-                    .Concat(method.Parameters).ToList(),
+                method.Token,
                 method.ReturnType,
+                allParams,
                 method.Body,
-                method.Line,
-                method.Column
+                method.TypeParameters,
+                method.IsAsync,
+                method.Modifiers
             );
             
             // Compile and generate
