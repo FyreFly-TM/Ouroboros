@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Ouroboros.Tools.Opm
+namespace Ouro.Tools.Opm
 {
     /// <summary>
     /// Enhanced Ouroboros Package Manager

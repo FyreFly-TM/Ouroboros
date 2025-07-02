@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Text;
 
-namespace Ouroboros.StdLib.IO
+namespace Ouro.StdLib.IO
 {
     /// <summary>
     /// Advanced file system operations

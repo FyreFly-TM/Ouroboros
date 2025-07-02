@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace Ouroboros.Tools.Opm
+namespace Ouro.Tools.Opm
 {
     /// <summary>
     /// Semantic version resolver with range support

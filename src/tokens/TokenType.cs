@@ -1,4 +1,4 @@
-namespace Ouroboros.Tokens
+namespace Ouro.Tokens
 {
     /// <summary>
     /// Comprehensive token types for the Ouroboros language supporting all three syntax levels
@@ -483,6 +483,7 @@ namespace Ouroboros.Tokens
         
         // Concurrency
         Thread,             // thread
+        ThreadLocal,        // thread_local
         Lock,               // lock
         Atomic,             // atomic
         Channel,            // channel

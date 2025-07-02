@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 
-namespace Ouroboros.Runtime
+namespace Ouro.Runtime
 {
     /// <summary>
     /// Async/await runtime support for Ouroboros

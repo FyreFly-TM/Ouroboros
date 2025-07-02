@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.VM;
+using Ouro.Core.Lexer;
+using Ouro.Core.VM;
 
-namespace Ouroboros.Core.Assembly
+namespace Ouro.Core.Assembly
 {
     /// <summary>
     /// Assembler for Ouroboros inline assembly support

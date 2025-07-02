@@ -7,9 +7,9 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using Ouroboros.StdLib.Data;
+using Ouro.StdLib.Data;
 
-namespace Ouroboros.Stdlib.Data
+namespace Ouro.Stdlib.Data
 {
     /// <summary>
     /// ORM context for database operations

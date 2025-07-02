@@ -2,7 +2,7 @@ using System;
 using LLVMSharp;
 using LLVMSharp.Interop;
 
-namespace Ouroboros.CodeGen
+namespace Ouro.CodeGen
 {
     /// <summary>
     /// LLVM optimization pass manager

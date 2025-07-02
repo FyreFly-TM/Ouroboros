@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
-using Ouroboros.Core.AST;
-using Ouroboros.Core;
-using Ouroboros.Tokens;
+using Ouro.Core.AST;
+using Ouro.Core;
+using Ouro.Tokens;
 
-namespace Ouroboros.Analysis
+namespace Ouro.Analysis
 {
     /// <summary>
     /// Base interface for compiler analysis passes
@@ -102,7 +102,7 @@ namespace Ouroboros.Analysis
             // Analyze ∂f/∂x expressions
             foreach (var node in GetAllNodes(model.Program))
             {
-                if (node is BinaryExpression bin && bin.Operator.Type == Ouroboros.Tokens.TokenType.PartialDerivative)
+                if (node is BinaryExpression bin && bin.Operator.Type == Ouro.Tokens.TokenType.PartialDerivative)
                 {
                     ValidatePartialDerivative(bin);
                 }
@@ -460,7 +460,7 @@ namespace Ouroboros.Analysis
             // Handle different node types
             switch (node)
             {
-                case Ouroboros.Core.AST.Program program:
+                case Ouro.Core.AST.Program program:
                     foreach (var stmt in program.Statements)
                         TraverseNodes(stmt, nodes);
                     break;
@@ -682,7 +682,7 @@ namespace Ouroboros.Analysis
             // Handle different node types - reuse the traversal logic
             switch (node)
             {
-                case Ouroboros.Core.AST.Program program:
+                case Ouro.Core.AST.Program program:
                     foreach (var stmt in program.Statements)
                         TraverseNodes(stmt, nodes);
                     break;

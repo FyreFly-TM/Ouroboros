@@ -1,39 +1,39 @@
 using System;
 using System.Collections.Generic;
-using Ouroboros.StdLib.Math;
+using Ouro.StdLib.Math;
 
-namespace Ouroboros.StdLib.UI
+namespace Ouro.StdLib.UI
 {
     /// <summary>
     /// Base class for all UI widgets
     /// </summary>
     public abstract class Widget
     {
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         public Vector Position { get; set; }
         public Vector Size { get; set; }
         public bool IsVisible { get; set; }
         public bool IsEnabled { get; set; }
-        public object Parent { get; set; }
-        public Margin Margin { get; set; }
-        public Padding Padding { get; set; }
+        public object? Parent { get; set; }
+        public Margin Margin { get; set; } = new Margin(0);
+        public Padding Padding { get; set; } = new Padding(5);
         public Color? BackgroundColor { get; set; }
         public Color? ForegroundColor { get; set; }
-        public Font Font { get; set; }
+        public Font Font { get; set; } = new Font("Arial", 12);
         
-        protected List<Widget> children;
+        protected List<Widget> children = new List<Widget>();
         
         public IReadOnlyList<Widget> Children => children;
         
-        public event EventHandler<MouseEventArgs> MouseEnter;
-        public event EventHandler<MouseEventArgs> MouseLeave;
-        public event EventHandler<MouseEventArgs> MouseMove;
-        public event EventHandler<MouseEventArgs> Click;
-        public event EventHandler<MouseEventArgs> DoubleClick;
-        public event EventHandler<KeyEventArgs> KeyDown;
-        public event EventHandler<KeyEventArgs> KeyUp;
-        public event EventHandler<FocusEventArgs> GotFocus;
-        public event EventHandler<FocusEventArgs> LostFocus;
+        public event EventHandler<MouseEventArgs>? MouseEnter;
+        public event EventHandler<MouseEventArgs>? MouseLeave;
+        public event EventHandler<MouseEventArgs>? MouseMove;
+        public event EventHandler<MouseEventArgs>? Click;
+        public event EventHandler<MouseEventArgs>? DoubleClick;
+        public event EventHandler<KeyEventArgs>? KeyDown;
+        public event EventHandler<KeyEventArgs>? KeyUp;
+        public event EventHandler<FocusEventArgs>? GotFocus;
+        public event EventHandler<FocusEventArgs>? LostFocus;
 
         protected Widget()
         {
@@ -42,9 +42,6 @@ namespace Ouroboros.StdLib.UI
             Size = new Vector(100, 30);
             IsVisible = true;
             IsEnabled = true;
-            Margin = new Margin(0);
-            Padding = new Padding(5);
-            children = new List<Widget>();
         }
 
         public abstract void Render(GraphicsContext context);
@@ -102,17 +99,16 @@ namespace Ouroboros.StdLib.UI
     /// </summary>
     public class Button : Widget
     {
-        public string Text { get; set; }
-        public Image Icon { get; set; }
-        public ButtonStyle Style { get; set; }
+        public string Text { get; set; } = string.Empty;
+        public Image? Icon { get; set; }
+        public ButtonStyle Style { get; set; } = ButtonStyle.Default;
         public bool IsPressed { get; private set; }
         
-        public Action OnClickAction { get; set; }
+        public Action? OnClickAction { get; set; }
         
         public Button(string text = "")
         {
             Text = text;
-            Style = ButtonStyle.Default;
             Size = new Vector(100, 35);
         }
         
@@ -171,15 +167,13 @@ namespace Ouroboros.StdLib.UI
     /// </summary>
     public class Label : Widget
     {
-        public string Text { get; set; }
-        public TextAlignment Alignment { get; set; }
-        public bool WordWrap { get; set; }
+        public string Text { get; set; } = string.Empty;
+        public TextAlignment Alignment { get; set; } = TextAlignment.Left;
+        public bool WordWrap { get; set; } = false;
         
         public Label(string text = "")
         {
             Text = text;
-            Alignment = TextAlignment.Left;
-            WordWrap = false;
         }
         
         public override void Render(GraphicsContext context)
@@ -210,26 +204,21 @@ namespace Ouroboros.StdLib.UI
     /// </summary>
     public class TextBox : Widget
     {
-        public string Text { get; set; }
-        public string Placeholder { get; set; }
-        public int MaxLength { get; set; }
-        public bool IsPassword { get; set; }
-        public bool IsReadOnly { get; set; }
-        public int CursorPosition { get; set; }
-        public int SelectionStart { get; set; }
-        public int SelectionLength { get; set; }
+        public string Text { get; set; } = string.Empty;
+        public string Placeholder { get; set; } = string.Empty;
+        public int MaxLength { get; set; } = int.MaxValue;
+        public bool IsPassword { get; set; } = false;
+        public bool IsReadOnly { get; set; } = false;
+        public int CursorPosition { get; set; } = 0;
+        public int SelectionStart { get; set; } = 0;
+        public int SelectionLength { get; set; } = 0;
         
-        private bool hasFocus;
-        private double cursorBlinkTime;
+        private bool hasFocus = false;
+        private double cursorBlinkTime = 0;
         
         public TextBox(string text = "")
         {
             Text = text;
-            Placeholder = "";
-            MaxLength = int.MaxValue;
-            IsPassword = false;
-            IsReadOnly = false;
-            CursorPosition = 0;
             Size = new Vector(200, 30);
         }
         
@@ -291,17 +280,15 @@ namespace Ouroboros.StdLib.UI
     /// </summary>
     public class CheckBox : Widget
     {
-        public bool IsChecked { get; set; }
-        public string Text { get; set; }
-        public CheckBoxStyle Style { get; set; }
+        public bool IsChecked { get; set; } = false;
+        public string Text { get; set; } = string.Empty;
+        public CheckBoxStyle Style { get; set; } = CheckBoxStyle.Default;
         
-        public event EventHandler<CheckedChangedEventArgs> CheckedChanged;
+        public event EventHandler<CheckedChangedEventArgs>? CheckedChanged;
         
         public CheckBox(string text = "")
         {
             Text = text;
-            IsChecked = false;
-            Style = CheckBoxStyle.Default;
             Size = new Vector(20, 20);
         }
         
@@ -341,17 +328,16 @@ namespace Ouroboros.StdLib.UI
     /// </summary>
     public class RadioButton : Widget
     {
-        public bool IsChecked { get; set; }
-        public string Text { get; set; }
-        public string GroupName { get; set; }
+        public bool IsChecked { get; set; } = false;
+        public string Text { get; set; } = string.Empty;
+        public string GroupName { get; set; } = "default";
         
-        public event EventHandler<CheckedChangedEventArgs> CheckedChanged;
+        public event EventHandler<CheckedChangedEventArgs>? CheckedChanged;
         
         public RadioButton(string text = "", string group = "default")
         {
             Text = text;
             GroupName = group;
-            IsChecked = false;
             Size = new Vector(20, 20);
         }
         
@@ -380,18 +366,15 @@ namespace Ouroboros.StdLib.UI
     /// </summary>
     public class ComboBox : Widget
     {
-        public List<object> Items { get; }
-        public int SelectedIndex { get; set; }
-        public object SelectedItem => SelectedIndex >= 0 ? Items[SelectedIndex] : null;
-        public bool IsDropDownOpen { get; set; }
+        public List<object> Items { get; } = new List<object>();
+        public int SelectedIndex { get; set; } = -1;
+        public object? SelectedItem => SelectedIndex >= 0 ? Items[SelectedIndex] : null;
+        public bool IsDropDownOpen { get; set; } = false;
         
-        public event EventHandler<SelectionChangedEventArgs> SelectionChanged;
+        public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
         
         public ComboBox()
         {
-            Items = new List<object>();
-            SelectedIndex = -1;
-            IsDropDownOpen = false;
             Size = new Vector(150, 30);
         }
         
@@ -459,21 +442,16 @@ namespace Ouroboros.StdLib.UI
     /// </summary>
     public class Slider : Widget
     {
-        public double Minimum { get; set; }
-        public double Maximum { get; set; }
-        public double Value { get; set; }
-        public double Step { get; set; }
-        public Orientation Orientation { get; set; }
+        public double Minimum { get; set; } = 0;
+        public double Maximum { get; set; } = 100;
+        public double Value { get; set; } = 0;
+        public double Step { get; set; } = 1;
+        public Orientation Orientation { get; set; } = Orientation.Horizontal;
         
-        public event EventHandler<ValueChangedEventArgs> ValueChanged;
+        public event EventHandler<ValueChangedEventArgs>? ValueChanged;
         
         public Slider()
         {
-            Minimum = 0;
-            Maximum = 100;
-            Value = 0;
-            Step = 1;
-            Orientation = Orientation.Horizontal;
             Size = new Vector(200, 20);
         }
         

@@ -2,26 +2,24 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.VM;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Tokens;
+using Ouro.Core.AST;
+using Ouro.Core.VM;
+using Ouro.Core.Compiler;
+using Ouro.Tokens;
 
-namespace Ouroboros.CodeGen
+namespace Ouro.CodeGen
 {
     /// <summary>
     /// Direct native code generator for x86-64
     /// </summary>
-    public class NativeCodeGen : ICodeGenerator
+    public class NativeCodeGen
     {
         private readonly List<byte> code;
         private readonly Dictionary<string, int> functionOffsets;
         private readonly Dictionary<string, List<int>> functionCalls;
-        private readonly CompilerOptions options;
 
-        public NativeCodeGen(CompilerOptions options = null)
+        public NativeCodeGen()
         {
-            this.options = options ?? new CompilerOptions();
             code = new List<byte>();
             functionOffsets = new Dictionary<string, int>();
             functionCalls = new Dictionary<string, List<int>>();

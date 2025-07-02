@@ -1,8 +1,8 @@
 using System;
 using System.Globalization;
-using Ouroboros.Core;
+using Ouro.Core;
 
-namespace Ouroboros.StdLib.System
+namespace Ouro.StdLib.System
 {
     /// <summary>
     /// Represents an instant in time, typically expressed as a date and time of day

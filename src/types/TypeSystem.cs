@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core;
-using Ouroboros.Core.AST;
-using Ouroboros.Tokens;
+using Ouro.Core;
+using Ouro.Core.AST;
+using Ouro.Tokens;
 
-namespace Ouroboros.Types
+namespace Ouro.Types
 {
     /// <summary>
     /// Ouroboros type system
@@ -187,7 +187,7 @@ namespace Ouroboros.Types
         private PrimitiveType(string name, System.Type clrType, bool isReference)
         {
             Name = name;
-            FullName = $"Ouroboros.{name}";
+            FullName = $"Ouro.{name}";
             Kind = TypeKind.Primitive;
             ClrType = clrType;
             IsReference = isReference;

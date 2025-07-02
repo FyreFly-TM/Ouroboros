@@ -2,9 +2,9 @@ using System = global::System;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
-using Ouroboros.StdLib.Math;
+using Ouro.StdLib.Math;
 
-namespace Ouroboros.StdLib.UI
+namespace Ouro.StdLib.UI
 {
     /// <summary>
     /// Windows Forms backend for the Ouroboros UI framework
@@ -240,7 +240,7 @@ namespace Ouroboros.StdLib.UI
             return control;
         }
         
-        private static global::System.Drawing.Color ConvertColor(Ouroboros.StdLib.UI.Color? color)
+        private static global::System.Drawing.Color ConvertColor(Ouro.StdLib.UI.Color? color)
         {
             if (color is null || !color.HasValue) return global::System.Drawing.Color.Transparent;
             var c = color.Value;

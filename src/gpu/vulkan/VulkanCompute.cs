@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-namespace Ouroboros.GPU.Vulkan
+namespace Ouro.GPU.Vulkan
 {
     /// <summary>
     /// Vulkan compute pipeline for GPU computation

@@ -5,9 +5,9 @@ using System.Data.Common;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Text;
-using Ouroboros.StdLib.Data.Mocks;
+using Ouro.StdLib.Data.Mocks;
 
-namespace Ouroboros.StdLib.Data.Providers
+namespace Ouro.StdLib.Data.Providers
 {
     /// <summary>
     /// PostgreSQL database provider implementation

@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Ouroboros.Core;
-using Ouroboros.Core.VM;
-using Ouroboros.Core.Compiler;
+using Ouro.Core;
+using Ouro.Core.VM;
+using Ouro.Core.Compiler;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-namespace Ouroboros.Runtime
+namespace Ouro.Runtime
 {
     /// <summary>
     /// Main runtime system for Ouroboros
@@ -254,24 +254,24 @@ namespace Ouroboros.Runtime
         public object Execute(byte[] bytecode)
         {
             // This method is deprecated - use Execute(CompiledProgram) instead
-            var bytecodeObj = new Ouroboros.Core.VM.Bytecode
+            var bytecodeObj = new Ouro.Core.VM.Bytecode
             {
                 Instructions = bytecode,
                 ConstantPool = new object[0],
-                Functions = new Ouroboros.Core.VM.FunctionInfo[0],
-                Classes = new Ouroboros.Core.VM.ClassInfo[0],
-                Interfaces = new Ouroboros.Core.VM.InterfaceInfo[0],
-                Structs = new Ouroboros.Core.VM.StructInfo[0],
-                Enums = new Ouroboros.Core.VM.EnumInfo[0],
-                Components = new Ouroboros.Core.VM.ComponentInfo[0],
-                Systems = new Ouroboros.Core.VM.SystemInfo[0],
-                Entities = new Ouroboros.Core.VM.EntityInfo[0],
-                ExceptionHandlers = new Ouroboros.Core.VM.ExceptionHandler[0]
+                Functions = new Ouro.Core.VM.FunctionInfo[0],
+                Classes = new Ouro.Core.VM.ClassInfo[0],
+                Interfaces = new Ouro.Core.VM.InterfaceInfo[0],
+                Structs = new Ouro.Core.VM.StructInfo[0],
+                Enums = new Ouro.Core.VM.EnumInfo[0],
+                Components = new Ouro.Core.VM.ComponentInfo[0],
+                Systems = new Ouro.Core.VM.SystemInfo[0],
+                Entities = new Ouro.Core.VM.EntityInfo[0],
+                ExceptionHandlers = new Ouro.Core.VM.ExceptionHandler[0]
             };
-            var compiledProgram = new Ouroboros.Core.VM.CompiledProgram 
+            var compiledProgram = new Ouro.Core.VM.CompiledProgram 
             { 
                 Bytecode = bytecodeObj,
-                SymbolTable = new Ouroboros.Core.VM.SymbolTable()
+                SymbolTable = new Ouro.Core.VM.SymbolTable()
             };
             return vm.Execute(compiledProgram);
         }
@@ -279,7 +279,7 @@ namespace Ouroboros.Runtime
         /// <summary>
         /// Execute a compiled program
         /// </summary>
-        public object Execute(Ouroboros.Core.VM.CompiledProgram compiledProgram)
+        public object Execute(Ouro.Core.VM.CompiledProgram compiledProgram)
         {
             try
             {
@@ -1113,20 +1113,20 @@ namespace Ouroboros.Runtime
             // Just mark them as loaded
             var coreModule = new Module
             {
-                Name = "Ouroboros.Core",
+                Name = "Ouro.Core",
                 Path = "built-in",
                 Source = "// Built-in core module",
                 Bytecode = new byte[0]
             };
-            loadedModules["Ouroboros.Core"] = coreModule;
+            loadedModules["Ouro.Core"] = coreModule;
             
             var stdLibModules = new[]
             {
-                "Ouroboros.StdLib.Collections",
-                "Ouroboros.StdLib.Math", 
-                "Ouroboros.StdLib.IO",
-                "Ouroboros.StdLib.UI",
-                "Ouroboros.StdLib.System"
+                "Ouro.StdLib.Collections",
+                "Ouro.StdLib.Math", 
+                "Ouro.StdLib.IO",
+                "Ouro.StdLib.UI",
+                "Ouro.StdLib.System"
             };
             
             foreach (var moduleName in stdLibModules)

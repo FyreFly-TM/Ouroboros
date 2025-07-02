@@ -21,7 +21,7 @@ namespace Ouro.Core.Compiler
                 symbols[name] = symbol;
         }
         
-        public Symbol Lookup(string name)
+        public Symbol? Lookup(string name)
         {
             // Check global scope FIRST (for built-ins and global variables)
             if (symbols.ContainsKey(name))
@@ -155,8 +155,8 @@ namespace Ouro.Core.Compiler
     // Type information classes
     public class ClassInfo
     {
-        public string Name { get; set; }
-        public string BaseClass { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string BaseClass { get; set; } = string.Empty;
         public List<string> Interfaces { get; set; } = new List<string>();
         public List<FieldInfo> Fields { get; set; } = new List<FieldInfo>();
         public List<MethodInfo> Methods { get; set; } = new List<MethodInfo>();
@@ -166,14 +166,14 @@ namespace Ouro.Core.Compiler
     
     public class FieldInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
         public List<string> Modifiers { get; set; } = new List<string>();
     }
     
     public class MethodInfo
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public int StartAddress { get; set; }
         public int EndAddress { get; set; }
         public List<string> Modifiers { get; set; } = new List<string>();
@@ -181,8 +181,8 @@ namespace Ouro.Core.Compiler
     
     public class PropertyInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
         public int GetterAddress { get; set; }
         public int GetterEndAddress { get; set; }
         public int SetterAddress { get; set; }
@@ -192,7 +192,7 @@ namespace Ouro.Core.Compiler
     
     public class InterfaceInfo
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public List<string> BaseInterfaces { get; set; } = new List<string>();
         public List<InterfaceMethodInfo> Methods { get; set; } = new List<InterfaceMethodInfo>();
         public List<InterfacePropertyInfo> Properties { get; set; } = new List<InterfacePropertyInfo>();
@@ -200,28 +200,28 @@ namespace Ouro.Core.Compiler
     
     public class InterfaceMethodInfo
     {
-        public string Name { get; set; }
-        public string ReturnType { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string ReturnType { get; set; } = string.Empty;
         public List<ParameterInfo> Parameters { get; set; } = new List<ParameterInfo>();
     }
     
     public class InterfacePropertyInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
         public bool HasGetter { get; set; }
         public bool HasSetter { get; set; }
     }
     
     public class ParameterInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
     }
     
     public class StructInfo
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public List<string> Interfaces { get; set; } = new List<string>();
         public List<FieldInfo> Fields { get; set; } = new List<FieldInfo>();
         public List<MethodInfo> Methods { get; set; } = new List<MethodInfo>();
@@ -229,46 +229,46 @@ namespace Ouro.Core.Compiler
     
     public class EnumInfo
     {
-        public string Name { get; set; }
-        public string UnderlyingType { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string UnderlyingType { get; set; } = string.Empty;
         public List<EnumMemberInfo> Members { get; set; } = new List<EnumMemberInfo>();
     }
     
     public class EnumMemberInfo
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public int Value { get; set; }
     }
     
     public class ComponentInfo
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public List<ComponentFieldInfo> Fields { get; set; } = new List<ComponentFieldInfo>();
     }
     
     public class ComponentFieldInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
     }
     
     public class SystemInfo
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public List<string> RequiredComponents { get; set; } = new List<string>();
     }
     
     public class EntityInfo
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public List<string> Components { get; set; } = new List<string>();
     }
     
     public class FunctionInfo
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public List<Parameter> Parameters { get; set; } = new List<Parameter>();
-        public TypeNode ReturnType { get; set; }
+        public TypeNode ReturnType { get; set; } = new TypeNode("void");
         public int StartAddress { get; set; }  // Added for VM execution
         public int EndAddress { get; set; }     // Added for VM execution
     }
@@ -279,7 +279,7 @@ namespace Ouro.Core.Compiler
         public int TryStart { get; set; }
         public int TryEnd { get; set; }
         public int CatchStart { get; set; }
-        public string ExceptionType { get; set; }
+        public string ExceptionType { get; set; } = string.Empty;
     }
     
     public class Bytecode
@@ -293,11 +293,11 @@ namespace Ouro.Core.Compiler
     
     public class CompiledProgram
     {
-        public Bytecode Bytecode { get; set; }
+        public Bytecode Bytecode { get; set; } = new Bytecode();
         public Dictionary<string, FunctionInfo> Functions { get; set; } = new Dictionary<string, FunctionInfo>();
-        public SymbolTable SymbolTable { get; set; }
-        public string SourceFile { get; set; }
-        public CompilerMetadata Metadata { get; set; }
+        public SymbolTable SymbolTable { get; set; } = new SymbolTable();
+        public string SourceFile { get; set; } = string.Empty;
+        public CompilerMetadata Metadata { get; set; } = new CompilerMetadata();
     }
     
     public class LoopInfo
@@ -318,9 +318,9 @@ namespace Ouro.Core.Compiler
         public Stack<string> ScopeStack { get; set; } = new Stack<string>();
         public Stack<LoopInfo> LoopStack { get; set; } = new Stack<LoopInfo>();
         public Stack<SwitchInfo> SwitchStack { get; set; } = new Stack<SwitchInfo>();
-        public string CurrentClass { get; set; }
-        public string CurrentNamespace { get; set; }
-        public string SourceFile { get; set; }
+        public string CurrentClass { get; set; } = string.Empty;
+        public string CurrentNamespace { get; set; } = string.Empty;
+        public string SourceFile { get; set; } = string.Empty;
         
         public void PushLoop(LoopInfo loop)
         {
@@ -383,7 +383,7 @@ namespace Ouro.Core.Compiler
         
         public void ExitClass()
         {
-            CurrentClass = null;
+            CurrentClass = string.Empty;
         }
         
         public void EnterStruct(string structName)
@@ -393,7 +393,7 @@ namespace Ouro.Core.Compiler
         
         public void ExitStruct()
         {
-            CurrentClass = null;
+            CurrentClass = string.Empty;
         }
         
         public void EnterNamespace(string namespaceName)
@@ -403,25 +403,25 @@ namespace Ouro.Core.Compiler
         
         public void ExitNamespace()
         {
-            CurrentNamespace = null;
+            CurrentNamespace = string.Empty;
         }
     }
     
     public class ProgramMetadata
     {
-        public string Name { get; set; }
-        public string Version { get; set; }
-        public DateTime CompileTime { get; set; }
-        public string CompilerVersion { get; set; }
-        public int OptimizationLevel { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Version { get; set; } = string.Empty;
+        public DateTime CompileTime { get; set; } = DateTime.Now;
+        public string CompilerVersion { get; set; } = string.Empty;
+        public int OptimizationLevel { get; set; } = 0;
         public List<string> SourceFiles { get; set; } = new List<string>();
-        public string TargetPlatform { get; set; }
+        public string TargetPlatform { get; set; } = string.Empty;
     }
 
 public class CompilerMetadata
 {
-    public string Version { get; set; }
-    public DateTime CompileTime { get; set; }
+    public string Version { get; set; } = string.Empty;
+    public DateTime CompileTime { get; set; } = DateTime.Now;
     public Dictionary<string, object> CustomData { get; set; } = new Dictionary<string, object>();
 }
 }

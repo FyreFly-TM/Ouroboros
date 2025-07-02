@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Ouroboros.StdLib.IO
+namespace Ouro.StdLib.IO
 {
     /// <summary>
     /// File system operations for Ouroboros

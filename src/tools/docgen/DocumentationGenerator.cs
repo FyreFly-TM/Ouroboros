@@ -6,11 +6,11 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.Parser;
-using Ouroboros.Core.Lexer;
+using Ouro.Core.AST;
+using Ouro.Core.Parser;
+using Ouro.Core.Lexer;
 
-namespace Ouroboros.Tools.DocGen
+namespace Ouro.Tools.DocGen
 {
     /// <summary>
     /// Documentation generator for Ouroboros code

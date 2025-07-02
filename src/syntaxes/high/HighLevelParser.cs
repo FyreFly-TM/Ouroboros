@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.Parser;
-using Ouroboros.Tokens;
+using Ouro.Core.AST;
+using Ouro.Core.Lexer;
+using Ouro.Core.Parser;
+using Ouro.Tokens;
 
-namespace Ouroboros.Syntaxes.High
+namespace Ouro.Syntaxes.High
 {
     /// <summary>
     /// Parser for high-level natural language syntax

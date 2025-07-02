@@ -1,12 +1,9 @@
 {
   "version": 2,
-  "dgSpecHash": "aK/aV8LGHck=",
+  "dgSpecHash": "ZgjRnn8wn0I=",
   "success": true,
-  "projectFilePath": "H:\\Ouroboros\\Ouroboros.csproj",
+  "projectFilePath": "H:\\Ouroboros\\Ouro.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\jacob\\.nuget\\packages\\libllvm\\16.0.6\\libllvm.16.0.6.nupkg.sha512",
-    "C:\\Users\\jacob\\.nuget\\packages\\llvmsharp\\16.0.0\\llvmsharp.16.0.0.nupkg.sha512",
-    "C:\\Users\\jacob\\.nuget\\packages\\llvmsharp.interop\\16.0.0\\llvmsharp.interop.16.0.0.nupkg.sha512",
     "C:\\Users\\jacob\\.nuget\\packages\\microsoft.netcore.platforms\\1.1.0\\microsoft.netcore.platforms.1.1.0.nupkg.sha512",
     "C:\\Users\\jacob\\.nuget\\packages\\microsoft.netcore.targets\\1.1.0\\microsoft.netcore.targets.1.1.0.nupkg.sha512",
     "C:\\Users\\jacob\\.nuget\\packages\\system.collections\\4.3.0\\system.collections.4.3.0.nupkg.sha512",

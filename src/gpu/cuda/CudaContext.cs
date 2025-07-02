@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Ouroboros.GPU.CUDA
+namespace Ouro.GPU.CUDA
 {
     /// <summary>
     /// CUDA context management for GPU operations

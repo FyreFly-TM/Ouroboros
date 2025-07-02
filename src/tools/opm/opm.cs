@@ -6,9 +6,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Ouroboros.Tools.Opm;
+using Ouro.Tools.Opm;
 
-namespace Ouroboros.Tools
+namespace Ouro.Tools
 {
     /// <summary>
     /// Ouroboros Package Manager CLI

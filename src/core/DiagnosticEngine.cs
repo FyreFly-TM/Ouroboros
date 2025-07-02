@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Ouroboros.Core
+namespace Ouro.Core
 {
     /// <summary>
     /// Comprehensive diagnostic engine for error reporting, warnings, and analysis

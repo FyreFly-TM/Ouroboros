@@ -6,11 +6,11 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.Parser;
-using Ouroboros.Core.Compiler;
+using Ouro.Core.Lexer;
+using Ouro.Core.Parser;
+using Ouro.Core.Compiler;
 
-namespace Ouroboros.LSP
+namespace Ouro.LSP
 {
     /// <summary>
     /// Ouroboros Language Server implementation

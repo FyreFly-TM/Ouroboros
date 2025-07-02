@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
 
-namespace Ouroboros.StdLib.Net
+namespace Ouro.StdLib.Net
 {
     /// <summary>
     /// HTTP client implementation for Ouroboros

@@ -1101,7 +1101,7 @@ namespace Ouro.Core.VM
                         if (moduleName.StartsWith("static "))
                         {
                             var staticModule = moduleName.Substring(7);
-                            if (staticModule == "Ouroboros.StdLib.Math.MathSymbols" || staticModule == "MathSymbols")
+                            if (staticModule == "Ouro.StdLib.Math.MathSymbols" || staticModule == "MathSymbols")
                             {
                                 // Register math constants in the VM's globals
                                 RegisterMathConstants();
@@ -1130,8 +1130,8 @@ namespace Ouro.Core.VM
                             else
                             {
                                 // Try to load as a custom static module
-                                var moduleType = Type.GetType($"Ouroboros.{staticModule}") ?? 
-                                               Type.GetType($"Ouroboros.StdLib.{staticModule}") ?? 
+                                var moduleType = Type.GetType($"Ouro.{staticModule}") ?? 
+                                               Type.GetType($"Ouro.StdLib.{staticModule}") ?? 
                                                Type.GetType($"System.{staticModule}");
                                 
                                 if (moduleType != null)
@@ -2606,20 +2606,20 @@ namespace Ouro.Core.VM
         private void RegisterBuiltInFunctions()
         {
             // Register UI functions
-            environment.NativeFunctions["CreateWindow"] = new Action<string, double, double>(Ouroboros.StdLib.UI.UIBuiltins.CreateWindow);
-            environment.NativeFunctions["ShowWindow"] = new Action(Ouroboros.StdLib.UI.UIBuiltins.ShowWindow);
-            environment.NativeFunctions["AddButton"] = new Action<string, double, double, double, double>(Ouroboros.StdLib.UI.UIBuiltins.AddButton);
-            environment.NativeFunctions["AddLabel"] = new Action<string, double, double, double, double>(Ouroboros.StdLib.UI.UIBuiltins.AddLabel);
-            environment.NativeFunctions["AddTextBox"] = new Action<string, double, double, double, double>(Ouroboros.StdLib.UI.UIBuiltins.AddTextBox);
-            environment.NativeFunctions["UpdateDisplay"] = new Action<string>(Ouroboros.StdLib.UI.UIBuiltins.UpdateDisplay);
-            environment.NativeFunctions["RunUI"] = new Action(Ouroboros.StdLib.UI.UIBuiltins.RunUI);
-            environment.NativeFunctions["ProcessMessages"] = new Action(Ouroboros.StdLib.UI.UIBuiltins.ProcessMessages);
-            environment.NativeFunctions["IsWindowClosed"] = new Func<bool>(Ouroboros.StdLib.UI.UIBuiltins.IsWindowClosed);
-            environment.NativeFunctions["HasButtonClicks"] = new Func<bool>(Ouroboros.StdLib.UI.UIBuiltins.HasButtonClicks);
-            environment.NativeFunctions["GetNextButtonClick"] = new Func<string>(Ouroboros.StdLib.UI.UIBuiltins.GetNextButtonClick);
+            environment.NativeFunctions["CreateWindow"] = new Action<string, double, double>(Ouro.StdLib.UI.UIBuiltins.CreateWindow);
+            environment.NativeFunctions["ShowWindow"] = new Action(Ouro.StdLib.UI.UIBuiltins.ShowWindow);
+            environment.NativeFunctions["AddButton"] = new Action<string, double, double, double, double>(Ouro.StdLib.UI.UIBuiltins.AddButton);
+            environment.NativeFunctions["AddLabel"] = new Action<string, double, double, double, double>(Ouro.StdLib.UI.UIBuiltins.AddLabel);
+            environment.NativeFunctions["AddTextBox"] = new Action<string, double, double, double, double>(Ouro.StdLib.UI.UIBuiltins.AddTextBox);
+            environment.NativeFunctions["UpdateDisplay"] = new Action<string>(Ouro.StdLib.UI.UIBuiltins.UpdateDisplay);
+            environment.NativeFunctions["RunUI"] = new Action(Ouro.StdLib.UI.UIBuiltins.RunUI);
+            environment.NativeFunctions["ProcessMessages"] = new Action(Ouro.StdLib.UI.UIBuiltins.ProcessMessages);
+            environment.NativeFunctions["IsWindowClosed"] = new Func<bool>(Ouro.StdLib.UI.UIBuiltins.IsWindowClosed);
+            environment.NativeFunctions["HasButtonClicks"] = new Func<bool>(Ouro.StdLib.UI.UIBuiltins.HasButtonClicks);
+            environment.NativeFunctions["GetNextButtonClick"] = new Func<string>(Ouro.StdLib.UI.UIBuiltins.GetNextButtonClick);
             
             // Register UIBuiltins class for static method access
-            environment.Globals["UIBuiltins"] = typeof(Ouroboros.StdLib.UI.UIBuiltins);
+            environment.Globals["UIBuiltins"] = typeof(Ouro.StdLib.UI.UIBuiltins);
             
             // Register Console class and console alias
             environment.Globals["Console"] = typeof(System.Console);
@@ -2627,8 +2627,8 @@ namespace Ouro.Core.VM
             environment.NativeFunctions["console.WriteLine"] = new Action<string>(System.Console.WriteLine);
             
             // Register MathFunctions class and individual functions
-            environment.Globals["MathFunctions"] = typeof(Ouroboros.StdLib.Math.MathFunctions);
-            environment.NativeFunctions["MathFunctions.Sqrt"] = new Func<double, double>(Ouroboros.StdLib.Math.MathFunctions.Sqrt);
+            environment.Globals["MathFunctions"] = typeof(Ouro.StdLib.Math.MathFunctions);
+            environment.NativeFunctions["MathFunctions.Sqrt"] = new Func<double, double>(Ouro.StdLib.Math.MathFunctions.Sqrt);
             environment.NativeFunctions["formatNumber"] = new Func<object, string>(obj => obj?.ToString() ?? "");
             
             // Register additional parsing functions for type conversions
@@ -2907,43 +2907,43 @@ namespace Ouro.Core.VM
                     typeRegistry["NullReferenceException"] = typeof(NullReferenceException);
                     break;
                     
-                case "Ouroboros.StdLib.IO":
+                case "Ouro.StdLib.IO":
                     typeRegistry["File"] = typeof(System.IO.File);
                     typeRegistry["Directory"] = typeof(System.IO.Directory);
                     typeRegistry["Path"] = typeof(System.IO.Path);
                     break;
                     
-                case "Ouroboros.StdLib.Math":
+                case "Ouro.StdLib.Math":
                     // Math types are already registered in RegisterBuiltInTypes
                     break;
                     
-                case "Ouroboros.StdLib.UI":
-                    typeRegistry["Window"] = typeof(Ouroboros.StdLib.UI.Window);
-                    typeRegistry["Button"] = typeof(Ouroboros.StdLib.UI.Button);
-                    typeRegistry["Label"] = typeof(Ouroboros.StdLib.UI.Label);
-                    typeRegistry["TextBox"] = typeof(Ouroboros.StdLib.UI.TextBox);
-                    typeRegistry["MenuBar"] = typeof(Ouroboros.StdLib.UI.MenuBar);
-                    typeRegistry["ToolBar"] = typeof(Ouroboros.StdLib.UI.ToolBar);
-                    typeRegistry["TabControl"] = typeof(Ouroboros.StdLib.UI.TabControl);
-                    typeRegistry["TabPage"] = typeof(Ouroboros.StdLib.UI.TabPage);
-                    typeRegistry["CheckBox"] = typeof(Ouroboros.StdLib.UI.CheckBox);
-                    typeRegistry["RadioButton"] = typeof(Ouroboros.StdLib.UI.RadioButton);
-                    typeRegistry["Slider"] = typeof(Ouroboros.StdLib.UI.Slider);
-                    typeRegistry["ProgressBar"] = typeof(Ouroboros.StdLib.UI.ProgressBar);
-                    typeRegistry["ComboBox"] = typeof(Ouroboros.StdLib.UI.ComboBox);
-                    typeRegistry["NumericUpDown"] = typeof(Ouroboros.StdLib.UI.NumericUpDown);
-                    typeRegistry["DatePicker"] = typeof(Ouroboros.StdLib.UI.DatePicker);
-                    typeRegistry["ColorPicker"] = typeof(Ouroboros.StdLib.UI.ColorPicker);
-                    typeRegistry["Theme"] = typeof(Ouroboros.StdLib.UI.Theme);
+                case "Ouro.StdLib.UI":
+                    typeRegistry["Window"] = typeof(Ouro.StdLib.UI.Window);
+                    typeRegistry["Button"] = typeof(Ouro.StdLib.UI.Button);
+                    typeRegistry["Label"] = typeof(Ouro.StdLib.UI.Label);
+                    typeRegistry["TextBox"] = typeof(Ouro.StdLib.UI.TextBox);
+                    typeRegistry["MenuBar"] = typeof(Ouro.StdLib.UI.MenuBar);
+                    typeRegistry["ToolBar"] = typeof(Ouro.StdLib.UI.ToolBar);
+                    typeRegistry["TabControl"] = typeof(Ouro.StdLib.UI.TabControl);
+                    typeRegistry["TabPage"] = typeof(Ouro.StdLib.UI.TabPage);
+                    typeRegistry["CheckBox"] = typeof(Ouro.StdLib.UI.CheckBox);
+                    typeRegistry["RadioButton"] = typeof(Ouro.StdLib.UI.RadioButton);
+                    typeRegistry["Slider"] = typeof(Ouro.StdLib.UI.Slider);
+                    typeRegistry["ProgressBar"] = typeof(Ouro.StdLib.UI.ProgressBar);
+                    typeRegistry["ComboBox"] = typeof(Ouro.StdLib.UI.ComboBox);
+                    typeRegistry["NumericUpDown"] = typeof(Ouro.StdLib.UI.NumericUpDown);
+                    typeRegistry["DatePicker"] = typeof(Ouro.StdLib.UI.DatePicker);
+                    typeRegistry["ColorPicker"] = typeof(Ouro.StdLib.UI.ColorPicker);
+                    typeRegistry["Theme"] = typeof(Ouro.StdLib.UI.Theme);
                     break;
                     
-                case "Ouroboros.StdLib.System":
+                case "Ouro.StdLib.System":
                     typeRegistry["Console"] = typeof(System.Console);
                     typeRegistry["DateTime"] = typeof(System.DateTime);
                     typeRegistry["Environment"] = typeof(System.Environment);
                     break;
                     
-                case "Ouroboros.StdLib.Collections":
+                case "Ouro.StdLib.Collections":
                     // Don't register open generic types as they cause ContainsGenericParameters errors
                     Console.WriteLine("DEBUG: Skipping generic collection types in VM to avoid ContainsGenericParameters errors");
                     // typeRegistry["List"] = typeof(System.Collections.Generic.List<>);
@@ -2953,20 +2953,20 @@ namespace Ouro.Core.VM
                     // typeRegistry["HashSet"] = typeof(System.Collections.Generic.HashSet<>);
                     break;
                     
-                case "static Ouroboros.StdLib.Math.MathSymbols":
+                case "static Ouro.StdLib.Math.MathSymbols":
                     // Math symbols are already registered as constants
                     break;
                     
                 default:
-                    // Try to handle compound imports like "Ouroboros.StdLib.*"
-                    if (modulePath.StartsWith("Ouroboros.StdLib"))
+                    // Try to handle compound imports like "Ouro.StdLib.*"
+                    if (modulePath.StartsWith("Ouro.StdLib"))
                     {
                         // Register all standard library types
-                        RegisterImportedTypes("Ouroboros.StdLib.IO");
-                        RegisterImportedTypes("Ouroboros.StdLib.Math");
-                        RegisterImportedTypes("Ouroboros.StdLib.UI");
-                        RegisterImportedTypes("Ouroboros.StdLib.System");
-                        RegisterImportedTypes("Ouroboros.StdLib.Collections");
+                        RegisterImportedTypes("Ouro.StdLib.IO");
+                        RegisterImportedTypes("Ouro.StdLib.Math");
+                        RegisterImportedTypes("Ouro.StdLib.UI");
+                        RegisterImportedTypes("Ouro.StdLib.System");
+                        RegisterImportedTypes("Ouro.StdLib.Collections");
                     }
                     break;
             }
@@ -3083,7 +3083,7 @@ namespace Ouro.Core.VM
         private void ImportModule(string moduleName)
         {
             // Handle built-in modules
-            if (moduleName == "System" || moduleName.StartsWith("Ouroboros.StdLib"))
+            if (moduleName == "System" || moduleName.StartsWith("Ouro.StdLib"))
             {
                 // Register the imported types
                 RegisterImportedTypes(moduleName);

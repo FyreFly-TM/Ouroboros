@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Tokens;
+using Ouro.Core.Lexer;
+using Ouro.Tokens;
 
-namespace Ouroboros.IDE
+namespace Ouro.IDE
 {
     /// <summary>
     /// Syntax highlighter for Ouroboros code

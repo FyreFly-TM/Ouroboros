@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.StdLib.Math;
-using static Ouroboros.StdLib.Math.MathUtils;
+using Ouro.StdLib.Math;
+using static Ouro.StdLib.Math.MathUtils;
 
-namespace Ouroboros.StdLib.UI
+namespace Ouro.StdLib.UI
 {
     /// <summary>
     /// NumericUpDown control - numeric input with increment/decrement buttons

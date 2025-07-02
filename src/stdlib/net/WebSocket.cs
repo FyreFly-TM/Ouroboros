@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Ouroboros.StdLib.Net
+namespace Ouro.StdLib.Net
 {
     /// <summary>
     /// WebSocket client implementation

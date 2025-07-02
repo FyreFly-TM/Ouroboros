@@ -1,9 +1,9 @@
 using System;
 using System.Text;
 using System.Collections.Generic;
-using Ouroboros.Core;
+using Ouro.Core;
 
-namespace Ouroboros.StdLib.System
+namespace Ouro.StdLib.System
 {
     /// <summary>
     /// Console input/output operations

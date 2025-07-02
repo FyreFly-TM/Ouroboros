@@ -2,33 +2,6 @@
   "version": 3,
   "targets": {
     "net6.0-windows7.0": {
-      "libLLVM/16.0.6": {
-        "type": "package"
-      },
-      "LLVMSharp/16.0.0": {
-        "type": "package",
-        "dependencies": {
-          "LLVMSharp.Interop": "16.0.0"
-        },
-        "compile": {
-          "lib/net6.0/LLVMSharp.dll": {}
-        },
-        "runtime": {
-          "lib/net6.0/LLVMSharp.dll": {}
-        }
-      },
-      "LLVMSharp.Interop/16.0.0": {
-        "type": "package",
-        "dependencies": {
-          "libLLVM": "16.0.6"
-        },
-        "compile": {
-          "lib/net6.0/LLVMSharp.Interop.dll": {}
-        },
-        "runtime": {
-          "lib/net6.0/LLVMSharp.Interop.dll": {}
-        }
-      },
       "Microsoft.NETCore.Platforms/1.1.0": {
         "type": "package",
         "compile": {
@@ -303,47 +276,6 @@
     }
   },
   "libraries": {
-    "libLLVM/16.0.6": {
-      "sha512": "ZlIpwHUVzNb9jeSzu6NQYKiVeiXRQuNzpx/zZNw4tCbAqUPWmZ8Dj8WL2IX7BenuT1fTBdbsPsYz23PBxGxIkA==",
-      "type": "package",
-      "path": "libllvm/16.0.6",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "LICENSE.TXT",
-        "libllvm.16.0.6.nupkg.sha512",
-        "libllvm.nuspec",
-        "runtime.json"
-      ]
-    },
-    "LLVMSharp/16.0.0": {
-      "sha512": "QIzFXzdVcvObPPXFAL6iA6g4imp8L5s/eDZYXteGgJvMi1tdUo7vLBF6axNDh9LSPqC8EMAILhXDlNR8VNE+kw==",
-      "type": "package",
-      "path": "llvmsharp/16.0.0",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/net6.0/LLVMSharp.dll",
-        "lib/net7.0/LLVMSharp.dll",
-        "lib/netstandard2.0/LLVMSharp.dll",
-        "llvmsharp.16.0.0.nupkg.sha512",
-        "llvmsharp.nuspec"
-      ]
-    },
-    "LLVMSharp.Interop/16.0.0": {
-      "sha512": "kzAGP489ixPUk0vcuS/100DZniGL23rpdBF2E5YBvl1P9KKOgdlcV11IjP/fU2GdMvte8teBcdhEU/NovsPjdA==",
-      "type": "package",
-      "path": "llvmsharp.interop/16.0.0",
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "lib/net6.0/LLVMSharp.Interop.dll",
-        "lib/net7.0/LLVMSharp.Interop.dll",
-        "lib/netstandard2.0/LLVMSharp.Interop.dll",
-        "llvmsharp.interop.16.0.0.nupkg.sha512",
-        "llvmsharp.interop.nuspec"
-      ]
-    },
     "Microsoft.NETCore.Platforms/1.1.0": {
       "sha512": "kz0PEW2lhqygehI/d6XsPCQzD7ff7gUJaVGPVETX611eadGsA3A877GdSlU0LRVMCTH/+P3o2iDTak+S08V2+A==",
       "type": "package",
@@ -1439,7 +1371,6 @@
   },
   "projectFileDependencyGroups": {
     "net6.0-windows7.0": [
-      "LLVMSharp >= 16.0.0",
       "System.Collections.Concurrent >= 4.3.0",
       "System.CommandLine >= 2.0.0-beta4.22272.1"
     ]
@@ -1451,9 +1382,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "H:\\Ouroboros\\Ouroboros.csproj",
-      "projectName": "ouroboros",
-      "projectPath": "H:\\Ouroboros\\Ouroboros.csproj",
+      "projectUniqueName": "H:\\Ouroboros\\Ouro.csproj",
+      "projectName": "ouro",
+      "projectPath": "H:\\Ouroboros\\Ouro.csproj",
       "packagesPath": "C:\\Users\\jacob\\.nuget\\packages\\",
       "outputPath": "H:\\Ouroboros\\obj\\",
       "projectStyle": "PackageReference",
@@ -1494,10 +1425,6 @@
       "net6.0-windows7.0": {
         "targetAlias": "net6.0-windows",
         "dependencies": {
-          "LLVMSharp": {
-            "target": "Package",
-            "version": "[16.0.0, )"
-          },
           "System.Collections.Concurrent": {
             "target": "Package",
             "version": "[4.3.0, )"

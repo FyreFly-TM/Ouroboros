@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Ouroboros.GPU.Vulkan
+namespace Ouro.GPU.Vulkan
 {
     // Vulkan handles
     public struct VkInstance { public IntPtr Handle; }

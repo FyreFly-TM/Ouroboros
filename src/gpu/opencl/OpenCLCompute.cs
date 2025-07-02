@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Ouroboros.GPU.OpenCL
+namespace Ouro.GPU.OpenCL
 {
     /// <summary>
     /// OpenCL compute implementation for cross-platform GPU programming

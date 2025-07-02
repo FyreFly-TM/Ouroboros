@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Ouroboros.GPU.CUDA
+namespace Ouro.GPU.CUDA
 {
     /// <summary>
     /// P/Invoke bindings for CUDA Driver API

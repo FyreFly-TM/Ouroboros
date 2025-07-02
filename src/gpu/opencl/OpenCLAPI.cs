@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Ouroboros.GPU.OpenCL
+namespace Ouro.GPU.OpenCL
 {
     /// <summary>
     /// P/Invoke bindings for OpenCL API

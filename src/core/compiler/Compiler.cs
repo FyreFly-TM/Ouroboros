@@ -47,11 +47,11 @@ namespace Ouro.Core.Compiler
             importedTypes["void"] = typeof(void);
             
             // Register UI types and functions in importedTypes
-            importedTypes["UIBuiltins"] = typeof(Ouroboros.StdLib.UI.UIBuiltins);
+            importedTypes["UIBuiltins"] = typeof(Ouro.StdLib.UI.UIBuiltins);
             importedTypes["Console"] = typeof(System.Console);
             importedTypes["console"] = typeof(System.Console);  // Add lowercase console alias
             importedTypes["Math"] = typeof(System.Math);
-            importedTypes["MathFunctions"] = typeof(Ouroboros.StdLib.Math.MathFunctions);
+            importedTypes["MathFunctions"] = typeof(Ouro.StdLib.Math.MathFunctions);
             importedTypes["Thread"] = typeof(System.Threading.Thread);
             
             // Register console functions
@@ -113,7 +113,7 @@ namespace Ouro.Core.Compiler
                 {
                     // Instead of using reflection to call the generic Accept method,
                     // use the visitor pattern directly since we know the types
-                    if (ast is Ouroboros.Core.AST.Program program)
+                    if (ast is Ouro.Core.AST.Program program)
                     {
                         Console.WriteLine($"DEBUG: Calling VisitProgram directly on Program AST");
                         this.VisitProgram(program);
@@ -186,49 +186,49 @@ namespace Ouro.Core.Compiler
                     importedTypes["string"] = typeof(System.String);
                     break;
                     
-                case "Ouroboros.StdLib.IO":
+                case "Ouro.StdLib.IO":
                     importedTypes["File"] = typeof(System.IO.File);
                     importedTypes["Directory"] = typeof(System.IO.Directory);
                     importedTypes["Path"] = typeof(System.IO.Path);
                     break;
                     
-                case "Ouroboros.StdLib.Math":
-                    importedTypes["MathSymbols"] = typeof(Ouroboros.StdLib.Math.MathSymbols);
-                    importedTypes["Vector"] = typeof(Ouroboros.StdLib.Math.Vector);
-                    importedTypes["Matrix"] = typeof(Ouroboros.StdLib.Math.Matrix);
-                    importedTypes["Quaternion"] = typeof(Ouroboros.StdLib.Math.Quaternion);
-                    importedTypes["Transform"] = typeof(Ouroboros.StdLib.Math.Transform);
-                    importedTypes["Complex"] = typeof(Ouroboros.StdLib.Math.MathSymbols.Complex);
+                case "Ouro.StdLib.Math":
+                    importedTypes["MathSymbols"] = typeof(Ouro.StdLib.Math.MathSymbols);
+                    importedTypes["Vector"] = typeof(Ouro.StdLib.Math.Vector);
+                    importedTypes["Matrix"] = typeof(Ouro.StdLib.Math.Matrix);
+                    importedTypes["Quaternion"] = typeof(Ouro.StdLib.Math.Quaternion);
+                    importedTypes["Transform"] = typeof(Ouro.StdLib.Math.Transform);
+                    importedTypes["Complex"] = typeof(Ouro.StdLib.Math.MathSymbols.Complex);
                     break;
                     
-                case "Ouroboros.StdLib.UI":
-                    importedTypes["UIBuiltins"] = typeof(Ouroboros.StdLib.UI.UIBuiltins);
-                    importedTypes["Window"] = typeof(Ouroboros.StdLib.UI.Window);
-                    importedTypes["Button"] = typeof(Ouroboros.StdLib.UI.Button);
-                    importedTypes["Label"] = typeof(Ouroboros.StdLib.UI.Label);
-                    importedTypes["TextBox"] = typeof(Ouroboros.StdLib.UI.TextBox);
-                    importedTypes["MenuBar"] = typeof(Ouroboros.StdLib.UI.MenuBar);
-                    importedTypes["ToolBar"] = typeof(Ouroboros.StdLib.UI.ToolBar);
-                    importedTypes["TabControl"] = typeof(Ouroboros.StdLib.UI.TabControl);
-                    importedTypes["TabPage"] = typeof(Ouroboros.StdLib.UI.TabPage);
-                    importedTypes["CheckBox"] = typeof(Ouroboros.StdLib.UI.CheckBox);
-                    importedTypes["RadioButton"] = typeof(Ouroboros.StdLib.UI.RadioButton);
-                    importedTypes["Slider"] = typeof(Ouroboros.StdLib.UI.Slider);
-                    importedTypes["ProgressBar"] = typeof(Ouroboros.StdLib.UI.ProgressBar);
-                    importedTypes["ComboBox"] = typeof(Ouroboros.StdLib.UI.ComboBox);
-                    importedTypes["NumericUpDown"] = typeof(Ouroboros.StdLib.UI.NumericUpDown);
-                    importedTypes["DatePicker"] = typeof(Ouroboros.StdLib.UI.DatePicker);
-                    importedTypes["ColorPicker"] = typeof(Ouroboros.StdLib.UI.ColorPicker);
-                    importedTypes["Theme"] = typeof(Ouroboros.StdLib.UI.Theme);
+                case "Ouro.StdLib.UI":
+                    importedTypes["UIBuiltins"] = typeof(Ouro.StdLib.UI.UIBuiltins);
+                    importedTypes["Window"] = typeof(Ouro.StdLib.UI.Window);
+                    importedTypes["Button"] = typeof(Ouro.StdLib.UI.Button);
+                    importedTypes["Label"] = typeof(Ouro.StdLib.UI.Label);
+                    importedTypes["TextBox"] = typeof(Ouro.StdLib.UI.TextBox);
+                    importedTypes["MenuBar"] = typeof(Ouro.StdLib.UI.MenuBar);
+                    importedTypes["ToolBar"] = typeof(Ouro.StdLib.UI.ToolBar);
+                    importedTypes["TabControl"] = typeof(Ouro.StdLib.UI.TabControl);
+                    importedTypes["TabPage"] = typeof(Ouro.StdLib.UI.TabPage);
+                    importedTypes["CheckBox"] = typeof(Ouro.StdLib.UI.CheckBox);
+                    importedTypes["RadioButton"] = typeof(Ouro.StdLib.UI.RadioButton);
+                    importedTypes["Slider"] = typeof(Ouro.StdLib.UI.Slider);
+                    importedTypes["ProgressBar"] = typeof(Ouro.StdLib.UI.ProgressBar);
+                    importedTypes["ComboBox"] = typeof(Ouro.StdLib.UI.ComboBox);
+                    importedTypes["NumericUpDown"] = typeof(Ouro.StdLib.UI.NumericUpDown);
+                    importedTypes["DatePicker"] = typeof(Ouro.StdLib.UI.DatePicker);
+                    importedTypes["ColorPicker"] = typeof(Ouro.StdLib.UI.ColorPicker);
+                    importedTypes["Theme"] = typeof(Ouro.StdLib.UI.Theme);
                     break;
                     
-                case "Ouroboros.StdLib.System":
+                case "Ouro.StdLib.System":
                     importedTypes["Console"] = typeof(System.Console);
                     importedTypes["DateTime"] = typeof(System.DateTime);
                     importedTypes["Environment"] = typeof(System.Environment);
                     break;
                     
-                case "Ouroboros.StdLib.Collections":
+                case "Ouro.StdLib.Collections":
                     // Don't register open generic types as they cause ContainsGenericParameters errors
                     // Instead register them only when used with specific type arguments
                     Console.WriteLine("DEBUG: Skipping generic collection types to avoid ContainsGenericParameters errors");
@@ -2390,7 +2390,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitProgram(Ouroboros.Core.AST.Program program)
+        public object VisitProgram(Ouro.Core.AST.Program program)
         {
             // SINGLE PASS: Compile everything in order but track function locations properly
             Console.WriteLine("DEBUG: Compiling program with proper function address tracking");
@@ -2475,35 +2475,35 @@ namespace Ouro.Core.Compiler
             }
         }
         
-        private void CompilePattern(Ouroboros.Core.AST.Pattern pattern)
+        private void CompilePattern(Ouro.Core.AST.Pattern pattern)
         {
             // Compile pattern matching logic
             switch (pattern)
             {
-                case Ouroboros.Core.AST.LiteralPattern literalPattern:
+                case Ouro.Core.AST.LiteralPattern literalPattern:
                     // Load the literal value for comparison
                     builder.Emit(Opcode.LoadConstant, builder.AddConstant(literalPattern.Value));
                     builder.Emit(Opcode.Equal);
                     break;
                     
-                case Ouroboros.Core.AST.ConstantPattern constantPattern:
+                case Ouro.Core.AST.ConstantPattern constantPattern:
                     // Load the constant value for comparison
                     builder.Emit(Opcode.LoadConstant, builder.AddConstant(constantPattern.Value));
                     builder.Emit(Opcode.Equal);
                     break;
                     
-                case Ouroboros.Core.AST.IdentifierPattern identifierPattern:
+                case Ouro.Core.AST.IdentifierPattern identifierPattern:
                     // Identifier pattern always matches, just bind the value
                     builder.Emit(Opcode.LoadTrue);
                     // The actual binding is handled in the match arm compilation
                     break;
                     
-                case Ouroboros.Core.AST.WildcardPattern:
+                case Ouro.Core.AST.WildcardPattern:
                     // Wildcard always matches
                     builder.Emit(Opcode.LoadTrue);
                     break;
                     
-                case Ouroboros.Core.AST.TupleMatchPattern tuplePattern:
+                case Ouro.Core.AST.TupleMatchPattern tuplePattern:
                     // Match tuple elements
                     foreach (var elementPattern in tuplePattern.Patterns)
                     {

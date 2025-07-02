@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.Parser;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Core;
-using Ouroboros.Core.AST;
-using Ouroboros.Tokens;
+using Ouro.Core.Lexer;
+using Ouro.Core.Parser;
+using Ouro.Core.Compiler;
+using Ouro.Core;
+using Ouro.Core.AST;
+using Ouro.Tokens;
 
-namespace Ouroboros.IDE
+namespace Ouro.IDE
 {
     /// <summary>
     /// Provides real-time diagnostics for Ouroboros code

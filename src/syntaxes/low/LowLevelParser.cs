@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Ouroboros.Core;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.Parser;
-using Ouroboros.Tokens;
+using Ouro.Core;
+using Ouro.Core.AST;
+using Ouro.Core.Lexer;
+using Ouro.Core.Parser;
+using Ouro.Tokens;
 
-namespace Ouroboros.Syntaxes.Low
+namespace Ouro.Syntaxes.Low
 {
     /// <summary>
     /// Parser for low-level Ouroboros syntax

@@ -1,6 +1,6 @@
 using System;
 
-namespace Ouroboros.Tokens
+namespace Ouro.Tokens
 {
     /// <summary>
     /// Represents a lexical token in the Ouroboros source code

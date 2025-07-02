@@ -1,7 +1,7 @@
 using System;
-using Ouroboros.StdLib.Math;
+using Ouro.StdLib.Math;
 
-namespace Ouroboros.StdLib.UI
+namespace Ouro.StdLib.UI
 {
     /// <summary>
     /// Built-in UI functions that can be called from Ouroboros code

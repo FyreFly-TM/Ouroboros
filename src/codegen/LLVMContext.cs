@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using LLVMSharp;
 using LLVMSharp.Interop;
 
-namespace Ouroboros.CodeGen
+namespace Ouro.CodeGen
 {
     /// <summary>
     /// Manages LLVM context and module creation for native code generation

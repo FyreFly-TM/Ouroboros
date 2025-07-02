@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Ouroboros.StdLib.Math;
+using Ouro.StdLib.Math;
 using System.Net.Http;
 
-namespace Ouroboros.StdLib.ML
+namespace Ouro.StdLib.ML
 {
     /// <summary>
     /// High-level machine learning DSL for Ouroboros

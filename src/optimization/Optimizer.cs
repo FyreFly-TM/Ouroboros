@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Core.VM;
-using Ouroboros.Tokens;
+using Ouro.Core;
+using Ouro.Core.AST;
+using Ouro.Core.Compiler;
+using Ouro.Core.VM;
+using Ouro.Tokens;
 
-namespace Ouroboros.Optimization
+namespace Ouro.Optimization
 {
     /// <summary>
     /// Main optimizer for Ouroboros AST and bytecode optimization

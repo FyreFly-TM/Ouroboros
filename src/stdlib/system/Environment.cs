@@ -6,9 +6,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Runtime.InteropServices;
-using Ouroboros.Core;
+using Ouro.Core;
 
-namespace Ouroboros.StdLib.System
+namespace Ouro.StdLib.System
 {
     /// <summary>
     /// Provides information about and means to manipulate the current environment and platform

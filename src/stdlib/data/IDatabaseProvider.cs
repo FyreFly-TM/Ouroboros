@@ -4,7 +4,7 @@ using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
 
-namespace Ouroboros.StdLib.Data
+namespace Ouro.StdLib.Data
 {
     /// <summary>
     /// Common interface for all database providers
@@ -41,12 +41,12 @@ namespace Ouroboros.StdLib.Data
     /// </summary>
     public class ColumnInfo
     {
-        public string Name { get; set; }
-        public string DataType { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string DataType { get; set; } = string.Empty;
         public int? MaxLength { get; set; }
-        public bool IsNullable { get; set; }
-        public string DefaultValue { get; set; }
-        public bool IsPrimaryKey { get; set; }
-        public string ColumnType { get; set; }
+        public bool IsNullable { get; set; } = false;
+        public string DefaultValue { get; set; } = string.Empty;
+        public bool IsPrimaryKey { get; set; } = false;
+        public string ColumnType { get; set; } = string.Empty;
     }
 } 

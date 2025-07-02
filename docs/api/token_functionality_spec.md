@@ -1,6 +1,6 @@
-# Ouroboros Token Functionality Specification
+# Ouro Token Functionality Specification
 
-This document provides comprehensive functionality specifications for every token type in the Ouroboros language.
+This document provides comprehensive functionality specifications for every token type in the Ouro language.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ This document provides comprehensive functionality specifications for every toke
 
 Full natural language programming with contextual understanding and intuitive syntax:
 
-```ouroboros
+```ouro
 @high
 module NaturalProgramming {
     // Natural language function definition with full context awareness
@@ -94,7 +94,7 @@ module NaturalProgramming {
 
 Complete modern programming features with advanced type system and control flow:
 
-```ouroboros
+```ouro
 @medium
 module ModernSyntax {
     // Advanced pattern matching with all features
@@ -187,7 +187,7 @@ module ModernSyntax {
 
 Full systems programming with manual memory control and zero-overhead abstractions:
 
-```ouroboros
+```ouro
 @low
 module SystemsProgramming {
     // Custom memory allocator with multiple strategies
@@ -305,7 +305,7 @@ module SystemsProgramming {
 
 Complete x86-64, ARM, RISC-V assembly integration:
 
-```ouroboros
+```ouro
 @asm
 module AssemblyIntegration {
     // Advanced SIMD operations with all instruction sets
@@ -455,7 +455,7 @@ module AssemblyIntegration {
 
 Full SPIR-V assembly for GPU compute and graphics:
 
-```ouroboros
+```ouro
 @asm spirv
 module SPIRVProgramming {
     // Advanced ray tracing with all extensions
@@ -609,7 +609,7 @@ module SPIRVProgramming {
 
 Complete inlining control with multiple strategies and heuristics:
 
-```ouroboros
+```ouro
 // Force inlining with guaranteed semantics
 @inline(always)
 function critical_fast_path<T>(data: T) -> T {
@@ -677,7 +677,7 @@ pub function library_fast_path() {
 
 Full compile-time computation with unlimited capabilities:
 
-```ouroboros
+```ouro
 // Generate perfect hash tables at compile time
 @compile_time
 function generate_keyword_table() -> PerfectHashTable<&'static str> {
@@ -773,7 +773,7 @@ function choose_algorithm<T>() -> AlgorithmChoice {
 
 Guaranteed zero-cost abstractions with proof:
 
-```ouroboros
+```ouro
 // Zero-cost error handling that compiles to goto
 @zero_cost
 enum Result<T, E> {
@@ -876,7 +876,7 @@ function verify_zero_cost() {
 
 Advanced metaprogramming with code emission:
 
-```ouroboros
+```ouro
 // Generate specialized functions for each numeric type
 @compile_time
 function generate_numeric_ops() {
@@ -995,7 +995,7 @@ function generate_builder<T: Struct>() {
 
 Advanced configuration with complex conditions:
 
-```ouroboros
+```ouro
 // Platform-specific optimizations
 @cfg(all(
     target_arch = "x86_64",
@@ -1058,7 +1058,7 @@ type LargeInt = u64;
 
 Functions with complete control over assembly:
 
-```ouroboros
+```ouro
 // Boot code with no prologue/epilogue
 @naked
 @no_stack
@@ -1173,7 +1173,7 @@ function trampoline() {
 
 Control over binary layout:
 
-```ouroboros
+```ouro
 // Place in specific memory section
 @section(".text.hot")
 function hot_path_function() {
@@ -1221,7 +1221,7 @@ static CONSTANT_STRING: &str = "Hello, Linux!";
 
 Complete GPU programming with all memory hierarchies and compute models:
 
-```ouroboros
+```ouro
 @gpu
 module GPUComputing {
     // GPU memory types with full control
@@ -1348,7 +1348,7 @@ module GPUComputing {
 
 Full GPU kernel capabilities with all optimization features:
 
-```ouroboros
+```ouro
 // Advanced kernel with all features
 @kernel
 @launch_bounds(256, 8)  // 256 threads per block, min 8 blocks per SM
@@ -1488,7 +1488,7 @@ function templated_kernel<T>(input: &[T], output: &mut [T]) {
 
 Complete shared memory functionality with all optimizations:
 
-```ouroboros
+```ouro
 @kernel
 function shared_memory_advanced() {
     // Static shared memory with bank conflict avoidance
@@ -1585,7 +1585,7 @@ function optimized_shared_memory() {
 
 Full SIMD capabilities across all platforms:
 
-```ouroboros
+```ouro
 // Platform-agnostic SIMD with automatic selection
 @simd
 module SIMDOperations {
@@ -1734,7 +1734,7 @@ module SIMDOperations {
 
 Complete parallel execution models with all scheduling strategies:
 
-```ouroboros
+```ouro
 @parallel
 module ParallelExecution {
     // Task parallelism with work stealing
@@ -1965,7 +1965,7 @@ module ParallelExecution {
 
 WebAssembly SIMD operations with full feature set:
 
-```ouroboros
+```ouro
 @wasm_simd
 module WasmSIMD {
     // WASM SIMD types
@@ -2052,7 +2052,7 @@ module WasmSIMD {
 }
 ```
 
-This comprehensive specification demonstrates the full functionality of every token type in the Ouroboros language. Each attribute and token is shown with advanced features including:
+This comprehensive specification demonstrates the full functionality of every token type in the Ouro language. Each attribute and token is shown with advanced features including:
 
 1. **Multiple syntax levels** with seamless integration
 2. **Advanced compilation attributes** for optimization and safety

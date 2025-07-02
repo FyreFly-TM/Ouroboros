@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Ouroboros.StdLib.Math;
+using Ouro.StdLib.Math;
 
-namespace Ouroboros.StdLib.UI
+namespace Ouro.StdLib.UI
 {
     /// <summary>
     /// Main window class for the Ouroboros UI framework

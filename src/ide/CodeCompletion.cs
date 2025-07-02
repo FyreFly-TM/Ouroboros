@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.Compiler;
+using Ouro.Core.AST;
+using Ouro.Core.Compiler;
 
-namespace Ouroboros.IDE
+namespace Ouro.IDE
 {
     /// <summary>
     /// Code completion provider for Ouroboros

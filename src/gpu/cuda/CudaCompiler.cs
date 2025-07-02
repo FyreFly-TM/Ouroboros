@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Ouroboros.GPU.CUDA
+namespace Ouro.GPU.CUDA
 {
     /// <summary>
     /// CUDA kernel compiler and PTX generation

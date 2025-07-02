@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core.AST;
-using Ouroboros.Tokens;
+using Ouro.Core.AST;
+using Ouro.Tokens;
 
-namespace Ouroboros.Core
+namespace Ouro.Core
 {
     /// <summary>
     /// Domain system for Ouroboros - enables scoped operator redefinition

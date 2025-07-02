@@ -5,14 +5,14 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.Parser;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Core.VM;
-using Ouroboros.Runtime;
-using Ouroboros.Tokens;
+using Ouro.Core.Lexer;
+using Ouro.Core.Parser;
+using Ouro.Core.Compiler;
+using Ouro.Core.VM;
+using Ouro.Runtime;
+using Ouro.Tokens;
 
-namespace Ouroboros.REPL
+namespace Ouro.REPL
 {
     /// <summary>
     /// Ouroboros REPL (Read-Eval-Print Loop)

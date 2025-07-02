@@ -2,7 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Ouroboros.StdLib.Crypto
+namespace Ouro.StdLib.Crypto
 {
     /// <summary>
     /// Cryptographic hashing functions

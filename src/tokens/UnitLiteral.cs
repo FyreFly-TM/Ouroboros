@@ -1,6 +1,6 @@
 using System;
 
-namespace Ouroboros.Tokens
+namespace Ouro.Tokens
 {
     /// <summary>
     /// Represents a numeric value with a physical unit (e.g., 120 V, 60 Hz)

@@ -4,7 +4,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 
-namespace Ouroboros.StdLib.Data.Mocks
+namespace Ouro.StdLib.Data.Mocks
 {
     // Mock factory base
     internal abstract class MockDbProviderFactory : DbProviderFactory
@@ -19,7 +19,7 @@ namespace Ouroboros.StdLib.Data.Mocks
     // Minimal mock implementations for testing
     internal abstract class MockDbConnection : DbConnection
     {
-        public override string ConnectionString { get; set; }
+        public override string ConnectionString { get; set; } = string.Empty;
         public abstract override string Database { get; }
         public abstract override string DataSource { get; }
         public abstract override string ServerVersion { get; }
@@ -34,14 +34,14 @@ namespace Ouroboros.StdLib.Data.Mocks
     
     internal class MockDbCommand : DbCommand
     {
-        public override string CommandText { get; set; }
-        public override int CommandTimeout { get; set; }
-        public override CommandType CommandType { get; set; }
-        public override bool DesignTimeVisible { get; set; }
-        public override UpdateRowSource UpdatedRowSource { get; set; }
-        protected override DbConnection DbConnection { get; set; }
+        public override string CommandText { get; set; } = string.Empty;
+        public override int CommandTimeout { get; set; } = 30;
+        public override CommandType CommandType { get; set; } = CommandType.Text;
+        public override bool DesignTimeVisible { get; set; } = false;
+        public override UpdateRowSource UpdatedRowSource { get; set; } = UpdateRowSource.None;
+        protected override DbConnection? DbConnection { get; set; }
         protected override DbParameterCollection DbParameterCollection { get; } = new MockDbParameterCollection();
-        protected override DbTransaction DbTransaction { get; set; }
+        protected override DbTransaction? DbTransaction { get; set; }
         
         public override void Cancel() { }
         public override int ExecuteNonQuery() => 0;
@@ -68,14 +68,14 @@ namespace Ouroboros.StdLib.Data.Mocks
     
     internal class MockDbParameter : DbParameter
     {
-        public override DbType DbType { get; set; }
-        public override ParameterDirection Direction { get; set; }
-        public override bool IsNullable { get; set; }
-        public override string ParameterName { get; set; }
-        public override string SourceColumn { get; set; }
-        public override object Value { get; set; }
-        public override bool SourceColumnNullMapping { get; set; }
-        public override int Size { get; set; }
+        public override DbType DbType { get; set; } = DbType.String;
+        public override ParameterDirection Direction { get; set; } = ParameterDirection.Input;
+        public override bool IsNullable { get; set; } = false;
+        public override string ParameterName { get; set; } = string.Empty;
+        public override string SourceColumn { get; set; } = string.Empty;
+        public override object? Value { get; set; }
+        public override bool SourceColumnNullMapping { get; set; } = false;
+        public override int Size { get; set; } = 0;
         public override void ResetDbType() { }
     }
     
@@ -110,7 +110,7 @@ namespace Ouroboros.StdLib.Data.Mocks
         public override void RemoveAt(int index) => parameters.RemoveAt(index);
         public override void RemoveAt(string parameterName) => parameters.RemoveAll(p => p.ParameterName == parameterName);
         protected override DbParameter GetParameter(int index) => parameters[index];
-        protected override DbParameter GetParameter(string parameterName) => parameters.FirstOrDefault(p => p.ParameterName == parameterName);
+        protected override DbParameter? GetParameter(string parameterName) => parameters.FirstOrDefault(p => p.ParameterName == parameterName);
         protected override void SetParameter(int index, DbParameter value) => parameters[index] = value;
         protected override void SetParameter(string parameterName, DbParameter value)
         {

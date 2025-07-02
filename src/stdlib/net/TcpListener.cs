@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Ouroboros.StdLib.Net
+namespace Ouro.StdLib.Net
 {
     /// <summary>
     /// TCP listener for creating server applications

@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.VM;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Tokens;
+using Ouro.Core.AST;
+using Ouro.Core.VM;
+using Ouro.Core.Compiler;
+using Ouro.Tokens;
 
-namespace Ouroboros.Core
+namespace Ouro.Core
 {
     /// <summary>
     /// Comprehensive attribute processor that implements actual functionality for all Ouroboros attributes
@@ -14,11 +14,11 @@ namespace Ouroboros.Core
     public class AttributeProcessor
     {
             private BytecodeBuilder builder;
-    private Ouroboros.Core.Compiler.SymbolTable symbols;
+    private Ouro.Core.Compiler.SymbolTable symbols;
     private Dictionary<string, object> attributeContext;
         private List<string> activeFeatures;
         
-        public AttributeProcessor(BytecodeBuilder builder, Ouroboros.Core.Compiler.SymbolTable symbols)
+        public AttributeProcessor(BytecodeBuilder builder, Ouro.Core.Compiler.SymbolTable symbols)
         {
             this.builder = builder;
             this.symbols = symbols;

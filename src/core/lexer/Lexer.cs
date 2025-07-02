@@ -1274,111 +1274,191 @@ namespace Ouro.Core.Lexer
             TokenType type = TokenType.IntegerLiteral;
             object value = null;
 
-            // Check for unsigned/long suffixes first
-            bool isUnsigned = false;
-            bool isLong = false;
+            // Check for Rust-style type suffixes (f32, f64, i8, i16, i32, i64, u8, u16, u32, u64, usize, isize)
+            string suffix = "";
+            int suffixStart = _current;
             
-            // Look for U/u and L/l suffixes (can be combined as UL or LU)
-            while (!IsAtEnd() && (Peek() == 'u' || Peek() == 'U' || Peek() == 'l' || Peek() == 'L'))
+            // First check for f32/f64 suffixes for floating point
+            if ((Peek() == 'f' || Peek() == 'F') && !IsAtEnd())
             {
-                if (Peek() == 'u' || Peek() == 'U')
+                char savedChar = Peek();
+                int savedPos = _current;
+                Advance(); // consume 'f'
+                
+                // Check for f32 or f64
+                if (Peek() == '3' && PeekNext() == '2')
                 {
-                    isUnsigned = true;
-                    Advance();
+                    Advance(); // consume '3'
+                    Advance(); // consume '2'
+                    suffix = "f32";
+                    type = TokenType.FloatLiteral;
+                    value = float.Parse(text, CultureInfo.InvariantCulture);
                 }
-                else if (Peek() == 'l' || Peek() == 'L')
+                else if (Peek() == '6' && PeekNext() == '4')
                 {
-                    isLong = true;
-                    Advance();
+                    Advance(); // consume '6'
+                    Advance(); // consume '4'
+                    suffix = "f64";
+                    type = TokenType.DoubleLiteral;
+                    value = double.Parse(text, CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    // Just 'f' suffix
+                    suffix = "f";
+                    type = TokenType.FloatLiteral;
+                    value = float.Parse(text, CultureInfo.InvariantCulture);
                 }
             }
+            // Check for integer type suffixes
+            else if ((Peek() == 'i' || Peek() == 'I' || Peek() == 'u' || Peek() == 'U') && !IsAtEnd())
+            {
+                bool isUnsigned = (Peek() == 'u' || Peek() == 'U');
+                Advance(); // consume 'i' or 'u'
+                
+                // Check for size suffix
+                if (Peek() == '8')
+                {
+                    Advance();
+                    suffix = isUnsigned ? "u8" : "i8";
+                    value = isUnsigned ? (object)byte.Parse(text) : (object)sbyte.Parse(text);
+                }
+                else if (Peek() == '1' && PeekNext() == '6')
+                {
+                    Advance(); Advance();
+                    suffix = isUnsigned ? "u16" : "i16";
+                    value = isUnsigned ? (object)ushort.Parse(text) : (object)short.Parse(text);
+                }
+                else if (Peek() == '3' && PeekNext() == '2')
+                {
+                    Advance(); Advance();
+                    suffix = isUnsigned ? "u32" : "i32";
+                    value = isUnsigned ? (object)uint.Parse(text) : (object)int.Parse(text);
+                }
+                else if (Peek() == '6' && PeekNext() == '4')
+                {
+                    Advance(); Advance();
+                    suffix = isUnsigned ? "u64" : "i64";
+                    value = isUnsigned ? (object)ulong.Parse(text) : (object)long.Parse(text);
+                }
+                else if (Peek() == 's' && PeekNext() == 'i' && _current + 2 < _source.Length && 
+                         _source[_current + 2] == 'z' && _current + 3 < _source.Length && 
+                         _source[_current + 3] == 'e')
+                {
+                    Advance(); Advance(); Advance(); Advance(); // consume "size"
+                    suffix = isUnsigned ? "usize" : "isize";
+                    value = isUnsigned ? (object)ulong.Parse(text) : (object)long.Parse(text);
+                }
+                else
+                {
+                    // Just 'u' or 'i' suffix - rewind
+                    _current = suffixStart;
+                }
+            }
+            
+            // If no Rust-style suffix was found, check for traditional C-style suffixes
+            if (suffix == "")
+            {
+                // Check for unsigned/long suffixes first
+                bool isUnsigned = false;
+                bool isLong = false;
+                
+                // Look for U/u and L/l suffixes (can be combined as UL or LU)
+                while (!IsAtEnd() && (Peek() == 'u' || Peek() == 'U' || Peek() == 'l' || Peek() == 'L'))
+                {
+                    if (Peek() == 'u' || Peek() == 'U')
+                    {
+                        isUnsigned = true;
+                        Advance();
+                    }
+                    else if (Peek() == 'l' || Peek() == 'L')
+                    {
+                        isLong = true;
+                        Advance();
+                    }
+                }
 
-            if (Peek() == 'f' || Peek() == 'F')
-            {
-                Advance();
-                type = TokenType.FloatLiteral;
-                value = float.Parse(text, CultureInfo.InvariantCulture);
-            }
-            else if (Peek() == 'd' || Peek() == 'D')
-            {
-                Advance();
-                type = TokenType.DoubleLiteral;
-                value = double.Parse(text, CultureInfo.InvariantCulture);
-            }
-            else if (Peek() == 'm' || Peek() == 'M')
-            {
-                Advance();
-                type = TokenType.DecimalLiteral;
-                value = decimal.Parse(text, CultureInfo.InvariantCulture);
-            }
-            else if (isHex)
-            {
-                type = TokenType.HexLiteral;
-                // Remove underscores and the 0x prefix before converting
-                string hexDigits = text.Substring(2).Replace("_", "");
-                if (isUnsigned && isLong)
-                    value = Convert.ToUInt64(hexDigits, 16);
-                else if (isUnsigned)
-                    value = Convert.ToUInt32(hexDigits, 16);
-                else if (isLong)
-                    value = Convert.ToInt64(hexDigits, 16);
-                else
-                    value = Convert.ToInt64(hexDigits, 16);
-            }
-            else if (isBinary)
-            {
-                type = TokenType.BinaryLiteral;
-                // Remove underscores and the 0b prefix before converting
-                string binaryDigits = text.Substring(2).Replace("_", "");
-                if (isUnsigned && isLong)
-                    value = Convert.ToUInt64(binaryDigits, 2);
-                else if (isUnsigned)
-                    value = Convert.ToUInt32(binaryDigits, 2);
-                else if (isLong)
-                    value = Convert.ToInt64(binaryDigits, 2);
-                else
-                    value = Convert.ToInt64(binaryDigits, 2);
-            }
-            else if (isOctal)
-            {
-                type = TokenType.OctalLiteral;
-                if (isUnsigned && isLong)
-                    value = Convert.ToUInt64(text, 8);
-                else if (isUnsigned)
-                    value = Convert.ToUInt32(text, 8);
-                else if (isLong)
-                    value = Convert.ToInt64(text, 8);
-                else
-                value = Convert.ToInt64(text, 8);
-            }
-            else if (isFloat)
-            {
-                type = TokenType.DoubleLiteral;
-                value = double.Parse(text, CultureInfo.InvariantCulture);
-            }
-            else
-            {
-                // Regular integer literal
-                try
+                if (Peek() == 'd' || Peek() == 'D')
                 {
+                    Advance();
+                    type = TokenType.DoubleLiteral;
+                    value = double.Parse(text, CultureInfo.InvariantCulture);
+                }
+                else if (Peek() == 'm' || Peek() == 'M')
+                {
+                    Advance();
+                    type = TokenType.DecimalLiteral;
+                    value = decimal.Parse(text, CultureInfo.InvariantCulture);
+                }
+                else if (isHex)
+                {
+                    type = TokenType.HexLiteral;
+                    // Remove underscores and the 0x prefix before converting
+                    string hexDigits = text.Substring(2).Replace("_", "");
                     if (isUnsigned && isLong)
-                        value = ulong.Parse(text);
+                        value = Convert.ToUInt64(hexDigits, 16);
                     else if (isUnsigned)
-                        value = uint.Parse(text);
+                        value = Convert.ToUInt32(hexDigits, 16);
                     else if (isLong)
-                        value = long.Parse(text);
+                        value = Convert.ToInt64(hexDigits, 16);
                     else
-                        value = long.Parse(text);
+                        value = Convert.ToInt64(hexDigits, 16);
                 }
-                catch (FormatException)
+                else if (isBinary)
                 {
-                    ReportError($"Invalid number format: '{text}' at line {_line}");
-                    value = 0L; // Default value
+                    type = TokenType.BinaryLiteral;
+                    // Remove underscores and the 0b prefix before converting
+                    string binaryDigits = text.Substring(2).Replace("_", "");
+                    if (isUnsigned && isLong)
+                        value = Convert.ToUInt64(binaryDigits, 2);
+                    else if (isUnsigned)
+                        value = Convert.ToUInt32(binaryDigits, 2);
+                    else if (isLong)
+                        value = Convert.ToInt64(binaryDigits, 2);
+                    else
+                        value = Convert.ToInt64(binaryDigits, 2);
                 }
-                catch (OverflowException)
+                else if (isOctal)
                 {
-                    ReportError($"Number overflow: '{text}' at line {_line}");
-                    value = 0L; // Default value
+                    type = TokenType.OctalLiteral;
+                    if (isUnsigned && isLong)
+                        value = Convert.ToUInt64(text, 8);
+                    else if (isUnsigned)
+                        value = Convert.ToUInt32(text, 8);
+                    else if (isLong)
+                        value = Convert.ToInt64(text, 8);
+                    else
+                        value = Convert.ToInt64(text, 8);
+                }
+                else if (isFloat)
+                {
+                    type = TokenType.DoubleLiteral;
+                    value = double.Parse(text, CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    // Regular integer literal
+                    try
+                    {
+                        if (isUnsigned && isLong)
+                            value = ulong.Parse(text);
+                        else if (isUnsigned)
+                            value = uint.Parse(text);
+                        else if (isLong)
+                            value = long.Parse(text);
+                        else
+                            value = long.Parse(text);
+                    }
+                    catch (FormatException)
+                    {
+                        ReportError($"Invalid number format: '{text}' at line {_line}");
+                        value = 0L; // Default value
+                    }
+                    catch (OverflowException)
+                    {
+                        ReportError($"Number overflow: '{text}' at line {_line}");
+                        value = 0L; // Default value
+                    }
                 }
             }
 
@@ -1946,6 +2026,7 @@ namespace Ouro.Core.Lexer
                 
                 // Concurrency
                 ["thread"] = TokenType.Thread,
+                ["thread_local"] = TokenType.ThreadLocal,
                 ["lock"] = TokenType.Lock,
                 ["atomic"] = TokenType.Atomic,
                 ["channel"] = TokenType.Channel,

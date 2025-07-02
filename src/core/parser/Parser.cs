@@ -2397,10 +2397,11 @@ namespace Ouro.Core.Parser
             
             try
             {
-                // Skip modifiers (volatile, static, const, readonly, atomic, etc.)
+                // Skip modifiers (volatile, static, const, readonly, atomic, thread_local, etc.)
                 while (Check(TokenType.Volatile) || Check(TokenType.Static) || Check(TokenType.Const) || 
                        Check(TokenType.Readonly) || Check(TokenType.Public) || Check(TokenType.Private) ||
-                       Check(TokenType.Protected) || Check(TokenType.Internal) || Check(TokenType.Atomic))
+                       Check(TokenType.Protected) || Check(TokenType.Internal) || Check(TokenType.Atomic) ||
+                       Check(TokenType.ThreadLocal))
                 {
                     Advance();
                 }
@@ -2479,7 +2480,8 @@ namespace Ouro.Core.Parser
             var modifiers = new List<Modifier>();
             while (Check(TokenType.Volatile) || Check(TokenType.Static) || Check(TokenType.Const) || 
                    Check(TokenType.Readonly) || Check(TokenType.Public) || Check(TokenType.Private) ||
-                   Check(TokenType.Protected) || Check(TokenType.Internal) || Check(TokenType.Atomic))
+                   Check(TokenType.Protected) || Check(TokenType.Internal) || Check(TokenType.Atomic) ||
+                   Check(TokenType.ThreadLocal))
             {
                 Console.WriteLine($"DEBUG: Found modifier: {Current().Type} '{Current().Lexeme}'");
                 var modifierToken = Advance();
@@ -2496,6 +2498,7 @@ namespace Ouro.Core.Parser
                     TokenType.Protected => Modifier.Protected,
                     TokenType.Internal => Modifier.Internal,
                     TokenType.Atomic => Modifier.Async, // Using Async as closest equivalent for now
+                    TokenType.ThreadLocal => Modifier.Static, // Using Static as closest equivalent for now
                     _ => throw new InvalidOperationException($"Unexpected modifier token: {modifierToken.Type}")
                 };
                 
@@ -2927,6 +2930,12 @@ namespace Ouro.Core.Parser
                 return new VariableDeclaration(varType, nameToken, initializerExpr, false, false);
             }
 
+            // Check for enhanced variable declarations like "var name: type = value;" first
+            if (Check(TokenType.Var))
+            {
+                return ParseVariableDeclarationEnhanced();
+            }
+
             // Variable declaration or expression statement
             if (PeekType() != null)
             {
@@ -3028,11 +3037,28 @@ namespace Ouro.Core.Parser
             if (Match(TokenType.Assembly, TokenType.SpirvAssembly)) return ParseAssemblyStatement();
 
             // Handle variable declarations in low-level mode - FIXED logic
-            if (Check(TokenType.Var) || IsVariableDeclarationPattern())
+            if (Check(TokenType.Var) || Check(TokenType.ThreadLocal) || IsVariableDeclarationPattern())
             {
                 if (Match(TokenType.Var))
                 {
                     var name = ConsumeIdentifierOrGreekLetter("Expected variable name after 'var'.");
+                    
+                    TypeNode type;
+                    if (Match(TokenType.Colon))
+                    {
+                        type = ParseType();
+                    }
+                    else
+                    {
+                        type = new TypeNode("var"); // Type inference
+                    }
+                    
+                    return ParseVariableDeclaration(type, name);
+                }
+                else if (Match(TokenType.ThreadLocal))
+                {
+                    // Handle thread_local variable declarations
+                    var name = ConsumeIdentifierOrGreekLetter("Expected variable name after 'thread_local'.");
                     
                     TypeNode type;
                     if (Match(TokenType.Colon))
@@ -3119,6 +3145,32 @@ namespace Ouro.Core.Parser
         private WhileStatement ParseWhileStatement()
         {
             var whileToken = Previous();
+            
+            // Check for Rust-style while-let pattern
+            // Example: while let Some(value) = channel.receive() { }
+            if (Match(TokenType.Let))
+            {
+                // Parse pattern matching in while
+                // For now, just consume the pattern and treat as regular while
+                ConsumeIdentifierOrGreekLetter("Expected pattern name.");
+                
+                if (Match(TokenType.LeftParen))
+                {
+                    // Pattern with parameters like Some(value)
+                    ConsumeIdentifierOrGreekLetter("Expected pattern parameter.");
+                    Consume(TokenType.RightParen, "Expected ')' after pattern parameter.");
+                }
+                
+                Consume(TokenType.Assign, "Expected '=' in while-let pattern.");
+                var letCondition = ParseExpression();
+                var letBody = ParseStatement();
+                
+                // For now, treat as regular while with the expression
+                // Full implementation would support pattern matching
+                return new WhileStatement(whileToken, letCondition, letBody);
+            }
+            
+            // Traditional while loop
             Consume(TokenType.LeftParen, "Expected '(' after 'while'.");
             var condition = ParseExpression();
             Consume(TokenType.RightParen, "Expected ')' after condition.");
@@ -3144,24 +3196,60 @@ namespace Ouro.Core.Parser
         {
             var forToken = Previous();
             
-            // Check for Rust-style for loop: "for i in range"
-            if (Check(TokenType.Identifier) && PeekNext() != null && PeekNext().Type == TokenType.In)
+            // Check for Rust-style for loop: "for i in range" or "for i, j in range"
+            if (Check(TokenType.Identifier))
             {
-                // Parse as range-based for loop
-                var iteratorName = ConsumeIdentifierOrGreekLetter("Expected iterator variable name.");
-                Consume(TokenType.In, "Expected 'in' after iterator variable.");
-                var rangeExpression = ParseExpression(); // Parse the range (e.g., 0..a.len())
+                // Look ahead to see if this is a Rust-style for loop
+                var currentPos = _current;
+                bool isRustStyleFor = false;
                 
-                var rangeBody = ParseStatement();
+                // Consume identifier(s)
+                Advance(); // first identifier
                 
-                // Convert range-based for loop to foreach statement
-                var iteratorType = new TypeNode("int"); // Assume int type for range iteration
-                var forEach = new ForEachStatement(forToken, iteratorType, iteratorName, rangeExpression, rangeBody);
+                // Check for comma-separated identifiers
+                while (Check(TokenType.Comma))
+                {
+                    Advance(); // comma
+                    if (Check(TokenType.Identifier))
+                    {
+                        Advance(); // next identifier
+                    }
+                }
                 
-                // For now, return a ForStatement that wraps the ForEach behavior
-                // In a full implementation, we'd have proper range iteration support
-                var init = new VariableDeclaration(iteratorType, iteratorName, null, false, false);
-                return new ForStatement(forToken, init, null, null, rangeBody);
+                // Now check if we have 'in' keyword
+                if (Check(TokenType.In))
+                {
+                    isRustStyleFor = true;
+                }
+                
+                // Restore position
+                _current = currentPos;
+                
+                if (isRustStyleFor)
+                {
+                    // Parse as range-based for loop
+                    var iteratorName = ConsumeIdentifierOrGreekLetter("Expected iterator variable name.");
+                    
+                    // Handle additional iterators (tuple destructuring)
+                    while (Match(TokenType.Comma))
+                    {
+                        ConsumeIdentifierOrGreekLetter("Expected additional iterator variable name.");
+                    }
+                    
+                    Consume(TokenType.In, "Expected 'in' after iterator variable(s).");
+                    var rangeExpression = ParseExpression(); // Parse the range (e.g., 0..a.len())
+                    
+                    var rangeBody = ParseStatement();
+                    
+                    // Convert range-based for loop to foreach statement
+                    var iteratorType = new TypeNode("var"); // Use var for type inference
+                    var forEach = new ForEachStatement(forToken, iteratorType, iteratorName, rangeExpression, rangeBody);
+                    
+                    // For now, return a ForStatement that wraps the ForEach behavior
+                    // In a full implementation, we'd have proper range iteration support
+                    var init = new VariableDeclaration(iteratorType, iteratorName, null, false, false);
+                    return new ForStatement(forToken, init, null, null, rangeBody);
+                }
             }
             
             // Traditional C-style for loop
@@ -3541,25 +3629,31 @@ namespace Ouro.Core.Parser
         
         private ForEachStatement ParseRangeBasedForLoop()
         {
-            var forToken = Advance(); // consume 'for'
+            var forToken = Previous(); // We already consumed 'for'
+            
+            // Parse iterator variable(s)
+            // Support both single iterator and tuple destructuring:
+            // - for i in 0..10
+            // - for i, value in items.enumerate()
             var iteratorName = ConsumeIdentifierOrGreekLetter("Expected iterator variable name.");
+            
+            // Check for multiple iterators (tuple destructuring)
+            if (Match(TokenType.Comma))
+            {
+                // For now, just consume the second iterator and treat as simple foreach
+                // Full implementation would support tuple destructuring
+                ConsumeIdentifierOrGreekLetter("Expected second iterator variable name.");
+            }
+            
             Consume(TokenType.In, "Expected 'in' after iterator variable.");
             var rangeExpression = ParseExpression(); // Parse the range (e.g., 0..256)
             
-            Consume(TokenType.LeftBrace, "Expected '{' after range expression.");
-            
-            // Parse block statements in low-level mode to ensure proper context
-            var statements = new List<Statement>();
-            while (!Check(TokenType.RightBrace) && !IsAtEnd())
-            {
-                statements.Add(ParseLowLevelStatement());
-            }
-            Consume(TokenType.RightBrace, "Expected '}' after block.");
-            var body = new BlockStatement(statements);
+            // Parse the body
+            var body = ParseStatement();
             
             // Convert range-based for loop to foreach statement
             // This treats the range as a collection to iterate over
-            var iteratorType = new TypeNode("int"); // Assume int type for range iteration
+            var iteratorType = new TypeNode("var"); // Use var for type inference
             return new ForEachStatement(forToken, iteratorType, iteratorName, rangeExpression, body);
         }
         
@@ -5149,7 +5243,8 @@ namespace Ouro.Core.Parser
             }
             
             // Allow contextual keywords as identifiers in expressions
-            if (Match(TokenType.Data, TokenType.Component, TokenType.System, TokenType.Entity))
+            if (Match(TokenType.Data, TokenType.Component, TokenType.System, TokenType.Entity,
+                     TokenType.Channel, TokenType.Thread, TokenType.Lock, TokenType.Atomic))
             {
                 var token = Previous();
                 return new IdentifierExpression(new Token(TokenType.Identifier, token.Lexeme, null,
@@ -5183,14 +5278,13 @@ namespace Ouro.Core.Parser
                     }
                 }
                 
-                // Check if this is a tuple literal by looking for comma after first expression
-                var tupleCheckPosition = _current;
-                var firstExpr = ParseExpression();
+                // Parse the expression inside parentheses
+                var innerExpr = ParseExpression();
                 
-                // If we find a comma, this is a tuple literal
+                // Check if this is a tuple literal by looking for comma after first expression
                 if (Match(TokenType.Comma))
                 {
-                    var tupleElements = new List<Expression> { firstExpr };
+                    var tupleElements = new List<Expression> { innerExpr };
                     
                     // Parse additional tuple elements
                     do
@@ -5208,7 +5302,7 @@ namespace Ouro.Core.Parser
                 {
                     // This is a regular grouping expression
                     Consume(TokenType.RightParen, "Expected ')' after expression.");
-                    return firstExpr;
+                    return innerExpr; // Return the inner expression directly
                 }
             }
 
@@ -6195,6 +6289,11 @@ namespace Ouro.Core.Parser
             {
                 typeName = Previous().Lexeme;
             }
+            // Handle keywords that can be used as types with generics
+            else if (Match(TokenType.Channel, TokenType.Thread, TokenType.Lock, TokenType.Atomic))
+            {
+                typeName = Previous().Type.ToString();
+            }
             else if (Check(TokenType.Identifier))
             {
                 // Special check: don't consume 'trait' if it looks like a trait declaration
@@ -6705,6 +6804,10 @@ namespace Ouro.Core.Parser
                 Check(TokenType.System) || Check(TokenType.Component) || Check(TokenType.Entity) ||
                 Check(TokenType.UnionKeyword) ||  // Allow 'union' as variable name
                 Check(TokenType.Limit) ||          // Allow 'limit' as variable name
+                Check(TokenType.Channel) ||        // Allow 'Channel' as variable name
+                Check(TokenType.Thread) ||         // Allow 'Thread' as variable name
+                Check(TokenType.Lock) ||           // Allow 'Lock' as variable name
+                Check(TokenType.Atomic) ||         // Allow 'Atomic' as variable name
                 IsGreekLetterOrMathSymbol(Current().Type))
             {
                 return Advance();

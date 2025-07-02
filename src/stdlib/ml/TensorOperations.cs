@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Ouroboros.StdLib.ML
+namespace Ouro.StdLib.ML
 {
     /// <summary>
     /// Core tensor operations for machine learning

@@ -4,13 +4,13 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using LLVMSharp;
 using LLVMSharp.Interop;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.Compiler;
-using Ouroboros.Core.VM;
-using Ouroboros.Tokens;
+using Ouro.Core.AST;
+using Ouro.Core.Compiler;
+using Ouro.Core.VM;
+using Ouro.Tokens;
 using System.Linq;
 
-namespace Ouroboros.CodeGen
+namespace Ouro.CodeGen
 {
     /// <summary>
     /// LLVM backend for native code generation

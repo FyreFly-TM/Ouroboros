@@ -4,10 +4,10 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using LLVMSharp;
 using LLVMSharp.Interop;
-using Ouroboros.Core.VM;
-using Ouroboros.Core.AST;
+using Ouro.Core.VM;
+using Ouro.Core.AST;
 
-namespace Ouroboros.CodeGen
+namespace Ouro.CodeGen
 {
     /// <summary>
     /// Builds LLVM IR from Ouroboros bytecode and AST
@@ -43,17 +43,9 @@ namespace Ouroboros.CodeGen
 
         private void DeclareRuntimeFunction(string name, LLVMTypeRef returnType, params LLVMTypeRef[] paramTypes)
         {
-            unsafe
-            {
-                fixed (LLVMTypeRef* pParamTypes = paramTypes)
-                {
-                    var functionType = LLVM.FunctionType(returnType, (LLVMOpaqueType**)pParamTypes, (uint)paramTypes.Length, 0);
-                    var namePtr = System.Runtime.InteropServices.Marshal.StringToHGlobalAnsi(name);
-                    var function = LLVM.AddFunction(llvmContext.Module, (sbyte*)namePtr, functionType);
-                    functions[name] = function;
-                    System.Runtime.InteropServices.Marshal.FreeHGlobal(namePtr);
-                }
-            }
+            var functionType = LLVM.FunctionType(returnType, paramTypes, false);
+            var function = LLVM.AddFunction(llvmContext.Module, name, functionType);
+            functions[name] = function;
         }
 
         public void BuildFunction(FunctionDeclaration funcDecl, byte[] bytecode)

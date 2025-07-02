@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Ouroboros.Core;
-using Ouroboros.Core.Lexer;
-using Ouroboros.Core.AST;
-using Ouroboros.Core.Parser;
-using Ouroboros.Tokens;
+using Ouro.Core;
+using Ouro.Core.Lexer;
+using Ouro.Core.AST;
+using Ouro.Core.Parser;
+using Ouro.Tokens;
 
-namespace Ouroboros.Syntaxes.Medium
+namespace Ouro.Syntaxes.Medium
 {
     /// <summary>
     /// Parser for medium-level syntax - traditional C-like syntax

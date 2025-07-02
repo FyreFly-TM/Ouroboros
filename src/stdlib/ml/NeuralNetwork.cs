@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Math = System.Math;
 
-namespace Ouroboros.StdLib.ML
+namespace Ouro.StdLib.ML
 {
     /// <summary>
     /// Layer interface for neural networks

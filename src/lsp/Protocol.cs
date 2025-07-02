@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace Ouroboros.LSP
+namespace Ouro.LSP
 {
     /// <summary>
     /// JSON-RPC message
