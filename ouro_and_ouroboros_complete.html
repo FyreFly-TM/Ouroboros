@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ouro & OUROBOROS - Revolutionary Programming Language & Graphics API</title>
+    <style>
+        :root {
+            --primary: #8B5CF6;
+            --secondary: #EC4899;
+            --accent: #10B981;
+            --dark: #0F172A;
+            --darker: #020617;
+            --light: #F8FAFC;
+            --gray: #64748B;
+            --code-bg: #1E293B;
+            --gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--darker);
+            color: var(--light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            color: var(--light);
+            text-decoration: none;
+            transition: color 0.3s;
+            font-weight: 500;
+        }
+
+        nav a:hover {
+            color: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+            padding: 2rem;
+            margin-top: 60px;
+        }
+
+        .hero-content {
+            text-align: center;
+            max-width: 1000px;
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 6rem);
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            font-weight: 900;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: var(--gray);
+            margin-bottom: 2rem;
+        }
+
+        .hero-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+
+        /* Sections */
+        section {
+            padding: 5rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 3rem;
+            margin-bottom: 3rem;
+            text-align: center;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Code Blocks */
+        .code-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .code-comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .code-block {
+            background: var(--code-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .code-block h4 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        pre {
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .code-bad {
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        .code-good {
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
+        /* Tables */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .comparison-table th {
+            background: rgba(139, 92, 246, 0.2);
+            font-weight: 600;
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .check { color: var(--accent); }
+        .cross { color: #EF4444; }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .feature-box {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-box h3 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        /* Syntax Examples */
+        .syntax-showcase {
+            background: var(--code-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .syntax-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .syntax-tab {
+            padding: 0.5rem 1rem;
+            background: none;
+            border: none;
+            color: var(--gray);
+            cursor: pointer;
+            transition: color 0.3s;
+            font-size: 1rem;
+        }
+
+        .syntax-tab.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            margin-bottom: -2px;
+        }
+
+        .syntax-content {
+            display: none;
+        }
+
+        .syntax-content.active {
+            display: block;
+        }
+
+        /* Mathematical Notation */
+        .math-notation {
+            background: rgba(139, 92, 246, 0.1);
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+            text-align: center;
+            font-size: 1.2rem;
+            font-family: 'Times New Roman', serif;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--gradient);
+            transform: translateX(-50%);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin: 2rem 0;
+            width: 45%;
+        }
+
+        .timeline-item:nth-child(odd) {
+            margin-left: auto;
+            text-align: left;
+        }
+
+        .timeline-item:nth-child(even) {
+            text-align: right;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            top: 0;
+        }
+
+        .timeline-item:nth-child(odd)::before {
+            left: -10px;
+        }
+
+        .timeline-item:nth-child(even)::before {
+            right: -10px;
+        }
+
+        @media (max-width: 768px) {
+            .timeline::before {
+                left: 20px;
+            }
+            
+            .timeline-item {
+                width: 100%;
+                margin-left: 40px !important;
+                text-align: left !important;
+            }
+            
+            .timeline-item::before {
+                left: -30px !important;
+            }
+        }
+
+        /* Architecture Diagram */
+        .architecture {
+            background: var(--code-bg);
+            border-radius: 16px;
+            padding: 3rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .arch-layer {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s;
+        }
+
+        .arch-layer:hover {
+            transform: scale(1.02);
+            border-color: var(--primary);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--gray);
+        }
+
+        /* Utility Classes */
+        .gradient-text {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .highlight {
+            background: rgba(139, 92, 246, 0.2);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .warning {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 3rem;
+            }
+            
+            section {
+                padding: 3rem 1rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#language">Language</a></li>
+            <li><a href="#graphics">Graphics</a></li>
+            <li><a href="#architecture">Architecture</a></li>
+            <li><a href="#comparison">Comparison</a></li>
+            <li><a href="#examples">Examples</a></li>
+            <li><a href="#future">Future</a></li>
+        </ul>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="hero-content">
+            <h1>Ouro & OUROBOROS</h1>
+            <p class="hero-subtitle">The Revolutionary Programming Language & Graphics API That Will Replace C/C++ and Vulkan</p>
+            
+            <div class="hero-features">
+                <div class="feature-card">
+                    <h3>🔥 Multi-Paradigm</h3>
+                    <p>Natural language to assembly in one language</p>
+                </div>
+                <div class="feature-card">
+                    <h3>∞ Mathematical</h3>
+                    <p>Native mathematical notation and operators</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🚀 Zero-Overhead</h3>
+                    <p>Performance that matches or beats C/C++</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🧠 AI-Powered</h3>
+                    <p>CTM + DGM intelligent compilation</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overview Section -->
+    <section id="overview">
+        <h2 class="section-title">Revolutionary Overview</h2>
+        
+        <div class="feature-grid">
+            <div class="feature-box">
+                <h3>What is Ouro?</h3>
+                <p>Ouro is a revolutionary multi-paradigm programming language designed to replace C/C++ entirely. It features:</p>
+                <ul>
+                    <li>Four syntax levels: @high (natural language), @medium (modern), @low (systems), @asm (assembly)</li>
+                    <li>Native mathematical notation with Greek symbols</li>
+                    <li>Zero-copy shared memory architecture</li>
+                    <li>Built-in GPU programming</li>
+                    <li>Compile-time metaprogramming</li>
+                </ul>
+            </div>
+            
+            <div class="feature-box">
+                <h3>What is OUROBOROS?</h3>
+                <p>OUROBOROS is the next-generation graphics API that makes Vulkan obsolete:</p>
+                <ul>
+                    <li>10x less code than Vulkan</li>
+                    <li>Automatic state management</li>
+                    <li>Built-in physics simulation</li>
+                    <li>Domain-specific graphics languages</li>
+                    <li>CTM-powered optimization</li>
+                </ul>
+            </div>
+            
+            <div class="feature-box">
+                <h3>The Ecosystem</h3>
+                <p>A complete development ecosystem:</p>
+                <ul>
+                    <li><strong>Chimera</strong>: Multi-target compiler</li>
+                    <li><strong>Hydra</strong>: Intelligent IDE</li>
+                    <li><strong>Nyx Engine</strong>: Next-gen game engine</li>
+                    <li><strong>CTM/DGM</strong>: AI compilation system</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Language Features Section -->
+    <section id="language">
+        <h2 class="section-title">Ouro Language Features</h2>
+        
+        <div class="syntax-showcase">
+            <div class="syntax-tabs">
+                <button class="syntax-tab active" onclick="showSyntax('high')">@high Natural</button>
+                <button class="syntax-tab" onclick="showSyntax('medium')">@medium Modern</button>
+                <button class="syntax-tab" onclick="showSyntax('low')">@low Systems</button>
+                <button class="syntax-tab" onclick="showSyntax('asm')">@asm Assembly</button>
+            </div>
+            
+            <div id="high-syntax" class="syntax-content active">
+                <pre><code>@high
+name := "Ouroboros"
+version := 2.0
+
+// Natural language syntax
+if version is greater than 1.5 then
+    print $"Advanced version {version} detected"
+end if
+
+// Natural loops
+repeat 3 times
+    print $"Natural syntax feels intuitive!"
+end repeat
+
+// Mathematical operations
+numbers := [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+evens := all even numbers from numbers
+total := sum of all numbers
+
+// Collection operations
+if 5 ∈ numbers then
+    print $"5 is in the collection"
+end if</code></pre>
+            </div>
+            
+            <div id="medium-syntax" class="syntax-content">
+                <pre><code>@medium
+// Modern operators
+var result = base ** exponent;     // Power operator
+var division = 17 // 3;            // Integer division
+var comparison = 10 <=> 20;        // Spaceship operator
+
+// Null safety
+string? nullable = null;
+var safe = nullable ?? "default";
+var length = nullable?.Length ?? 0;
+
+// Pattern matching
+var point = (3, 4);
+var classification = point match {
+    (0, 0) => "Origin",
+    (x, 0) => $"On X axis at {x}",
+    (0, y) => $"On Y axis at {y}",
+    (x, y) when x == y => "On diagonal",
+    _ => "Somewhere else"
+};</code></pre>
+            </div>
+            
+            <div id="low-syntax" class="syntax-content">
+                <pre><code>@low
+// Zero-overhead abstractions
+@inline(always)
+@zero_cost
+struct Vector3 {
+    x, y, z: float;
+    
+    operator [](index: int) -> float {
+        return (&x)[index];
+    }
+}
+
+// Manual memory management
+unsafe {
+    var buffer: *char = stackalloc char[256];
+    var heap: *u8 = malloc<u8>(1024);
+    
+    // Bit manipulation
+    var flags: u32 = 0b1010_1010;
+    flags |= 1u << 3;    // Set bit 3
+    flags &= ~(1u << 5); // Clear bit 5
+    
+    free(heap);
+}</code></pre>
+            </div>
+            
+            <div id="asm-syntax" class="syntax-content">
+                <pre><code>@asm
+var result: i32 = 0;
+
+assembly {
+    mov rax, [&my_variable]  // Direct variable access
+    add rax, 100
+    mov [&result], rax       // Store back to Ouro
+}
+
+// SIMD operations
+assembly {
+    movaps xmm0, [&vector_a]
+    movaps xmm1, [&vector_b]
+    addps xmm0, xmm1
+    movaps [&vector_result], xmm0
+}</code></pre>
+            </div>
+        </div>
+
+        <h3>Mathematical Notation & Domains</h3>
+        <div class="math-notation">
+            <p>L₀ = Lₑ + ∫[Ω] f_r(ωᵢ, ω₀) × Lᵢ(ωᵢ) × (n · ωᵢ) dωᵢ</p>
+            <p>∇²φ = 0 &nbsp;&nbsp;&nbsp; ∂v/∂t + (v · ∇)v = -∇p + ν∇²v</p>
+        </div>
+
+        <div class="code-block">
+            <h4>Domain-Specific Programming</h4>
+            <pre><code>domain Physics {
+    × means cross_product for Vector3;
+    · means dot_product for Vector3;
+    ∇ means gradient_operator;
+    ∂ means partial_derivative;
+}
+
+domain Statistics {
+    μ means mean;
+    σ means standard_deviation;
+    σ² means variance;
+    ρ means correlation;
+}
+
+// Usage
+using Physics {
+    torque = r × F;  // Cross product
+    work = F · d;    // Dot product
+    gradient = ∇f;   // Gradient
+}</code></pre>
+        </div>
+    </section>
+
+    <!-- Language Comparison -->
+    <section id="comparison">
+        <h2 class="section-title">Language Comparison</h2>
+        
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Ouro</th>
+                    <th>C++</th>
+                    <th>Rust</th>
+                    <th>Zig</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Memory Safety</td>
+                    <td><span class="check">✓</span> Ownership + RAII</td>
+                    <td><span class="cross">✗</span> Manual</td>
+                    <td><span class="check">✓</span> Borrow checker</td>
+                    <td><span class="cross">✗</span> Manual</td>
+                </tr>
+                <tr>
+                    <td>Zero-Cost Abstractions</td>
+                    <td><span class="check">✓</span> Guaranteed</td>
+                    <td><span class="check">✓</span> Usually</td>
+                    <td><span class="check">✓</span> Yes</td>
+                    <td><span class="check">✓</span> Yes</td>
+                </tr>
+                <tr>
+                    <td>Compile Time</td>
+                    <td><span class="check">✓</span> Incremental + CTM</td>
+                    <td><span class="cross">✗</span> Slow</td>
+                    <td><span class="cross">✗</span> Very slow</td>
+                    <td><span class="check">✓</span> Fast</td>
+                </tr>
+                <tr>
+                    <td>Mathematical Notation</td>
+                    <td><span class="check">✓</span> Native</td>
+                    <td><span class="cross">✗</span> None</td>
+                    <td><span class="cross">✗</span> None</td>
+                    <td><span class="cross">✗</span> None</td>
+                </tr>
+                <tr>
+                    <td>Multi-Paradigm</td>
+                    <td><span class="check">✓</span> 4 levels</td>
+                    <td><span class="cross">✗</span> Single</td>
+                    <td><span class="cross">✗</span> Single</td>
+                    <td><span class="cross">✗</span> Single</td>
+                </tr>
+                <tr>
+                    <td>GPU Programming</td>
+                    <td><span class="check">✓</span> Built-in</td>
+                    <td><span class="cross">✗</span> External</td>
+                    <td><span class="cross">✗</span> External</td>
+                    <td><span class="cross">✗</span> External</td>
+                </tr>
+                <tr>
+                    <td>Units System</td>
+                    <td><span class="check">✓</span> Type-safe</td>
+                    <td><span class="cross">✗</span> None</td>
+                    <td><span class="cross">✗</span> Library</td>
+                    <td><span class="cross">✗</span> None</td>
+                </tr>
+                <tr>
+                    <td>AI-Assisted Compilation</td>
+                    <td><span class="check">✓</span> CTM/DGM</td>
+                    <td><span class="cross">✗</span> None</td>
+                    <td><span class="cross">✗</span> None</td>
+                    <td><span class="cross">✗</span> None</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="code-comparison">
+            <div class="code-block code-bad">
+                <h4>C++ (Verbose & Unsafe)</h4>
+                <pre><code>// Memory management nightmare
+class ResourceManager {
+    std::vector<std::unique_ptr<Resource>> resources;
+    std::mutex resource_mutex;
+public:
+    void addResource(std::unique_ptr<Resource> res) {
+        std::lock_guard<std::mutex> lock(resource_mutex);
+        resources.push_back(std::move(res));
+    }
+    // Rule of 5 boilerplate...
+};</code></pre>
+            </div>
+            
+            <div class="code-block code-good">
+                <h4>Ouro (Clean & Safe)</h4>
+                <pre><code>// Automatic memory management
+struct ResourceManager {
+    resources: [Resource];
+    
+    function add_resource(res: Resource) {
+        resources << res;  // Thread-safe by default
+    }
+    // Automatic RAII, no boilerplate!
+}</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Graphics Section -->
+    <section id="graphics">
+        <h2 class="section-title">OUROBOROS Graphics Revolution</h2>
+        
+        <div class="code-comparison">
+            <div class="code-block code-bad">
+                <h4>Vulkan (1000+ lines for triangle)</h4>
+                <pre><code>// Just the initialization...
+VkApplicationInfo appInfo{};
+appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+appInfo.pApplicationName = "Triangle";
+appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+
+VkInstanceCreateInfo createInfo{};
+createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+createInfo.pApplicationInfo = &appInfo;
+
+// ... 950+ more lines of boilerplate</code></pre>
+            </div>
+            
+            <div class="code-block code-good">
+                <h4>OUROBOROS (10 lines for triangle)</h4>
+                <pre><code>@gpu {
+    triangle := Triangle([
+        Vertex(-0.5, -0.5, Color.Red),
+        Vertex(0.5, -0.5, Color.Green),
+        Vertex(0.0, 0.5, Color.Blue)
+    ]);
+    
+    render(triangle);
+}</code></pre>
+            </div>
+        </div>
+
+        <h3>Graphics Features Comparison</h3>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>OUROBOROS</th>
+                    <th>Vulkan</th>
+                    <th>OpenGL</th>
+                    <th>DirectX 12</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Lines for Triangle</td>
+                    <td><span class="check">~10</span></td>
+                    <td><span class="cross">~1000</span></td>
+                    <td><span class="cross">~200</span></td>
+                    <td><span class="cross">~800</span></td>
+                </tr>
+                <tr>
+                    <td>Memory Management</td>
+                    <td><span class="check">Automatic</span></td>
+                    <td><span class="cross">Manual</span></td>
+                    <td><span class="cross">Manual</span></td>
+                    <td><span class="cross">Manual</span></td>
+                </tr>
+                <tr>
+                    <td>State Management</td>
+                    <td><span class="check">CTM-Managed</span></td>
+                    <td><span class="cross">Manual</span></td>
+                    <td><span class="cross">Global State</span></td>
+                    <td><span class="cross">Manual</span></td>
+                </tr>
+                <tr>
+                    <td>Shader Language</td>
+                    <td><span class="check">OBSL (Math notation)</span></td>
+                    <td><span class="cross">GLSL/HLSL</span></td>
+                    <td><span class="cross">GLSL</span></td>
+                    <td><span class="cross">HLSL</span></td>
+                </tr>
+                <tr>
+                    <td>Built-in Physics</td>
+                    <td><span class="check">✓ Poseidon/Hades</span></td>
+                    <td><span class="cross">✗</span></td>
+                    <td><span class="cross">✗</span></td>
+                    <td><span class="cross">✗</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Simulation Systems</h3>
+        <div class="feature-grid">
+            <div class="feature-box">
+                <h3>🌊 Poseidon (Fluids)</h3>
+                <pre><code>domain Fluids {
+    ∇²u = 0  // Laplace equation
+    ∂v/∂t + (v·∇)v = -∇p + ν∇²v
+    
+    // Automatic GPU acceleration
+    simulate ocean_waves;
+}</code></pre>
+            </div>
+            
+            <div class="feature-box">
+                <h3>🔥 Hades (Fire/Pyro)</h3>
+                <pre><code>domain Pyro {
+    temperature += combustion_rate × fuel;
+    smoke_density = f(temperature, time);
+    
+    // ML-powered upscaling
+    @ml_enhance resolution: 4x;
+}</code></pre>
+            </div>
+            
+            <div class="feature-box">
+                <h3>⚡ Zeus (Particles)</h3>
+                <pre><code>domain Particles {
+    @parallel for each particle {
+        apply_forces();
+        integrate_position(dt);
+        check_collisions();
+    }
+}</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section id="architecture">
+        <h2 class="section-title">System Architecture</h2>
+        
+        <div class="architecture">
+            <div class="arch-layer">
+                <h3>Hydra IDE</h3>
+                <p>Intelligent development environment with live code analysis</p>
+            </div>
+            <div class="arch-layer">
+                <h3>Ouro Language</h3>
+                <p>Multi-paradigm syntax levels: @high → @medium → @low → @asm</p>
+            </div>
+            <div class
+<div class="arch-layer">
+               <h3>Chimera Compiler + CTM/DGM</h3>
+               <p>Multi-target compilation with AI-powered optimization</p>
+           </div>
+           <div class="arch-layer">
+               <h3>OUROBOROS Graphics API</h3>
+               <p>Next-gen graphics with built-in physics simulation</p>
+           </div>
+           <div class="arch-layer">
+               <h3>Hardware Targets</h3>
+               <p>CPU, GPU, TPU, NPU - Unified programming model</p>
+           </div>
+       </div>
+
+       <h3>CTM/DGM System</h3>
+       <div class="feature-grid">
+           <div class="feature-box">
+               <h3>🧠 CTM (Continuous Thought Machine)</h3>
+               <p>The "brain" of the system:</p>
+               <ul>
+                   <li>Persistent context management</li>
+                   <li>Cross-session learning</li>
+                   <li>Optimization strategy planning</li>
+                   <li>Multi-agent reasoning</li>
+               </ul>
+           </div>
+           
+           <div class="feature-box">
+               <h3>💪 DGM (Dynamic Generative Module)</h3>
+               <p>The "muscle" of the system:</p>
+               <ul>
+                   <li>Parallel task execution</li>
+                   <li>Code generation</li>
+                   <li>Real-time optimization</li>
+                   <li>Hardware-specific compilation</li>
+               </ul>
+           </div>
+       </div>
+   </section>
+
+   <!-- Examples Section -->
+   <section id="examples">
+       <h2 class="section-title">Revolutionary Examples</h2>
+       
+       <h3>Multi-Target Hardware Programming</h3>
+       <div class="code-block">
+           <h4>Hardware-Specific Optimization</h4>
+           <pre><code>function update_physics() {
+   @target GPU {
+       // Water simulation on GPU
+       poseidon.simulate_fluids(ocean_data);
+   }
+   
+   @target CPU {
+       // Game logic on CPU
+       update_entity_states();
+   }
+   
+   @target TPU {
+       // Neural network inference
+       ai_behavior = neural_net.infer(world_state);
+   }
+}</code></pre>
+       </div>
+
+       <h3>Natural Language to Performance</h3>
+       <div class="code-comparison">
+           <div class="code-block">
+               <h4>Artist writes:</h4>
+               <pre><code>@high
+make the water more splashy
+add fog at 100 meters that gets thicker
+make the metal surfaces more reflective</code></pre>
+           </div>
+           
+           <div class="code-block">
+               <h4>CTM generates:</h4>
+               <pre><code>@gpu
+water.turbulence *= 1.5;
+water.wave_height *= 1.3;
+fog.start_distance = 100;
+fog.density = exp(-distance / 50);
+metal.roughness *= 0.7;
+metal.metallic = 0.95;</code></pre>
+           </div>
+       </div>
+
+       <h3>Physics with Mathematical Notation</h3>
+       <div class="code-block">
+           <h4>Real Physics Equations as Code</h4>
+           <pre><code>domain QuantumMechanics {
+   // Schrödinger equation
+   iℏ ∂ψ/∂t = Ĥψ
+   
+   // Wave function collapse
+   probability = |ψ|²
+   
+   // Heisenberg uncertainty
+   Δx × Δp ≥ ℏ/2
+}
+
+domain Relativity {
+   // Lorentz transformation
+   γ = 1/√(1 - v²/c²)
+   
+   // Time dilation
+   Δt′ = γ × Δt
+   
+   // Mass-energy equivalence
+   E = mc²
+}</code></pre>
+       </div>
+
+       <h3>Node System Revolution</h3>
+       <div class="code-comparison">
+           <div class="code-block code-bad">
+               <h4>Unreal Blueprint Spaghetti</h4>
+               <pre><code>// 200+ nodes for simple movement
+[Event Tick]──[Get Input]──[Break Vector]──[Multiply]──┐
+   │                                                    │
+   ├──[Get Control Rotation]──[Get Forward]──[Scale]───┤
+   │                                                    │
+   └──[Branch]──[Is Valid?]──[Get Component]──[Cast]───┘
+// ... 150 more connections ...</code></pre>
+           </div>
+           
+           <div class="code-block code-good">
+               <h4>Ouro Smart Nodes</h4>
+               <pre><code>node PlayerController {
+   // Clean, mathematical, intelligent
+   movement = input.stick × camera.forward × speed;
+   
+   if grounded {
+       velocity = movement;
+   } else {
+       velocity += gravity × dt;
+   }
+   
+   // Automatic optimization by CTM
+   @performance_critical
+}</code></pre>
+           </div>
+       </div>
+   </section>
+
+   <!-- Future Section -->
+   <section id="future">
+       <h2 class="section-title">The Future We're Building</h2>
+       
+       <div class="timeline">
+           <div class="timeline-item">
+               <h3>Language Foundation</h3>
+               <p>Complete Ouro syntax implementation with all paradigm levels</p>
+           </div>
+           <div class="timeline-item">
+               <h3>Chimera Compiler</h3>
+               <p>Multi-target compilation with CTM optimization</p>
+           </div>
+           <div class="timeline-item">
+               <h3>OUROBOROS Graphics</h3>
+               <p>10x faster than Vulkan with 100x less code</p>
+           </div>
+           <div class="timeline-item">
+               <h3>Nyx Engine</h3>
+               <p>Next-generation game engine powered by Ouro</p>
+           </div>
+           <div class="timeline-item">
+               <h3>Industry Adoption</h3>
+               <p>Replace C/C++ as the standard systems language</p>
+           </div>
+       </div>
+
+       <h3>Why Ouro Will Win</h3>
+       <div class="feature-grid">
+           <div class="feature-box">
+               <h3>🎯 Solves Real Problems</h3>
+               <ul>
+                   <li>C++ complexity → Simple, safe syntax</li>
+                   <li>Vulkan verbosity → 10-line graphics</li>
+                   <li>Manual memory → Automatic + safe</li>
+                   <li>Poor errors → Intelligent diagnostics</li>
+               </ul>
+           </div>
+           
+           <div class="feature-box">
+               <h3>🚀 Revolutionary Features</h3>
+               <ul>
+                   <li>4 syntax paradigms in one language</li>
+                   <li>Mathematical notation as code</li>
+                   <li>AI-powered compilation</li>
+                   <li>Built-in graphics & physics</li>
+               </ul>
+           </div>
+           
+           <div class="feature-box">
+               <h3>💡 Developer Experience</h3>
+               <ul>
+                   <li>Write equations, get performance</li>
+                   <li>Natural language when needed</li>
+                   <li>Assembly when required</li>
+                   <li>One language for everything</li>
+               </ul>
+           </div>
+       </div>
+
+       <div class="success">
+           <h3>The Vision</h3>
+           <p>Ouro isn't just another programming language. It's a complete reimagining of how we write software. From natural language descriptions to mathematical equations to low-level assembly - all in one coherent system. Combined with OUROBOROS graphics and the Nyx engine, we're building the future of software development.</p>
+           <p class="gradient-text" style="font-size: 1.5rem; font-weight: bold; text-align: center; margin-top: 1rem;">
+               MORE CONTROL THAN C, SAFER THAN RUST, MORE EXPRESSIVE THAN ANY LANGUAGE!
+           </p>
+       </div>
+   </section>
+
+   <!-- Footer -->
+   <footer>
+       <p>Ouro & OUROBOROS - The Future of Systems Programming</p>
+       <p>Revolutionary Language × Next-Gen Graphics × Intelligent Compilation</p>
+   </footer>
+
+   
+   <script>
+       // Syntax tab switching
+       function showSyntax(level, event) {
+           // Hide all syntax contents
+           const contents = document.querySelectorAll('.syntax-content');
+           contents.forEach(content => content.classList.remove('active'));
+
+           // Remove active from all tabs
+           const tabs = document.querySelectorAll('.syntax-tab');
+           tabs.forEach(tab => tab.classList.remove('active'));
+
+           // Show selected syntax
+           document.getElementById(level + '-syntax').classList.add('active');
+
+           // Activate selected tab
+           event.target.classList.add('active');
+       }
+
+       // Smooth scrolling for navigation
+       document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+           anchor.addEventListener('click', function (e) {
+               e.preventDefault();
+               const target = document.querySelector(this.getAttribute('href'));
+               if (target) {
+                   target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+               }
+           });
+       });
+
+       // Add parallax effect to hero
+       window.addEventListener('scroll', () => {
+           const scrolled = window.pageYOffset;
+           const hero = document.querySelector('.hero');
+           hero.style.transform = `translateY(${scrolled * 0.5}px)`;
+       });
+
+       // Animate elements on scroll
+       const observerOptions = {
+           threshold: 0.1,
+           rootMargin: '0px 0px -50px 0px'
+       };
+
+       const observer = new IntersectionObserver((entries) => {
+           entries.forEach(entry => {
+               if (entry.isIntersecting) {
+                   entry.target.style.opacity = '1';
+                   entry.target.style.transform = 'translateY(0)';
+               }
+           });
+       }, observerOptions);
+
+       // Observe feature boxes and code blocks
+       document.querySelectorAll('.feature-box, .code-block, .arch-layer').forEach(el => {
+           el.style.opacity = '0';
+           el.style.transform = 'translateY(20px)';
+           el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+           observer.observe(el);
+       });
+   </script>
+
+<!-- Deep Physics Examples Section -->
+<section id="physics-comparison">
+    <h2 class="section-title">Physics Simulation: C++/Vulkan vs Ouro</h2>
+
+    <div class="code-comparison">
+        <div class="code-block code-bad">
+            <h4>C++ + Vulkan (Verbose Boilerplate)</h4>
+            <pre><code>// C++ fluid sim loop with Vulkan integration
+VkBuffer buffer;
+VkDeviceMemory memory;
+createBuffer(device, size, &buffer, &memory);
+
+// Physics loop
+for (auto& particle : particles) {
+    particle.velocity += gravity * deltaTime;
+    particle.position += particle.velocity * deltaTime;
+    // GPU sync
+    vkMapMemory(...);
+    memcpy(...);
+    vkUnmapMemory(...);
+}</code></pre>
+        </div>
+
+        <div class="code-block code-good">
+            <h4>Ouro (1-liner Domain-Driven Physics)</h4>
+            <pre><code>domain Fluids {
+    ∂v/∂t + (v · ∇)v = -∇p + ν∇²v
+}
+
+simulate ocean_wave with Fluids on @gpu;</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- Advanced Features Section -->
+<section id="advanced-features">
+    <h2 class="section-title">Ouro's Unique Power</h2>
+
+    <div class="feature-grid">
+        <div class="feature-box">
+            <h3>SKALES System</h3>
+            <p>Compile-time meta system combining Rust Traits, Zig Comptime, and C++ Templates:</p>
+            <ul>
+                <li>Type-level macros and static reflection</li>
+                <li>DSL composition and symbolic control</li>
+                <li>Zero runtime bloat</li>
+            </ul>
+        </div>
+        <div class="feature-box">
+            <h3>@target + Per-Block Hardware</h3>
+            <p>Target specific architectures at the block level:</p>
+            <pre><code>@target GPU { simulate(); }
+@fallback CPU { log(); }</code></pre>
+        </div>
+        <div class="feature-box">
+            <h3>Inline Assembly Mastery</h3>
+            <p>Direct control over architecture-specific code:</p>
+            <pre><code>@asm x86 {
+    mov eax, 1
+    add eax, 2
+}
+
+@asm spir-v {
+    OpLoad %1 %2
+    OpFAdd %3 %1 %4
+}</code></pre>
+        </div>
+        <div class="feature-box">
+            <h3>Memory Mastery</h3>
+            <ul>
+                <li>Optional Ownership + Borrowing (Rust-style)</li>
+                <li>ARC/RC + Arena allocators built-in</li>
+                <li>Inline prefetching, SIMD alignment, zero-cost containers</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- Visual Diagram Placeholder -->
+<section id="visual-architecture">
+    <h2 class="section-title">How Ouro Works</h2>
+    <div class="architecture">
+        <img src="https://via.placeholder.com/900x500?text=Ouro+System+Diagram+Placeholder" alt="Ouro Architecture Diagram" style="width:100%; border-radius: 12px;">
+        <p style="margin-top:1rem;">This diagram will showcase Ouro’s architecture from IDE input → Compiler → CTM/DGM → hardware targets.</p>
+    </div>
+</section>
+
+</body>
+</html>
