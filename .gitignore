@@ -83,3 +83,4 @@ Makefile
 
 # Generated version files
 src/Version.cs 
+/Properties
