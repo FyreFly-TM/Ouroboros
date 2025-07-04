@@ -422,7 +422,7 @@ namespace Ouro.Core.Actors
     public class ChildSpec
     {
         public string Id { get; set; } = "";
-        public Func<IActor> StartFunction { get; set; } = () => new NullActor();
+        public Func<IActor> StartFunction { get; set; } = static () => new NullActor();
         public RestartPolicy Restart { get; set; } = RestartPolicy.Permanent;
         public TimeSpan Shutdown { get; set; } = TimeSpan.FromSeconds(5);
     }

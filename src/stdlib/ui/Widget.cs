@@ -25,6 +25,7 @@ namespace Ouro.StdLib.UI
         
         public IReadOnlyList<Widget> Children => children;
         
+#pragma warning disable CS0067 // Event is never used
         public event EventHandler<MouseEventArgs>? MouseEnter;
         public event EventHandler<MouseEventArgs>? MouseLeave;
         public event EventHandler<MouseEventArgs>? MouseMove;
@@ -34,6 +35,7 @@ namespace Ouro.StdLib.UI
         public event EventHandler<KeyEventArgs>? KeyUp;
         public event EventHandler<FocusEventArgs>? GotFocus;
         public event EventHandler<FocusEventArgs>? LostFocus;
+#pragma warning restore CS0067 // Event is never used
 
         protected Widget()
         {
@@ -50,7 +52,7 @@ namespace Ouro.StdLib.UI
         {
             BackgroundColor = theme.BackgroundColor;
             ForegroundColor = theme.ForegroundColor;
-            Font = theme.DefaultFont;
+            Font = theme.DefaultFont ?? new Font("Arial", 12);
             
             foreach (var child in children)
             {
@@ -284,7 +286,9 @@ namespace Ouro.StdLib.UI
         public string Text { get; set; } = string.Empty;
         public CheckBoxStyle Style { get; set; } = CheckBoxStyle.Default;
         
+#pragma warning disable CS0067 // Event is never used
         public event EventHandler<CheckedChangedEventArgs>? CheckedChanged;
+#pragma warning restore CS0067 // Event is never used
         
         public CheckBox(string text = "")
         {
@@ -332,7 +336,9 @@ namespace Ouro.StdLib.UI
         public string Text { get; set; } = string.Empty;
         public string GroupName { get; set; } = "default";
         
+#pragma warning disable CS0067 // Event is never used
         public event EventHandler<CheckedChangedEventArgs>? CheckedChanged;
+#pragma warning restore CS0067 // Event is never used
         
         public RadioButton(string text = "", string group = "default")
         {

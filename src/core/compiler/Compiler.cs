@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Ouro.Core.AST;
 using Ouro.Core.VM;
-using Ouro.src.tools;
+using Ouro.Tools;
 using Ouro.Tokens;
 
 namespace Ouro.Core.Compiler
@@ -1663,14 +1663,11 @@ namespace Ouro.Core.Compiler
                 // ReturnType = decl.ReturnType,   // Comment out to fix type conversion issue
                 StartAddress = functionSymbol.Address
             };
-<<<<<<< Updated upstream
-            program.Functions[decl.Name] = functionInfo;
-            Logger.Debug($"Added function {decl.Name} to CompiledProgram.Functions dictionary");
-=======
             if (program != null)
+            {
                 program.Functions[decl.Name] = functionInfo;
-            Console.WriteLine($"DEBUG: Added function {decl.Name} to CompiledProgram.Functions dictionary");
->>>>>>> Stashed changes
+                Logger.Debug($"Added function {decl.Name} to CompiledProgram.Functions dictionary");
+            }
             
             // Enter function scope for parameter compilation
             symbols.EnterScope();

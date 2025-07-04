@@ -30,10 +30,18 @@ namespace Ouro.StdLib.Data
         Task<int> BulkInsertAsync<T>(string tableName, IEnumerable<T> items) where T : class;
         
         // Schema operations
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         Task<bool> TableExistsAsync(string tableName, string schema = null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         Task CreateTableAsync(string tableName, Dictionary<string, string> columns, string primaryKey = null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         Task<List<string>> GetTableNamesAsync(string schema = null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         Task<List<ColumnInfo>> GetTableColumnsAsync(string tableName, string schema = null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
     }
     
     /// <summary>

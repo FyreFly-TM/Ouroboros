@@ -206,8 +206,8 @@ namespace Ouro.StdLib.Math
             if (f == Cos) return -Sin(x);
             if (f == Tan) return 1 / (Cos(x) * Cos(x));
             if (f == SystemMath.Exp) return SystemMath.Exp(x);
-            if (f == (Func<double, double>)(t => t * t)) return 2 * x; // x²
-            if (f == (Func<double, double>)(t => t * t * t)) return 3 * x * x; // x³
+            if (f == (Func<double, double>)(static t => t * t)) return 2 * x; // x²
+            if (f == (Func<double, double>)(static t => t * t * t)) return 3 * x * x; // x³
             
             // For f(x) = Sin(x), we know d/dx[Sin(x)] = Cos(x)
             // Check if function evaluates to Sin by testing a known point
@@ -512,7 +512,7 @@ namespace Ouro.StdLib.Math
         /// </summary>
         public static IEnumerable<T> AllEvenNumbers<T>(IEnumerable<T> source) where T : struct
         {
-            return source.Where((item, index) => index % 2 == 0);
+            return source.Where(static (item, index) => index % 2 == 0);
         }
 
         public static IEnumerable<TResult> EachMultipliedBy<T, TResult>(IEnumerable<T> source, T multiplier)
@@ -525,7 +525,7 @@ namespace Ouro.StdLib.Math
 
         public static double SumOfAll<T>(IEnumerable<T> source) where T : IConvertible
         {
-            return source.Sum(item => Convert.ToDouble(item));
+            return source.Sum(static item => Convert.ToDouble(item));
         }
 
         #endregion

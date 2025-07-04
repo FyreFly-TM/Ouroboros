@@ -27,7 +27,7 @@ namespace Ouro.StdLib.ML
                 throw new ArgumentException("Shape must have at least one dimension");
                 
             this.shape = (int[])shape.Clone();
-            this.Size = shape.Aggregate(1, (a, b) => a * b);
+            this.Size = shape.Aggregate(1, static (a, b) => a * b);
             
             if (data.Length != Size)
                 throw new ArgumentException($"Data length {data.Length} doesn't match shape size {Size}");
@@ -41,7 +41,7 @@ namespace Ouro.StdLib.ML
         /// </summary>
         public static Tensor Zeros(params int[] shape)
         {
-            var size = shape.Aggregate(1, (a, b) => a * b);
+            var size = shape.Aggregate(1, static (a, b) => a * b);
             return new Tensor(new double[size], shape);
         }
         
@@ -50,7 +50,7 @@ namespace Ouro.StdLib.ML
         /// </summary>
         public static Tensor Ones(params int[] shape)
         {
-            var size = shape.Aggregate(1, (a, b) => a * b);
+            var size = shape.Aggregate(1, static (a, b) => a * b);
             var data = new double[size];
             Array.Fill(data, 1.0);
             return new Tensor(data, shape);
@@ -61,7 +61,7 @@ namespace Ouro.StdLib.ML
         /// </summary>
         public static Tensor Random(params int[] shape)
         {
-            var size = shape.Aggregate(1, (a, b) => a * b);
+            var size = shape.Aggregate(1, static (a, b) => a * b);
             var data = new double[size];
             var rand = new Random();
             
@@ -78,7 +78,7 @@ namespace Ouro.StdLib.ML
         /// </summary>
         public static Tensor RandomNormal(double mean = 0.0, double stdDev = 1.0, params int[] shape)
         {
-            var size = shape.Aggregate(1, (a, b) => a * b);
+            var size = shape.Aggregate(1, static (a, b) => a * b);
             var data = new double[size];
             var rand = new Random();
             
@@ -136,7 +136,7 @@ namespace Ouro.StdLib.ML
         /// </summary>
         public Tensor Reshape(params int[] newShape)
         {
-            var newSize = newShape.Aggregate(1, (a, b) => a * b);
+            var newSize = newShape.Aggregate(1, static (a, b) => a * b);
             if (newSize != Size)
                 throw new ArgumentException($"Cannot reshape tensor of size {Size} to size {newSize}");
                 
@@ -330,7 +330,7 @@ namespace Ouro.StdLib.ML
                 newShape[i] = end - start;
             }
             
-            var newSize = newShape.Aggregate(1, (a, b) => a * b);
+            var newSize = newShape.Aggregate(1, static (a, b) => a * b);
             var newData = new double[newSize];
             
             // Copy data using recursive iteration
@@ -357,7 +357,7 @@ namespace Ouro.StdLib.ML
             for (int i = 0; i < dstShape[dim]; i++)
             {
                 indices[dim] = i;
-                int newDstOffset = dstOffset + i * dstShape.Skip(dim + 1).Aggregate(1, (a, b) => a * b);
+                int newDstOffset = dstOffset + i * dstShape.Skip(dim + 1).Aggregate(1, static (a, b) => a * b);
                 CopySlice(src, dst, srcShape, dstShape, srcStrides, ranges, dim + 1, indices, newDstOffset);
             }
         }

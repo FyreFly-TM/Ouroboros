@@ -18,14 +18,14 @@ namespace Ouro.Core
             this.options = options ?? new DiagnosticOptions();
         }
         
-        public bool HasErrors => diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error);
-        public bool HasWarnings => diagnostics.Any(d => d.Severity == DiagnosticSeverity.Warning);
-        public int ErrorCount => diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error);
-        public int WarningCount => diagnostics.Count(d => d.Severity == DiagnosticSeverity.Warning);
+        public bool HasErrors => diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error);
+        public bool HasWarnings => diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Warning);
+        public int ErrorCount => diagnostics.Count(static d => d.Severity == DiagnosticSeverity.Error);
+        public int WarningCount => diagnostics.Count(static d => d.Severity == DiagnosticSeverity.Warning);
         
         public List<Diagnostic> GetDiagnostics() => new List<Diagnostic>(diagnostics);
-        public List<Diagnostic> GetErrors() => diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        public List<Diagnostic> GetWarnings() => diagnostics.Where(d => d.Severity == DiagnosticSeverity.Warning).ToList();
+        public List<Diagnostic> GetErrors() => diagnostics.Where(static d => d.Severity == DiagnosticSeverity.Error).ToList();
+        public List<Diagnostic> GetWarnings() => diagnostics.Where(static d => d.Severity == DiagnosticSeverity.Warning).ToList();
         
         #region Error Reporting Methods
         

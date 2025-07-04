@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Ouro.Core.Compiler;
-using Ouro.src.tools;
+using Ouro.Tools;
 using Ouro.StdLib.Math;
 using static Ouro.StdLib.Math.MathSymbols;
 
@@ -15,11 +15,13 @@ namespace Ouro.Core.VM
     public class VirtualMachine
     {
         // Events
+#pragma warning disable CS0067 // Event is never used
         public event Action<int>? OnMemoryAllocate;
         public event Action<int>? OnMemoryFree;
         public event Action<Exception>? OnException;
         public event Action<string, int>? OnFunctionEnter;
         public event Action<string>? OnFunctionExit;
+#pragma warning restore CS0067 // Event is never used
         public event Action<int, Opcode>? OnInstructionExecute;
         private Stack<object> operandStack;
         private List<object> locals;
@@ -33,7 +35,9 @@ namespace Ouro.Core.VM
         private int instructionPointer;
         private bool running;
         private Compiler.CompiledProgram? compiledProgram;
+#pragma warning disable CS0649 // Field is never assigned to and will always have its default value
         private SymbolTable? symbolTable;
+#pragma warning restore CS0649 // Field is never assigned to and will always have its default value
         private Dictionary<int, GeneratorState> generatorStates = new Dictionary<int, GeneratorState>();
         private bool debugMode;
         
@@ -118,13 +122,11 @@ namespace Ouro.Core.VM
         
         private void ExecuteInstruction()
         {
-<<<<<<< Updated upstream
+            if (instructions == null)
+                throw new VirtualMachineException("No instructions loaded");
+            
             var opcode = (Opcode)instructions[instructionPointer++];
             Logger.Debug($"Executing opcode {opcode} at IP {instructionPointer - 1}");
-=======
-            var opcode = (Opcode)instructions![instructionPointer++];
-            LogDebug($"Executing opcode {opcode} at IP {instructionPointer - 1}");
->>>>>>> Stashed changes
             
             switch (opcode)
             {
@@ -375,13 +377,10 @@ namespace Ouro.Core.VM
                 case Opcode.LoadConstant:
                     {
                         var index = ReadInt32();
-<<<<<<< Updated upstream
+                        if (constantPool == null)
+                            throw new VirtualMachineException("No constant pool loaded");
                         Logger.Debug($"LoadConstant trying to access index {index}");
                         operandStack.Push(constantPool[index]);
-=======
-                        LogDebug($"LoadConstant trying to access index {index}");
-                        operandStack.Push(constantPool![index]);
->>>>>>> Stashed changes
                     }
                     break;
                     

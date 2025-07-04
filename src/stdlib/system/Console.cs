@@ -28,7 +28,9 @@ namespace Ouro.StdLib.System
         /// <summary>
         /// Write line to console
         /// </summary>
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public static void WriteLine(object value = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             lock (ConsoleLock)
             {
@@ -75,7 +77,9 @@ namespace Ouro.StdLib.System
         /// <summary>
         /// Write error line to console
         /// </summary>
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public static void WriteLineError(object value = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             lock (ConsoleLock)
             {
@@ -91,7 +95,7 @@ namespace Ouro.StdLib.System
         /// </summary>
         public static string ReadLine()
         {
-            return global::System.Console.ReadLine();
+            return global::System.Console.ReadLine() ?? string.Empty;
         }
         
         /// <summary>

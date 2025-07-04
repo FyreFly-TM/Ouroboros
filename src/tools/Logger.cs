@@ -1,8 +1,8 @@
 ﻿using Ouro.Core.AST;
 
-namespace Ouro.src.tools
+namespace Ouro.Tools
 {
-    static class Logger
+    public static class Logger
     {
         private enum LoggerTypes {
             INFO,

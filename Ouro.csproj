@@ -36,6 +36,7 @@
     <Compile Include="src/analysis/**/*.cs" />
     
     <!-- Tools - exclude until fixed -->
+    <Compile Include="src/tools/*.cs" />
     <Compile Include="src/tools/docgen/**/*.cs" />
     
     <!-- Exclude problematic files -->

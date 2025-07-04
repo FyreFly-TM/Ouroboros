@@ -5,7 +5,7 @@ using Ouro.Core.Lexer;
 using Ouro.Core.Parser;
 using Ouro.Core.Compiler;
 using Ouro.Runtime;
-using Ouro.src.tools;
+using Ouro.Tools;
 
 namespace Ouro
 {

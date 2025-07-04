@@ -137,8 +137,8 @@ namespace Ouro.Tools.DocGen
 
             // Generate pages for each namespace
             var namespaces = documentedItems.Values
-                .GroupBy(i => i.Namespace)
-                .OrderBy(g => g.Key);
+                .GroupBy(static i => i.Namespace)
+                .OrderBy(static g => g.Key);
 
             foreach (var ns in namespaces)
             {
@@ -181,9 +181,9 @@ namespace Ouro.Tools.DocGen
             html.AppendLine("        <ul>");
 
             var namespaces = documentedItems.Values
-                .Select(i => i.Namespace)
+                .Select(static i => i.Namespace)
                 .Distinct()
-                .OrderBy(n => n);
+                .OrderBy(static n => n);
 
             foreach (var ns in namespaces)
             {
@@ -229,14 +229,14 @@ namespace Ouro.Tools.DocGen
             html.AppendLine($"    <h1>Namespace: {namespaceName}</h1>");
             
             // Group by type
-            var groups = items.GroupBy(i => i.ItemType).OrderBy(g => g.Key);
+            var groups = items.GroupBy(static i => i.ItemType).OrderBy(static g => g.Key);
             
             foreach (var group in groups)
             {
                 html.AppendLine($"    <h2>{group.Key}s</h2>");
                 html.AppendLine("    <ul>");
                 
-                foreach (var item in group.OrderBy(i => i.Name))
+                foreach (var item in group.OrderBy(static i => i.Name))
                 {
                     html.AppendLine($"        <li>");
                     html.AppendLine($"            <a href=\"{item.Name}.html\">{item.Name}</a>");
@@ -394,8 +394,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Generate namespace files
             var namespaces = documentedItems.Values
-                .GroupBy(i => i.Namespace)
-                .OrderBy(g => g.Key);
+                .GroupBy(static i => i.Namespace)
+                .OrderBy(static g => g.Key);
 
             foreach (var ns in namespaces)
             {
@@ -447,14 +447,14 @@ document.addEventListener('DOMContentLoaded', function() {
             md.AppendLine($"# Namespace: {namespaceName}");
             md.AppendLine();
             
-            var groups = items.GroupBy(i => i.ItemType).OrderBy(g => g.Key);
+            var groups = items.GroupBy(static i => i.ItemType).OrderBy(static g => g.Key);
             
             foreach (var group in groups)
             {
                 md.AppendLine($"## {group.Key}s");
                 md.AppendLine();
                 
-                foreach (var item in group.OrderBy(i => i.Name))
+                foreach (var item in group.OrderBy(static i => i.Name))
                 {
                     md.AppendLine($"### {item.Name}");
                     md.AppendLine();
@@ -652,12 +652,12 @@ document.head.appendChild(style);
             var stats = new Dictionary<string, int>
             {
                 ["Total Items"] = documentedItems.Count,
-                ["Namespaces"] = documentedItems.Values.Select(i => i.Namespace).Distinct().Count(),
-                ["Classes"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Class),
-                ["Interfaces"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Interface),
-                ["Functions"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Function),
-                ["Enums"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Enum),
-                ["Properties"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Property)
+                ["Namespaces"] = documentedItems.Values.Select(static i => i.Namespace).Distinct().Count(),
+                ["Classes"] = documentedItems.Values.Count(static i => i.ItemType == ItemType.Class),
+                ["Interfaces"] = documentedItems.Values.Count(static i => i.ItemType == ItemType.Interface),
+                ["Functions"] = documentedItems.Values.Count(static i => i.ItemType == ItemType.Function),
+                ["Enums"] = documentedItems.Values.Count(static i => i.ItemType == ItemType.Enum),
+                ["Properties"] = documentedItems.Values.Count(static i => i.ItemType == ItemType.Property)
             };
 
             return stats;
@@ -876,7 +876,7 @@ document.head.appendChild(style);
             if (decl.TypeParameters.Any())
             {
                 sb.Append("<");
-                sb.Append(string.Join(", ", decl.TypeParameters.Select(tp => tp.Name)));
+                sb.Append(string.Join(", ", decl.TypeParameters.Select(static tp => tp.Name)));
                 sb.Append(">");
             }
             
@@ -891,7 +891,7 @@ document.head.appendChild(style);
                     sb.Append(" : ");
                 else
                     sb.Append(", ");
-                sb.Append(string.Join(", ", decl.Interfaces.Select(i => i.Name)));
+                sb.Append(string.Join(", ", decl.Interfaces.Select(static i => i.Name)));
             }
             
             return sb.ToString();
@@ -915,12 +915,12 @@ document.head.appendChild(style);
             if (decl.TypeParameters.Any())
             {
                 sb.Append("<");
-                sb.Append(string.Join(", ", decl.TypeParameters.Select(tp => tp.Name)));
+                sb.Append(string.Join(", ", decl.TypeParameters.Select(static tp => tp.Name)));
                 sb.Append(">");
             }
             
             sb.Append("(");
-            sb.Append(string.Join(", ", decl.Parameters.Select(p => $"{p.Type.Name} {p.Name}")));
+            sb.Append(string.Join(", ", decl.Parameters.Select(static p => $"{p.Type.Name} {p.Name}")));
             sb.Append(")");
             
             return sb.ToString();

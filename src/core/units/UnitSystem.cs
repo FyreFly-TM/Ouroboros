@@ -337,7 +337,7 @@ namespace Ouro.Core.Units
             );
         }
         
-        public bool IsDimensionless => Dimensions.Count == 0 || Dimensions.Values.All(v => v == 0);
+        public bool IsDimensionless => Dimensions.Count == 0 || Dimensions.Values.All(static v => v == 0);
         
         public override string ToString()
         {
@@ -346,7 +346,7 @@ namespace Ouro.Core.Units
             
             var parts = new List<string>();
             
-            foreach (var kvp in Dimensions.Where(d => d.Value != 0))
+            foreach (var kvp in Dimensions.Where(static d => d.Value != 0))
             {
                 var dimSymbol = kvp.Key switch
                 {

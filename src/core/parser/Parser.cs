@@ -5,7 +5,7 @@ using System.Text;
 using System.Globalization;
 using Ouro.Tokens;
 using Ouro.Core.AST;
-using Ouro.src.tools;
+using Ouro.Tools;
 
 namespace Ouro.Core.Parser
 {
@@ -262,7 +262,6 @@ namespace Ouro.Core.Parser
             return new BlockStatement(statements);
         }
 
-<<<<<<< Updated upstream
         private bool IsUsingDomainBlock() // TODO
         {
             // Look ahead to see if this is: using DomainName { ... }
@@ -291,8 +290,6 @@ namespace Ouro.Core.Parser
             return false;
         }
 
-=======
->>>>>>> Stashed changes
         private Statement ParseUsingDomainBlock()
         {
             Logger.Debug($"DEBUG: ParseUsingDomainBlock starting");
@@ -2544,14 +2541,8 @@ namespace Ouro.Core.Parser
                 // If we hit a right brace, return a null statement to let the block parser handle it
                 if (Check(TokenType.RightBrace))
                 {
-<<<<<<< Updated upstream
                     Logger.Info($"Found right brace in error recovery, returning null statement");
-=======
-                    Console.WriteLine($"DEBUG: Found right brace in error recovery, returning null statement");
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
->>>>>>> Stashed changes
-                    return new ExpressionStatement(new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, 0, 0, 0, 0, "", _currentSyntaxLevel)));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+                    return new ExpressionStatement(new LiteralExpression(new Token(TokenType.NullLiteral, "null", "null", 0, 0, 0, 0, "", _currentSyntaxLevel)));
                 }
                 
                 // Fall back to medium-level fallback parser on error
@@ -2697,15 +2688,9 @@ namespace Ouro.Core.Parser
                     body = new ExpressionStatement(expr!);
                 }
             }
-<<<<<<< Updated upstream
 
             Logger.Debug($"Successfully parsed generic function declaration");
             return new FunctionDeclaration(nameToken, returnType, parameters, body as BlockStatement, typeParameters, false, new List<Modifier>());
-=======
-            
-            Console.WriteLine($"DEBUG: Successfully parsed generic function declaration");
-            return new FunctionDeclaration(nameToken, returnType, parameters, (body as BlockStatement) ?? new BlockStatement(new List<Statement>()), typeParameters, false, new List<Modifier>());
->>>>>>> Stashed changes
         }
         
         private bool IsVariableDeclarationEnhanced()
@@ -2895,13 +2880,8 @@ namespace Ouro.Core.Parser
             }
 
             // Parse initializer
-<<<<<<< Updated upstream
             Logger.Debug($"About to parse initializer, current token: {Current().Type} '{Current().Lexeme}'");
             Expression initializer = null;
-=======
-            Console.WriteLine($"DEBUG: About to parse initializer, current token: {Current().Type} '{Current().Lexeme}'");
-            Expression? initializer = null;
->>>>>>> Stashed changes
             if (Match(TokenType.Assign))
             {
                 Logger.Debug($"Found assignment operator, parsing initializer");
@@ -4348,13 +4328,9 @@ namespace Ouro.Core.Parser
                 expr = new BinaryExpression(expr!, op, right!);
             }
 
-<<<<<<< Updated upstream
             Logger.Debug($"ParseNullCoalescing() returning expression: {expr?.GetType().Name}");
             return expr;
-=======
-            Console.WriteLine($"DEBUG: ParseNullCoalescing() returning expression: {expr?.GetType().Name}");
-            return expr!;
->>>>>>> Stashed changes
+
         }
 
         private Expression ParseConditionalAccess()
@@ -4386,13 +4362,9 @@ namespace Ouro.Core.Parser
                 }
             }
 
-<<<<<<< Updated upstream
             Logger.Debug($"ParseConditionalAccess() returning expression: {expr?.GetType().Name}");
             return expr;
-=======
-            Console.WriteLine($"DEBUG: ParseConditionalAccess() returning expression: {expr?.GetType().Name}");
-            return expr!;
->>>>>>> Stashed changes
+
         }
 
         private Expression ParseLogicalOr()
@@ -4457,15 +4429,10 @@ namespace Ouro.Core.Parser
                 expr = new BinaryExpression(expr!, op, right!);
             }
 
-<<<<<<< Updated upstream
             Logger.Debug($"ParseBitwiseXor() - About to return expression: {expr?.GetType().Name}");
             Logger.Debug($"ParseBitwiseXor() returning: {expr?.GetType().Name}");
             return expr;
-=======
-            Console.WriteLine($"DEBUG: ParseBitwiseXor() - About to return expression: {expr?.GetType().Name}");
-            Console.WriteLine($"DEBUG: ParseBitwiseXor() returning: {expr?.GetType().Name}");
-            return expr!;
->>>>>>> Stashed changes
+
         }
 
         private Expression ParseBitwiseAnd()
@@ -4482,15 +4449,10 @@ namespace Ouro.Core.Parser
                 expr = new BinaryExpression(expr!, op, right!);
             }
 
-<<<<<<< Updated upstream
             Logger.Debug($"ParseBitwiseAnd() - About to return expression: {expr?.GetType().Name}");
             Logger.Debug($"ParseBitwiseAnd() returning: {expr?.GetType().Name}");
             return expr;
-=======
-            Console.WriteLine($"DEBUG: ParseBitwiseAnd() - About to return expression: {expr?.GetType().Name}");
-            Console.WriteLine($"DEBUG: ParseBitwiseAnd() returning: {expr?.GetType().Name}");
-            return expr!;
->>>>>>> Stashed changes
+
         }
 
         private Expression ParseEquality()
@@ -4508,13 +4470,9 @@ namespace Ouro.Core.Parser
                 expr = new BinaryExpression(expr!, op, right!);
             }
 
-<<<<<<< Updated upstream
             Logger.Debug($"ParseEquality() returning: {expr?.GetType().Name}");
             return expr;
-=======
-            Console.WriteLine($"DEBUG: ParseEquality() returning: {expr?.GetType().Name}");
-            return expr!;
->>>>>>> Stashed changes
+
         }
 
         private Expression ParseComparison()
@@ -4576,13 +4534,9 @@ namespace Ouro.Core.Parser
                 }
             }
 
-<<<<<<< Updated upstream
             Logger.Debug($"ParseComparison() returning: {expr?.GetType().Name}");
             return expr;
-=======
-            Console.WriteLine($"DEBUG: ParseComparison() returning: {expr?.GetType().Name}");
-            return expr!;
->>>>>>> Stashed changes
+
         }
 
         private Expression ParseRange()
@@ -4599,15 +4553,10 @@ namespace Ouro.Core.Parser
                 var op = Previous(); // Store the operator token before parsing the right operand
                 Logger.Debug($"ParseRange() - Stored operator token: {op.Type} '{op.Lexeme}'");
                 var right = ParseShift();
-<<<<<<< Updated upstream
                 Logger.Debug($"ParseRange() - ParseShift returned: {right?.GetType().Name}");
                 var rangeExpr = new BinaryExpression(expr, op, right);
                 Logger.Debug($"ParseRange() - Created BinaryExpression with operator: {op.Type} '{op.Lexeme}'");
-=======
-                Console.WriteLine($"DEBUG: ParseRange() - ParseShift returned: {right?.GetType().Name}");
-                var rangeExpr = new BinaryExpression(expr!, op, right!);
-                Console.WriteLine($"DEBUG: ParseRange() - Created BinaryExpression with operator: {op.Type} '{op.Lexeme}'");
->>>>>>> Stashed changes
+
                 return rangeExpr;
             }
             
@@ -4618,7 +4567,6 @@ namespace Ouro.Core.Parser
                 var op = Previous(); // Store the operator token before parsing the right operand
                 Logger.Debug($"ParseRange() - Stored spread operator token: {op.Type} '{op.Lexeme}'");
                 var right = ParseShift();
-<<<<<<< Updated upstream
                 var spreadExpr = new BinaryExpression(expr, op, right);
                 Logger.Debug($"ParseRange() - Created BinaryExpression with spread operator: {op.Type} '{op.Lexeme}'");
                 return spreadExpr;
@@ -4626,15 +4574,7 @@ namespace Ouro.Core.Parser
 
             Logger.Debug($"ParseRange() - No range operators found, returning: {expr?.GetType().Name}");
             return expr;
-=======
-                var spreadExpr = new BinaryExpression(expr!, op, right!);
-                Console.WriteLine($"DEBUG: ParseRange() - Created BinaryExpression with spread operator: {op.Type} '{op.Lexeme}'");
-                return spreadExpr;
-            }
-            
-            Console.WriteLine($"DEBUG: ParseRange() - No range operators found, returning: {expr?.GetType().Name}");
-            return expr!;
->>>>>>> Stashed changes
+
         }
 
         private Expression ParseShift()
@@ -4664,13 +4604,9 @@ namespace Ouro.Core.Parser
                 expr = new BinaryExpression(expr!, op, right!);
             }
 
-<<<<<<< Updated upstream
             Logger.Debug($"ParseAddition() returning: {expr?.GetType().Name}");
             return expr;
-=======
-            Console.WriteLine($"DEBUG: ParseAddition() returning: {expr?.GetType().Name}");
-            return expr!;
->>>>>>> Stashed changes
+
         }
 
         private Expression ParseMultiplication()
@@ -4686,21 +4622,13 @@ namespace Ouro.Core.Parser
                     var op = Previous();
                     Logger.Debug($"ParseMultiplication() found operator {op.Type} '{op.Lexeme}'");
                     var right = ParsePower();
-<<<<<<< Updated upstream
                     Logger.Debug($"ParseMultiplication() parsed right operand: {right?.GetType().Name}");
                     expr = new BinaryExpression(expr, op, right);
             }
 
             Logger.Debug($"ParseMultiplication() returning: {expr?.GetType().Name}");
             return expr;
-=======
-                Console.WriteLine($"DEBUG: ParseMultiplication() parsed right operand: {right?.GetType().Name}");
-                    expr = new BinaryExpression(expr!, op, right!);
-            }
 
-            Console.WriteLine($"DEBUG: ParseMultiplication() returning: {expr?.GetType().Name}");
-            return expr!;
->>>>>>> Stashed changes
         }
 
         private Expression ParsePower()
@@ -4716,13 +4644,9 @@ namespace Ouro.Core.Parser
                 expr = new BinaryExpression(expr!, op, right!);
             }
 
-<<<<<<< Updated upstream
             Logger.Debug($"ParsePower() returning: {expr?.GetType().Name}");
             return expr;
-=======
-            Console.WriteLine($"DEBUG: ParsePower() returning: {expr?.GetType().Name}");
-            return expr!;
->>>>>>> Stashed changes
+
         }
 
         private Expression ParseUnary()
@@ -4860,13 +4784,9 @@ namespace Ouro.Core.Parser
 
             Logger.Debug($"ParseUnary() - about to call ParsePostfix()");
             var result = ParsePostfix();
-<<<<<<< Updated upstream
             Logger.Debug($"ParseUnary() - got result from ParsePostfix(): {result?.GetType().Name}");
             return result;
-=======
-            Console.WriteLine($"DEBUG: ParseUnary() - got result from ParsePostfix(): {result?.GetType().Name}");
-            return result!;
->>>>>>> Stashed changes
+
         }
 
         private bool IsPrefixMathematicalOperator(Token token)
@@ -4896,13 +4816,9 @@ namespace Ouro.Core.Parser
                 Consume(TokenType.LeftBrace, "Expected '{' after 'unsafe'.");
                 var expression = ParseExpression();
                 Consume(TokenType.RightBrace, "Expected '}' after unsafe expression.");
-<<<<<<< Updated upstream
                 Logger.Debug($"ParsePostfix - completed unsafe expression");
                 return expression;
-=======
-                Console.WriteLine($"DEBUG: ParsePostfix - completed unsafe expression");
-                return expression!;
->>>>>>> Stashed changes
+
             }
             
             var expr = ParseCall();
@@ -5030,13 +4946,9 @@ namespace Ouro.Core.Parser
                 }
             }
 
-<<<<<<< Updated upstream
             Logger.Debug($"ParseCall() - About to return expression: {expr?.GetType().Name}");
             return expr;
-=======
-            Console.WriteLine($"DEBUG: ParseCall() - About to return expression: {expr?.GetType().Name}");
-            return expr!;
->>>>>>> Stashed changes
+
         }
 
         private bool IsStructLiteralContext()

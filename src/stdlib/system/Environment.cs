@@ -111,7 +111,7 @@ namespace Ouro.StdLib.System
                 return customVariables.TryGetValue(name, out var value) ? value : string.Empty;
             }
             
-            return System.Environment.GetEnvironmentVariable(name, (System.EnvironmentVariableTarget)target);
+            return System.Environment.GetEnvironmentVariable(name, (System.EnvironmentVariableTarget)target) ?? string.Empty;
         }
         
         /// <summary>
@@ -229,7 +229,7 @@ namespace Ouro.StdLib.System
         /// <summary>
         /// Get the path to the executable that started the process
         /// </summary>
-        public static string ProcessPath => Process.GetCurrentProcess().MainModule?.FileName;
+        public static string ProcessPath => Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty;
         
         /// <summary>
         /// Get the process ID

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Globalization;
 using Ouro.Tokens;
-using Ouro.src.tools;
 
 namespace Ouro.Core.Lexer
 {
@@ -43,8 +42,10 @@ namespace Ouro.Core.Lexer
                 ScanToken();
             }
 
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             _tokens.Add(new Token(TokenType.EndOfFile, "", null, _line, _column, 
                                  _current, _current, _fileName, _currentSyntaxLevel));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             return _tokens;
         }
 
@@ -1273,7 +1274,7 @@ namespace Ouro.Core.Lexer
             // Type suffixes
             string text = _source.Substring(_start, _current - _start);
             TokenType type = TokenType.IntegerLiteral;
-            object value = null;
+            object value = null!;
 
             // Check for Rust-style type suffixes (f32, f64, i8, i16, i32, i64, u8, u16, u32, u64, usize, isize)
             string suffix = "";
@@ -1532,7 +1533,9 @@ namespace Ouro.Core.Lexer
             }
             else if (text == "null")
             {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 AddToken(TokenType.NullLiteral, null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
             else if (text == "e")
             {
@@ -1869,7 +1872,9 @@ namespace Ouro.Core.Lexer
             }
         }
 
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         private void AddToken(TokenType type) => AddToken(type, null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         private void AddToken(TokenType type, object value)
         {
             string text = _source.Substring(_start, _current - _start);
@@ -1879,7 +1884,7 @@ namespace Ouro.Core.Lexer
 
         private void ReportError(string message)
         {
-            Logger.Error($"[{_fileName}:{_line}:{_column}] Error Message: {message}");
+            Console.Error.WriteLine($"[{_fileName}:{_line}:{_column}] Error: {message}");
         }
 
         #endregion

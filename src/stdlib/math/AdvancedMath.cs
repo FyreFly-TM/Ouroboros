@@ -95,7 +95,7 @@ namespace Ouro.StdLib.Math
             
             public static double Median(IEnumerable<double> values)
             {
-                var sorted = values.OrderBy(x => x).ToList();
+                var sorted = values.OrderBy(static x => x).ToList();
                 int count = sorted.Count;
                 
                 if (count == 0) return 0;
@@ -106,7 +106,7 @@ namespace Ouro.StdLib.Math
             
             public static double Mode(IEnumerable<double> values)
             {
-                var groups = values.GroupBy(x => x).OrderByDescending(g => g.Count());
+                var groups = values.GroupBy(static x => x).OrderByDescending(static g => g.Count());
                 return groups.Any() ? groups.First().Key : 0;
             }
             
@@ -161,7 +161,7 @@ namespace Ouro.StdLib.Math
             public static (double min, double q1, double median, double q3, double max) 
                 FiveNumberSummary(IEnumerable<double> values)
             {
-                var sorted = values.OrderBy(x => x).ToList();
+                var sorted = values.OrderBy(static x => x).ToList();
                 if (sorted.Count == 0) 
                     return (0, 0, 0, 0, 0);
                     
@@ -177,7 +177,7 @@ namespace Ouro.StdLib.Math
                 if (percentile < 0 || percentile > 100)
                     throw new ArgumentException("Percentile must be between 0 and 100");
                     
-                var sorted = values.OrderBy(x => x).ToList();
+                var sorted = values.OrderBy(static x => x).ToList();
                 if (sorted.Count == 0) return 0;
                 
                 double index = (percentile / 100.0) * (sorted.Count - 1);
