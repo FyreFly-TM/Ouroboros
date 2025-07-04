@@ -5,6 +5,7 @@ using Ouro.Core.Lexer;
 using Ouro.Core.Parser;
 using Ouro.Core.Compiler;
 using Ouro.Runtime;
+using Ouro.src.tools;
 
 namespace Ouro
 {
@@ -17,14 +18,6 @@ namespace Ouro
         
         private static bool debugMode = false;
         
-        private static void LogDebug(string message)
-        {
-            if (debugMode)
-            {
-                Console.WriteLine($"[DEBUG] {message}");
-            }
-        }
-        
         public static void Main(string[] args)
         {
             // Check for debug flag
@@ -34,11 +27,13 @@ namespace Ouro
                 // Remove debug flag from args
                 args = args.Length > 1 ? args[1..] : Array.Empty<string>();
             }
+
+            Logger.Init(true);
+
+            Logger.Debug("Ouro compiler starting...");
             
-            LogDebug("Ouro compiler starting...");
-            
-            System.Console.WriteLine("Ouro Programming Language v1.0.0");
-            System.Console.WriteLine("=====================================\n");
+            Logger.Info("Ouro Programming Language v1.0.0");
+            Logger.Info("=====================================\n");
 
             if (args.Length == 0)
             {
@@ -71,34 +66,33 @@ namespace Ouro
         {
             try
             {
-                LogDebug("Starting ExecuteFile method");
+                Logger.Debug("Starting ExecuteFile method");
                 
                 // Check if file exists
                 if (!File.Exists(filePath))
                 {
-                    Console.WriteLine($"Error: File '{filePath}' not found.");
+                    Logger.Error($"Error: File '{filePath}' not found.");
                     Environment.Exit(1);
                     return;
                 }
 
-                LogDebug("File exists, checking extension");
+                Logger.Debug("File exists, checking extension");
                 
                 // Check file extension
                 if (!filePath.EndsWith(".ouro", StringComparison.OrdinalIgnoreCase))
                 {
-                    Console.WriteLine($"Warning: File '{filePath}' does not have .ouro extension.");
+                    Logger.Warn($"Warning: File '{filePath}' does not have .ouro extension.");
                 }
 
-                Console.WriteLine($"Executing: {filePath}");
-                Console.WriteLine();
+                Logger.Info($"Executing: {filePath}\n");
 
-                LogDebug("Reading source code");
+                Logger.Debug("Reading source code");
                 
                 // Read source code
                 string sourceCode = File.ReadAllText(filePath, Encoding.UTF8);
-                LogDebug($"Read {sourceCode.Length} characters from file");
+                Logger.Debug($"Read {sourceCode.Length} characters from file");
 
-                LogDebug("Initializing runtime");
+                Logger.Debug("Initializing runtime");
                 
                 // Initialize runtime
                 var runtimeOptions = new RuntimeOptions
@@ -109,20 +103,20 @@ namespace Ouro
                 };
                 runtime = new Runtime.Runtime(runtimeOptions);
 
-                LogDebug("Starting compilation");
+                Logger.Debug("Starting compilation");
                 
                 // Compile and execute
                 var compiledProgram = CompileSource(sourceCode, filePath);
                 
-                LogDebug($"Compilation result: {(compiledProgram != null ? "Success" : "Failed")}");
+                Logger.Debug($"Compilation result: {(compiledProgram != null ? "Success" : "Failed")}");
                 
                 if (compiledProgram != null)
                 {
-                    Console.WriteLine("Compilation successful. Starting execution...");
-                    Console.WriteLine(new string('=', 50));
+                    Logger.Info("Compilation successful. Starting execution...");
+                    Console.WriteLine(new string('=', 50)); // TODO Look into
                     
                     // Debug: Show bytecode info
-                    Console.WriteLine($"Bytecode length: {compiledProgram.Bytecode.Code.Count} bytes");
+                    Logger.Debug($"Bytecode length: {compiledProgram.Bytecode.Code.Count} bytes");
                     if (compiledProgram.Bytecode.Code.Count > 0)
                     {
                         Console.Write("Bytecode: ");
@@ -171,23 +165,23 @@ namespace Ouro
                     Console.WriteLine();
                     if (result != null)
                     {
-                        Console.WriteLine($"Program result: {result}");
+                        Logger.Info($"Program result: {result}"); // TODO
                     }
                     
                     Console.WriteLine(new string('=', 50));
-                    Console.WriteLine("Execution completed.");
+                    Logger.Info("Execution completed.");
                 }
                 else
                 {
-                    LogDebug("Compilation failed, no program to execute");
+                    Logger.Error("Compilation failed, no program to execute");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error executing file '{filePath}': {ex.Message}");
+                Logger.Error($"Error executing file '{filePath}': {ex.Message}");
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    Logger.Error($"Inner exception: {ex.InnerException.Message}");
                 }
                 
                 // Show stack trace in debug mode
@@ -199,7 +193,7 @@ namespace Ouro
             }
             finally
             {
-                LogDebug("Cleanup - shutting down runtime");
+                Logger.Debug("Cleanup - shutting down runtime"); // TODO
                 
                 // Clean up runtime
                 runtime?.Shutdown();
@@ -210,65 +204,65 @@ namespace Ouro
         {
             try
             {
-                Console.WriteLine("Starting compilation...");
-                LogDebug("Entering CompileSource method");
-                
+                Logger.Info("Starting compilation...");
+                Logger.Debug("Entering CompileSource method");
+
                 // Step 1: Lexical Analysis
-                Console.WriteLine("1. Lexical analysis...");
-                LogDebug("Creating lexer");
+                Logger.Info("1. Lexical analysis...");
+                Logger.Debug("Creating lexer");
                 
                 var lexer = new Lexer(sourceCode, fileName);
-                LogDebug("Calling ScanTokens");
+                Logger.Debug("Calling ScanTokens");
                 
                 var tokens = lexer.ScanTokens();
-                Console.WriteLine($"   Generated {tokens.Count} tokens");
-                LogDebug("Lexical analysis completed successfully");
-                
+                Logger.Info($"   Generated {tokens.Count} tokens");
+                Logger.Debug("Lexical analysis completed successfully");
+
                 // Step 2: Syntax Analysis
-                Console.WriteLine("2. Syntax analysis...");
-                LogDebug("Creating parser");
+                Logger.Info("2. Syntax analysis...");
+                Logger.Debug("Creating parser");
                 
                 var parser = new Parser(tokens);
-                LogDebug("Calling Parse");
+                Logger.Debug("Calling Parse");
                 
                 var ast = parser.Parse();
-                Console.WriteLine($"   Generated AST with {ast.Statements.Count} top-level statements");
-                LogDebug("Syntax analysis completed successfully");
+                Logger.Info($"   Generated AST with {ast.Statements.Count} top-level statements");
+                Logger.Debug("Syntax analysis completed successfully");
 
                 // Step 3: Code Generation
-                Console.WriteLine("3. Code generation...");
-                LogDebug("Creating compiler");
+                Logger.Info("3. Code generation...");
+                Logger.Debug("Creating compiler");
                 
                 var compiler = new Compiler(OptimizationLevel.Release);
-                LogDebug("Calling Compile");
+                Logger.Debug("Calling Compile");
                 
                 var compiledProgram = compiler.Compile(ast);
-                Console.WriteLine($"   Generated {compiledProgram.Bytecode.Code.Count} bytes of bytecode");
-                LogDebug("Code generation completed successfully");
+                Logger.Info($"   Generated {compiledProgram.Bytecode.Code.Count} bytes of bytecode");
+                Logger.Debug("Code generation completed successfully");
 
                 return compiledProgram;
             }
             catch (ParseException ex)
             {
-                Console.WriteLine($"Parse Error: {ex.Message}");
-                LogDebug("ParseException caught");
+                Logger.Error($"Parse Error: {ex.Message}");
+                Logger.Debug("ParseException caught");
                 return null;
             }
             catch (CompilerException ex)
             {
-                Console.WriteLine($"Compiler Error: {ex.Message}");
+                Logger.Error($"Compiler Error: {ex.Message}");
                 if (ex.Line > 0)
                 {
                     Console.WriteLine($"   at line {ex.Line}, column {ex.Column}");
                 }
-                LogDebug("CompilerException caught");
+                Logger.Debug("CompilerException caught");
                 return null;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Compilation Error: {ex.Message}");
-                LogDebug($"General Exception caught: {ex.GetType().Name}");
-                LogDebug($"Stack trace: {ex.StackTrace}");
+                Logger.Error($"Compilation Error: {ex.Message}");
+                Logger.Debug($"General Exception caught: {ex.GetType().Name}");
+                Logger.Debug($"Stack trace: {ex.StackTrace}");
                 return null;
             }
         }

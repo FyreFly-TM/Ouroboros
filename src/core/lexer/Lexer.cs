@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Globalization;
 using Ouro.Tokens;
+using Ouro.src.tools;
 
 namespace Ouro.Core.Lexer
 {
@@ -1878,7 +1879,7 @@ namespace Ouro.Core.Lexer
 
         private void ReportError(string message)
         {
-            Console.Error.WriteLine($"[{_fileName}:{_line}:{_column}] Error: {message}");
+            Logger.Error($"[{_fileName}:{_line}:{_column}] Error Message: {message}");
         }
 
         #endregion

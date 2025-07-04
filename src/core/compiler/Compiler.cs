@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Ouro.Core.AST;
 using Ouro.Core.VM;
+using Ouro.src.tools;
 using Ouro.Tokens;
 
 namespace Ouro.Core.Compiler
@@ -96,16 +97,16 @@ namespace Ouro.Core.Compiler
 
             RegisterBuiltins();
 
-            Console.WriteLine($"DEBUG: Starting compilation of AST: {ast.GetType().Name}");
+            Logger.Debug($"Starting compilation of AST: {ast.GetType().Name}");
 
             try
             {
                 var astType = ast.GetType();
-                Console.WriteLine($"DEBUG: AST type: {astType.Name}, ContainsGenericParameters: {astType.ContainsGenericParameters}");
+                Logger.Debug($"AST type: {astType.Name}, ContainsGenericParameters: {astType.ContainsGenericParameters}");
                 
                 if (astType.ContainsGenericParameters)
                 {
-                    Console.WriteLine($"DEBUG: Skipping AST compilation for generic type {astType.Name}");
+                    Logger.Debug($"Skipping AST compilation for generic type {astType.Name}");
                     throw new CompilerException($"Cannot compile generic AST type definition {astType.Name}");
                 }
                 
@@ -115,7 +116,7 @@ namespace Ouro.Core.Compiler
                     // use the visitor pattern directly since we know the types
                     if (ast is Ouro.Core.AST.Program program)
                     {
-                        Console.WriteLine($"DEBUG: Calling VisitProgram directly on Program AST");
+                        Logger.Debug($"Calling VisitProgram directly on Program AST");
                         this.VisitProgram(program);
                     }
                     else
@@ -128,16 +129,16 @@ namespace Ouro.Core.Compiler
                         }
                         else
                         {
-                            Console.WriteLine($"DEBUG: Cannot invoke generic Accept method on {astType.Name}");
+                            Logger.Debug($"Cannot invoke generic Accept method on {astType.Name}");
                             throw new CompilerException($"Cannot compile AST node of type {astType.Name} - generic Accept method not supported");
                         }
                     }
                 }
                 catch (Exception innerEx)
                 {
-                    Console.WriteLine($"DEBUG: Inner exception during AST compilation: {innerEx.Message}");
-                    Console.WriteLine($"DEBUG: Inner exception type: {innerEx.GetType().Name}");
-                    Console.WriteLine($"DEBUG: Inner stack trace: {innerEx.StackTrace}");
+                    Logger.Debug($"Inner exception during AST compilation: {innerEx.Message}");
+                    Logger.Debug($"Inner exception type: {innerEx.GetType().Name}");
+                    Logger.Debug($"Inner stack trace: {innerEx.StackTrace}");
                     throw;
                 }
                 
@@ -156,14 +157,14 @@ namespace Ouro.Core.Compiler
                     }
                 };
 
-                Console.WriteLine($"DEBUG: Code generation completed successfully");
-                Console.WriteLine($"DEBUG: CompiledProgram.Functions contains {compiledProgram.Functions.Count} functions");
+                Logger.Debug($"Code generation completed successfully");
+                Logger.Debug($"CompiledProgram.Functions contains {compiledProgram.Functions.Count} functions");
                 
                 return compiledProgram;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"DEBUG: Compilation failed: {ex.Message}");
+                Logger.Debug($"Compilation failed: {ex.Message}");
                 throw new CompilerException($"Compilation failed: {ex.Message}");
             }
         }
@@ -231,7 +232,7 @@ namespace Ouro.Core.Compiler
                 case "Ouro.StdLib.Collections":
                     // Don't register open generic types as they cause ContainsGenericParameters errors
                     // Instead register them only when used with specific type arguments
-                    Console.WriteLine("DEBUG: Skipping generic collection types to avoid ContainsGenericParameters errors");
+                    Logger.Debug("Skipping generic collection types to avoid ContainsGenericParameters errors");
                     // importedTypes["List"] = typeof(System.Collections.Generic.List<>);
                     // importedTypes["Dictionary"] = typeof(System.Collections.Generic.Dictionary<,>);
                     // importedTypes["Stack"] = typeof(System.Collections.Generic.Stack<>);
@@ -542,7 +543,7 @@ namespace Ouro.Core.Compiler
         public object VisitLiteralExpression(LiteralExpression expr)
         {
             var index = builder.AddConstant(expr.Value);
-            Console.WriteLine($"DEBUG: Added literal constant '{expr.Value}' at index {index}");
+            Logger.Debug($"Added literal constant '{expr.Value}' at index {index}");
             builder.Emit(Opcode.LoadConstant, index);
             return null;
         }
@@ -564,9 +565,9 @@ namespace Ouro.Core.Compiler
                 return null;
             }
 
-            // CRITICAL DEBUG: Trace the exact failure point
+            // CRITICAL Trace the exact failure point
             var symbol = symbols.Lookup(expr.Name);
-            Console.WriteLine($"DEBUG: VisitIdentifierExpression for '{expr.Name}': symbol={symbol} (null={symbol == null})");
+            Logger.Debug($"VisitIdentifierExpression for '{expr.Name}': symbol={symbol} (null={symbol == null})");
             
             // Check if it's a type or if symbol was not found 
             if (symbol != null && symbol.Type == "type")
@@ -579,7 +580,7 @@ namespace Ouro.Core.Compiler
             // If symbol found, emit load instruction
             if (symbol != null)
             {
-                Console.WriteLine($"DEBUG: Symbol '{expr.Name}' found successfully - emitting load instruction");
+                Logger.Debug($"Symbol '{expr.Name}' found successfully - emitting load instruction");
                 if (symbol.IsGlobal)
                     builder.Emit(Opcode.LoadGlobal, symbol.Index);
                 else
@@ -589,7 +590,7 @@ namespace Ouro.Core.Compiler
             }
             
             // Symbol is null - auto-define it
-            Console.WriteLine($"DEBUG: Symbol '{expr.Name}' not found - auto-defining as local variable");
+            Logger.Debug($"Symbol '{expr.Name}' not found - auto-defining as local variable");
             
             // Auto-define undefined variables as local variables with inferred type
             var newSymbol = symbols.Define(expr.Name, "var");
@@ -614,13 +615,13 @@ namespace Ouro.Core.Compiler
         {
             // For now, treat generic identifiers similar to regular identifiers
             // The generic type information will be used when this becomes part of a function call
-            Console.WriteLine($"DEBUG: Looking up generic identifier '{expr.Name}' with {expr.GenericTypeArguments.Count} type arguments");
+            Logger.Debug($"Looking up generic identifier '{expr.Name}' with {expr.GenericTypeArguments.Count} type arguments");
             
             // Check if it's an imported type
             if (importedTypes.ContainsKey(expr.Name))
             {
                 var typeConstantIndex = builder.AddConstant(importedTypes[expr.Name]);
-                Console.WriteLine($"DEBUG: Loading generic type '{expr.Name}' as constant at index {typeConstantIndex}");
+                Logger.Debug($"Loading generic type '{expr.Name}' as constant at index {typeConstantIndex}");
                 builder.Emit(Opcode.LoadConstant, typeConstantIndex);
                 return null;
             }
@@ -632,7 +633,7 @@ namespace Ouro.Core.Compiler
             if (symbol != null && symbol.Type.ToString() == "type")
             {
                 var constantIndex = builder.AddConstant(expr.Name);
-                Console.WriteLine($"DEBUG: Added generic type constant at index {constantIndex}");
+                Logger.Debug($"Added generic type constant at index {constantIndex}");
                 builder.Emit(Opcode.LoadConstant, constantIndex);
                 return null;
             }
@@ -785,7 +786,7 @@ namespace Ouro.Core.Compiler
                     // Check if this is a generic type definition that hasn't been closed
                     if (type.ContainsGenericParameters)
                     {
-                        Console.WriteLine($"DEBUG: Type {identifier.Name} contains generic parameters, skipping void check");
+                        Logger.Debug($"Type {identifier.Name} contains generic parameters, skipping void check");
                         return null; // Assume non-void for generic types
                     }
                     
@@ -795,14 +796,14 @@ namespace Ouro.Core.Compiler
                                      .ToArray();
                     if (methods.Length > 0 && methods.All(m => m.ReturnType == typeof(void)))
                     {
-                        Console.WriteLine($"DEBUG: Method {identifier.Name}.{memberExpr.MemberName} is void");
+                        Logger.Debug($"Method {identifier.Name}.{memberExpr.MemberName} is void");
                         return "void"; // Signal that this is a void method
                     }
                 }
                 catch (Exception ex)
                 {
                     // If we can't determine, assume non-void to be safe
-                    Console.WriteLine($"DEBUG: Could not determine return type for {identifier.Name}.{memberExpr.MemberName}: {ex.Message}");
+                    Logger.Debug($"Could not determine return type for {identifier.Name}.{memberExpr.MemberName}: {ex.Message}");
                 }
                 
                 return null;
@@ -811,7 +812,7 @@ namespace Ouro.Core.Compiler
             // For user-defined function calls - use name-based runtime resolution
             if (expr.Callee is IdentifierExpression funcName)
             {
-                Console.WriteLine($"DEBUG: Attempting to call function '{funcName.Name}'");
+                Logger.Debug($"Attempting to call function '{funcName.Name}'");
                 
                 // Always use the special user function resolution for unknown functions
                 // This allows forward function calls and runtime resolution
@@ -826,7 +827,7 @@ namespace Ouro.Core.Compiler
                 
                 // Use special method for user function resolution at runtime  
                 builder.Emit(Opcode.CallMethod, builder.AddConstant("__resolve_user_function"), expr.Arguments.Count + 1);
-                Console.WriteLine($"DEBUG: Generated user function call for '{funcName.Name}' with {expr.Arguments.Count} arguments");
+                Logger.Debug($"Generated user function call for '{funcName.Name}' with {expr.Arguments.Count} arguments");
                 return null;
             }
             
@@ -1630,7 +1631,7 @@ namespace Ouro.Core.Compiler
             
             // Set the function start address - this is where the function actually begins
             functionSymbol.Address = builder.CurrentPosition;
-            Console.WriteLine($"DEBUG: Function {decl.Name} address set to {functionSymbol.Address}");
+            Logger.Debug($"Function {decl.Name} address set to {functionSymbol.Address}");
             
             // Add to program functions for VM
             var functionInfo = new FunctionInfo
@@ -1641,7 +1642,7 @@ namespace Ouro.Core.Compiler
                 StartAddress = functionSymbol.Address
             };
             program.Functions[decl.Name] = functionInfo;
-            Console.WriteLine($"DEBUG: Added function {decl.Name} to CompiledProgram.Functions dictionary");
+            Logger.Debug($"Added function {decl.Name} to CompiledProgram.Functions dictionary");
             
             // Enter function scope for parameter compilation
             symbols.EnterScope();
@@ -1652,27 +1653,27 @@ namespace Ouro.Core.Compiler
                 symbols.Define(param.Name, param.Type);
             }
             
-            Console.WriteLine($"DEBUG: Compiling {decl.Name} body at position {builder.CurrentPosition}");
-            Console.WriteLine($"DEBUG: Function {decl.Name} body type: {decl.Body?.GetType()?.Name}");
-            Console.WriteLine($"DEBUG: Function {decl.Name} body is null: {decl.Body == null}");
+            Logger.Debug($"Compiling {decl.Name} body at position {builder.CurrentPosition}");
+            Logger.Debug($"Function {decl.Name} body type: {decl.Body?.GetType()?.Name}");
+            Logger.Debug($"Function {decl.Name} body is null: {decl.Body == null}");
             
             if (decl.Body != null)
             {
                 if (decl.Body is BlockStatement blockStmt)
                 {
-                    Console.WriteLine($"DEBUG: Function {decl.Name} has BlockStatement with {blockStmt.Statements.Count} statements");
+                    Logger.Debug($"Function {decl.Name} has BlockStatement with {blockStmt.Statements.Count} statements");
                     foreach (var stmt in blockStmt.Statements)
                     {
-                        Console.WriteLine($"DEBUG: - Statement type: {stmt.GetType().Name}");
+                        Logger.Debug($"- Statement type: {stmt.GetType().Name}");
                         if (stmt is ExpressionStatement exprStmt)
                         {
-                            Console.WriteLine($"DEBUG: - Expression type: {exprStmt.Expression.GetType().Name}");
+                            Logger.Debug($"- Expression type: {exprStmt.Expression.GetType().Name}");
                         }
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"DEBUG: Function {decl.Name} body is {decl.Body.GetType().Name}");
+                    Logger.Debug($"Function {decl.Name} body is {decl.Body.GetType().Name}");
                 }
                 
                 // Compile the function body
@@ -1680,7 +1681,7 @@ namespace Ouro.Core.Compiler
             }
             else
             {
-                Console.WriteLine($"DEBUG: Function {decl.Name} has NULL body - generating default return");
+                Logger.Debug($"Function {decl.Name} has NULL body - generating default return");
             }
             
             // Ensure function ends with return
@@ -1695,7 +1696,7 @@ namespace Ouro.Core.Compiler
             // Patch the skip jump to land here (after the function)
             builder.PatchJump(skipJump);
             
-            Console.WriteLine($"DEBUG: Function {decl.Name} compiled from {functionInfo.StartAddress} to {functionInfo.EndAddress}");
+            Logger.Debug($"Function {decl.Name} compiled from {functionInfo.StartAddress} to {functionInfo.EndAddress}");
             
             return null;
         }
@@ -2087,14 +2088,14 @@ namespace Ouro.Core.Compiler
         public object VisitImportDeclaration(ImportDeclaration decl)
         {
             // Register the imported types in the compiler
-            Console.WriteLine($"DEBUG: Registering imported types for module: {decl.ModulePath}");
+            Logger.Debug($"Registering imported types for module: {decl.ModulePath}");
             RegisterImportedTypes(decl.ModulePath);
             
             // Emit the import instruction for runtime loading
             // For static imports, we need to emit the full path with "static" prefix
             var fullPath = decl.IsStatic ? $"static {decl.ModulePath}" : decl.ModulePath;
             var constantIndex = builder.AddConstant(fullPath);
-            Console.WriteLine($"DEBUG: Added import path constant '{fullPath}' at index {constantIndex}");
+            Logger.Debug($"Added import path constant '{fullPath}' at index {constantIndex}");
             builder.Emit(Opcode.Import, constantIndex);
             
             return null;
@@ -2404,11 +2405,11 @@ namespace Ouro.Core.Compiler
         public object VisitProgram(Ouro.Core.AST.Program program)
         {
             // SINGLE PASS: Compile everything in order but track function locations properly
-            Console.WriteLine("DEBUG: Compiling program with proper function address tracking");
+            Logger.Debug("Compiling program with proper function address tracking");
             
             // Reserve space for main function call - we'll add it after compilation
             var programStartJump = builder.EmitJump(Opcode.Jump);
-            Console.WriteLine($"DEBUG: Reserved space for program start jump at position {programStartJump}");
+            Logger.Debug($"Reserved space for program start jump at position {programStartJump}");
             
             foreach (var statement in program.Statements)
             {
@@ -2422,15 +2423,15 @@ namespace Ouro.Core.Compiler
             var mainSymbol = symbols.Lookup("main");
             if (mainSymbol != null)
             {
-                Console.WriteLine("DEBUG: Found main function, generating direct call");
-                Console.WriteLine($"DEBUG: Main function address: {mainSymbol.Address}");
+                Logger.Debug("Found main function, generating direct call");
+                Logger.Debug($"Main function address: {mainSymbol.Address}");
                 
                 // Generate a direct call to main function using string resolution
                 builder.Emit(Opcode.LoadNull); // Dummy object for CallMethod
                 builder.Emit(Opcode.LoadConstant, builder.AddConstant("main"));
                 builder.Emit(Opcode.CallMethod, builder.AddConstant("__resolve_user_function"), 1); // Special method with function name as argument
                 
-                Console.WriteLine($"DEBUG: Generated call to main function");
+                Logger.Debug($"Generated call to main function");
                 
                 // Pop the return value from main (if any) and exit program
                 builder.Emit(Opcode.Pop); // Remove main's return value
@@ -2477,12 +2478,12 @@ namespace Ouro.Core.Compiler
             // Simple attribute processing - just output debug info
             if (decl.Name == "test")
             {
-                Console.WriteLine("[ATTRIBUTE] Processing @inline - Force function inlining");
-                Console.WriteLine($"[ATTRIBUTE] @inline function: {decl.Name} - forced inlining");
+                Logger.Debug("[ATTRIBUTE] Processing @inline - Force function inlining");
+                Logger.Debug($"[ATTRIBUTE] @inline function: {decl.Name} - forced inlining");
             }
             else
             {
-                Console.WriteLine($"[ATTRIBUTE] Processing function: {decl.Name}");
+                Logger.Debug($"[ATTRIBUTE] Processing function: {decl.Name}");
             }
         }
         

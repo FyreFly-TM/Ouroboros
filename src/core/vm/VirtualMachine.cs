@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Ouro.Core.Compiler;
+using Ouro.src.tools;
 using Ouro.StdLib.Math;
 using static Ouro.StdLib.Math.MathSymbols;
 
@@ -116,7 +117,7 @@ namespace Ouro.Core.VM
         private void ExecuteInstruction()
         {
             var opcode = (Opcode)instructions[instructionPointer++];
-            LogDebug($"Executing opcode {opcode} at IP {instructionPointer - 1}");
+            Logger.Debug($"Executing opcode {opcode} at IP {instructionPointer - 1}");
             
             switch (opcode)
             {
@@ -140,7 +141,7 @@ namespace Ouro.Core.VM
                         var offset = ReadInt32();
                         if (operandStack.Count == 0)
                         {
-                            LogDebug("JumpIfTrue - Stack empty, treating as false");
+                            Logger.Debug("JumpIfTrue - Stack empty, treating as false");
                             break;
                         }
                         var conditionValue = operandStack.Pop();
@@ -155,7 +156,7 @@ namespace Ouro.Core.VM
                         var offset = ReadInt32();
                         if (operandStack.Count == 0)
                         {
-                            LogDebug("JumpIfFalse - Stack empty, treating as false");
+                            Logger.Debug("JumpIfFalse - Stack empty, treating as false");
                             instructionPointer += offset;
                             break;
                         }
@@ -367,7 +368,7 @@ namespace Ouro.Core.VM
                 case Opcode.LoadConstant:
                     {
                         var index = ReadInt32();
-                        LogDebug($"LoadConstant trying to access index {index}");
+                        Logger.Debug($"LoadConstant trying to access index {index}");
                         operandStack.Push(constantPool[index]);
                     }
                     break;
@@ -394,10 +395,10 @@ namespace Ouro.Core.VM
                         var index = ReadInt32();
                         if (index >= globals.Count || globals[index] == null)
                         {
-                            LogDebug($"LoadGlobal[{index}] - value is null, globals.Count = {globals.Count}");
+                            Logger.Debug($"LoadGlobal[{index}] - value is null, globals.Count = {globals.Count}");
                         }
                         var value = globals[index];
-                        LogDebug($"LoadGlobal[{index}] = '{value}'");
+                        Logger.Debug($"LoadGlobal[{index}] = '{value}'");
                         operandStack.Push(value);
                     }
                     break;
@@ -446,7 +447,7 @@ namespace Ouro.Core.VM
                             
                         var oldValue = globals[index];
                         globals[index] = value;
-                        LogDebug($"StoreGlobal[{index}] = '{value}' (was: '{oldValue}')");
+                        Logger.Debug($"StoreGlobal[{index}] = '{value}' (was: '{oldValue}')");
                     }
                     break;
                     
@@ -584,7 +585,7 @@ namespace Ouro.Core.VM
                     {
                         if (operandStack.Count == 0)
                         {
-                            LogDebug("LogicalNot - Stack empty, pushing true");
+                            Logger.Debug("LogicalNot - Stack empty, pushing true");
                             operandStack.Push(true);
                             break;
                         }
@@ -762,7 +763,7 @@ namespace Ouro.Core.VM
                             var actualArgs = new object[argCount - 1];
                             Array.Copy(args, 1, actualArgs, 0, argCount - 1);
                             
-                            LogDebug($"VM resolving user function '{functionName}' at runtime");
+                            Logger.Debug($"VM resolving user function '{functionName}' at runtime");
                             
                             // Look up function in function table by name
                             var function = ResolveUserFunction(functionName);
@@ -1157,7 +1158,7 @@ namespace Ouro.Core.VM
                                 }
                                 else
                                 {
-                                    LogDebug($"Warning: Static module '{staticModule}' not found");
+                                    Logger.Debug($"Warning: Static module '{staticModule}' not found");
                                 }
                             }
                         }
@@ -3428,13 +3429,6 @@ namespace Ouro.Core.VM
         }
         
         #endregion
-
-        // Add debug logging method
-        private void LogDebug(string message)
-        {
-            if (debugMode)
-                Console.WriteLine($"[VM] {message}");
-        }
 
         private void LoadDomainOperators(string domainName, Dictionary<string, object> domainContext)
         {
