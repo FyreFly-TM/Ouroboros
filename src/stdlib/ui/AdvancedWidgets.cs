@@ -12,9 +12,9 @@ namespace Ouro.StdLib.UI
     public class NumericUpDown : Widget
     {
         private double value;
-        private TextBox textBox;
-        private Button upButton;
-        private Button downButton;
+        private TextBox? textBox;
+        private Button? upButton;
+        private Button? downButton;
         
         public double Minimum { get; set; } = 0;
         public double Maximum { get; set; } = 100;
@@ -37,7 +37,7 @@ namespace Ouro.StdLib.UI
             }
         }
         
-        public event EventHandler<ValueChangedEventArgs> ValueChanged;
+        public event EventHandler<ValueChangedEventArgs>? ValueChanged;
         
         public NumericUpDown()
         {
@@ -81,20 +81,20 @@ namespace Ouro.StdLib.UI
         
         private void UpdateTextBox()
         {
-            textBox.Text = DecimalPlaces > 0 
+            textBox!.Text = DecimalPlaces > 0 
                 ? value.ToString($"F{DecimalPlaces}")
                 : value.ToString("F0");
         }
         
         public override void Render(GraphicsContext context)
         {
-            textBox.Position = Position;
+            textBox!.Position = Position;
             textBox.Render(context);
             
-            upButton.Position = Position + new Vector(Size.X - 30, 0);
+            upButton!.Position = Position + new Vector(Size.X - 30, 0);
             upButton.Render(context);
             
-            downButton.Position = Position + new Vector(Size.X - 30, 15);
+            downButton!.Position = Position + new Vector(Size.X - 30, 15);
             downButton.Render(context);
         }
     }
@@ -129,7 +129,7 @@ namespace Ouro.StdLib.UI
         public DateTime MinDate { get; set; } = DateTime.MinValue;
         public DateTime MaxDate { get; set; } = DateTime.MaxValue;
         
-        public event EventHandler<DateChangedEventArgs> DateChanged;
+        public event EventHandler<DateChangedEventArgs>? DateChanged;
         
         public DatePicker()
         {
@@ -217,7 +217,7 @@ namespace Ouro.StdLib.UI
             }
         }
         
-        public event EventHandler<DateSelectedEventArgs> DateSelected;
+        public event EventHandler<DateSelectedEventArgs>? DateSelected;
         
         public Calendar()
         {
@@ -333,7 +333,7 @@ namespace Ouro.StdLib.UI
             }
         }
         
-        public event EventHandler<ColorChangedEventArgs> ColorChanged;
+        public event EventHandler<ColorChangedEventArgs>? ColorChanged;
         
         public ColorPicker()
         {
@@ -789,7 +789,7 @@ namespace Ouro.StdLib.UI
                                  string defaultValue = "")
         {
             var dialog = new InputDialog(parent, title, prompt, defaultValue);
-            return dialog.ShowDialog() == DialogResult.OK ? dialog.InputText : null;
+            return dialog.ShowDialog() == DialogResult.OK ? dialog.InputText : "";
         }
     }
     

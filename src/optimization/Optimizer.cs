@@ -18,7 +18,9 @@ namespace Ouro.Optimization
         private readonly List<IOptimizationPass> astPasses;
         private readonly List<IOptimizationPass> bytecodePasses;
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public Optimizer(OptimizationOptions options = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             this.options = options ?? new OptimizationOptions();
             astPasses = new List<IOptimizationPass>();
@@ -188,7 +190,7 @@ namespace Ouro.Optimization
                     try
                     {
                         object result = EvaluateBinary(expr.Operator, leftLit.Value, rightLit.Value);
-                        return new LiteralExpression(new Token(expr.Token.Type, result.ToString(), result, expr.Line, expr.Column, 0, 0, expr.FileName, expr.SyntaxLevel));
+                        return new LiteralExpression(new Token(expr.Token?.Type ?? TokenType.NullLiteral, result.ToString()!, result, expr.Line, expr.Column, 0, 0, expr.FileName, expr.SyntaxLevel));
                     }
                     catch
                     {
@@ -196,7 +198,7 @@ namespace Ouro.Optimization
                     }
                 }
                 
-                return new BinaryExpression(left, expr.Operator, right);
+                return new BinaryExpression(left!, expr.Operator, right!);
             }
             
             private object EvaluateBinary(Token op, object left, object right)
@@ -288,17 +290,19 @@ namespace Ouro.Optimization
                         if (boolValue)
                         {
                             // Always true, eliminate else branch
-                            return Visit(stmt.ThenBranch) as Statement;
+                            var thenBranch = Visit(stmt.ThenBranch) as Statement;
+                            return thenBranch ?? new BlockStatement(new List<Statement>(), stmt.Token);
                         }
                         else if (stmt.ElseBranch != null)
                         {
                             // Always false, eliminate then branch
-                            return Visit(stmt.ElseBranch) as Statement;
+                            var elseBranch = Visit(stmt.ElseBranch) as Statement;
+                            return elseBranch ?? new BlockStatement(new List<Statement>(), stmt.Token);
                         }
                         else
                         {
                             // Always false with no else, eliminate entire if
-                            return null;
+                            return null!;
                         }
                     }
                 }
@@ -312,7 +316,7 @@ namespace Ouro.Optimization
                 if (stmt.Condition is LiteralExpression { Value: false })
                 {
                     // Loop never executes
-                    return null;
+                    return null!;
                 }
                 
                 return base.VisitWhileStatement(stmt);
@@ -448,13 +452,16 @@ namespace Ouro.Optimization
                     if (returns.Count == 0)
                     {
                         // No return, function returns null/void
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                         var nullToken = new Token(TokenType.NullLiteral, "null", null, func.Line, func.Column, 0, 0, "", SyntaxLevel.Medium);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                         return new LiteralExpression(nullToken);
                     }
                     else if (returns.Count == 1 && IsLastStatement(returns[0], block))
                     {
                         // Single return at end - inline the return expression
-                        return cloner.Visit(returns[0].Value) as Expression;
+                        var inlined = cloner.Visit(returns[0].Value!) as Expression;
+                        return inlined ?? new LiteralExpression(new Token(TokenType.NullLiteral, "null", null!, 0, 0, 0, 0, "", SyntaxLevel.Medium));
                     }
                     else
                     {
@@ -468,10 +475,6 @@ namespace Ouro.Optimization
                     // Other cases - create IIFE
                     return CreateIIFE(func, cloner);
                 }
-                
-                // Fallback
-                var fallbackToken = new Token(TokenType.NullLiteral, "null", null, func.Line, func.Column, 0, 0, "", SyntaxLevel.Medium);
-                return new LiteralExpression(fallbackToken);
             }
             
             private bool IsLastStatement(ReturnStatement ret, BlockStatement block)
@@ -491,7 +494,7 @@ namespace Ouro.Optimization
                     ParameterModifier.None
                 )).ToList();
                 var lambdaBody = cloner.Visit(func.Body) as Statement;
-                var lambda = new LambdaExpression(lambdaParams, lambdaBody);
+                var lambda = new LambdaExpression(lambdaParams, lambdaBody!);
                 
                 // Create call with mapped arguments
                 var args = func.Parameters.Select(p => parameterMap[p.Name]).ToList();
@@ -531,7 +534,8 @@ namespace Ouro.Optimization
                 if (substitutions.TryGetValue(expr.Name, out var replacement))
                 {
                     // Clone the replacement to avoid sharing nodes
-                    return Visit(replacement) as Expression;
+                    var cloned = Visit(replacement) as Expression;
+                    return cloned ?? new LiteralExpression(new Token(TokenType.NullLiteral, "null", null!, 0, 0, 0, 0, "", SyntaxLevel.Medium));
                 }
                 return expr;
             }
@@ -540,26 +544,26 @@ namespace Ouro.Optimization
             {
                 var left = Visit(expr.Left) as Expression;
                 var right = Visit(expr.Right) as Expression;
-                return new BinaryExpression(left, expr.Operator, right);
+                return new BinaryExpression(left!, expr.Operator, right!);
             }
             
             public override Expression VisitUnaryExpression(UnaryExpression expr)
             {
                 var operand = Visit(expr.Operand) as Expression;
-                return new UnaryExpression(expr.Operator, operand, expr.IsPrefix);
+                return new UnaryExpression(expr.Operator, operand!, expr.IsPrefix);
             }
             
             public override Expression VisitCallExpression(CallExpression expr)
             {
                 var callee = Visit(expr.Callee) as Expression;
                 var args = expr.Arguments.Select(a => Visit(a) as Expression).ToList();
-                return new CallExpression(callee, args);
+                return new CallExpression(callee!, args!);
             }
             
             public override Statement VisitBlockStatement(BlockStatement stmt)
             {
                 var statements = stmt.Statements.Select(s => Visit(s) as Statement).ToList();
-                return new BlockStatement(statements, stmt.Token);
+                return new BlockStatement(statements!, stmt.Token);
             }
         }
     }
@@ -836,7 +840,7 @@ namespace Ouro.Optimization
                 var right = Visit(expr.Right) as Expression;
                 
                 // Create canonical representation
-                string key = $"{GetExpressionKey(left)}_{expr.Operator.Type}_{GetExpressionKey(right)}";
+                string key = $"{GetExpressionKey(left!)}_{expr.Operator.Type}_{GetExpressionKey(right!)}";
                 
                 if (expressions.TryGetValue(key, out var existing))
                 {
@@ -844,7 +848,7 @@ namespace Ouro.Optimization
                     return existing;
                 }
                 
-                var newExpr = new BinaryExpression(left, expr.Operator, right);
+                var newExpr = new BinaryExpression(left!, expr.Operator, right!);
                 expressions[key] = newExpr;
                 return newExpr;
             }
@@ -897,7 +901,7 @@ namespace Ouro.Optimization
                 // Remove NOPs
                 if (changed)
                 {
-                    optimized.RemoveAll(b => b == (byte)Opcode.Nop);
+                    optimized.RemoveAll(static b => b == (byte)Opcode.Nop);
                 }
                 
             } while (changed);
@@ -989,7 +993,7 @@ namespace Ouro.Optimization
                 BuildLiveIntervals(bytecode);
                 
                 // Phase 2: Sort intervals by start point
-                intervals.Sort((a, b) => a.Start.CompareTo(b.Start));
+                intervals.Sort(static (a, b) => a.Start.CompareTo(b.Start));
                 
                 // Phase 3: Allocate registers using linear scan
                 AllocateRegisters();
@@ -1172,7 +1176,7 @@ namespace Ouro.Optimization
     {
         public virtual T Visit(AstNode node)
         {
-            if (node == null) return default(T);
+            if (node == null) return default!;
             
             // Since we can't use the Accept pattern directly without implementing IAstVisitor,
             // we'll use type checking and casting
@@ -1218,19 +1222,19 @@ namespace Ouro.Optimization
         public virtual Statement VisitExpressionStatement(ExpressionStatement stmt)
         {
             var expr = Visit(stmt.Expression) as Expression;
-            return new ExpressionStatement(expr);
+            return new ExpressionStatement(expr!);
         }
         
         public virtual Statement VisitVariableDeclaration(VariableDeclaration stmt)
         {
             var initializer = stmt.Initializer != null ? Visit(stmt.Initializer) as Expression : null;
-            return new VariableDeclaration(stmt.Type, stmt.Token, initializer, stmt.IsConst, stmt.IsReadonly);
+            return new VariableDeclaration(stmt.Type, stmt.Token!, initializer, stmt.IsConst, stmt.IsReadonly);
         }
         
         public virtual Statement VisitFunctionDeclaration(FunctionDeclaration stmt)
         {
             var body = Visit(stmt.Body) as BlockStatement;
-            return new FunctionDeclaration(stmt.Token, stmt.ReturnType, stmt.Parameters, body, stmt.TypeParameters, stmt.IsAsync, stmt.Modifiers);
+            return new FunctionDeclaration(stmt.Token!, stmt.ReturnType, stmt.Parameters, body!, stmt.TypeParameters, stmt.IsAsync, stmt.Modifiers);
         }
         
         public virtual Statement VisitClassDeclaration(ClassDeclaration stmt)
@@ -1243,14 +1247,14 @@ namespace Ouro.Optimization
             var condition = Visit(stmt.Condition) as Expression;
             var thenBranch = Visit(stmt.ThenBranch) as Statement;
             var elseBranch = stmt.ElseBranch != null ? Visit(stmt.ElseBranch) as Statement : null;
-            return new IfStatement(stmt.Token, condition, thenBranch, elseBranch);
+            return new IfStatement(stmt.Token!, condition!, thenBranch!, elseBranch ?? new BlockStatement(new List<Statement>(), stmt.Token));
         }
         
         public virtual Statement VisitWhileStatement(WhileStatement stmt)
         {
             var condition = Visit(stmt.Condition) as Expression;
             var body = Visit(stmt.Body) as Statement;
-            return new WhileStatement(stmt.Token, condition, body);
+            return new WhileStatement(stmt.Token!, condition!, body!);
         }
         
         public virtual Statement VisitForStatement(ForStatement stmt)
@@ -1259,32 +1263,32 @@ namespace Ouro.Optimization
             var condition = stmt.Condition != null ? Visit(stmt.Condition) as Expression : null;
             var update = stmt.Update != null ? Visit(stmt.Update) as Expression : null;
             var body = Visit(stmt.Body) as Statement;
-            return new ForStatement(stmt.Token, initializer, condition, update, body);
+            return new ForStatement(stmt.Token!, initializer, condition, update, body!);
         }
         
         public virtual Statement VisitReturnStatement(ReturnStatement stmt)
         {
             var value = stmt.Value != null ? Visit(stmt.Value) as Expression : null;
-            return new ReturnStatement(stmt.Token, value);
+            return new ReturnStatement(stmt.Token!, value);
         }
         
         public virtual Statement VisitBlockStatement(BlockStatement stmt)
         {
             var statements = stmt.Statements.Select(s => Visit(s) as Statement).ToList();
-            return new BlockStatement(statements, stmt.Token);
+            return new BlockStatement(statements!, stmt.Token);
         }
         
         public virtual Expression VisitBinaryExpression(BinaryExpression expr)
         {
             var left = Visit(expr.Left) as Expression;
             var right = Visit(expr.Right) as Expression;
-            return new BinaryExpression(left, expr.Operator, right);
+            return new BinaryExpression(left!, expr.Operator, right!);
         }
         
         public virtual Expression VisitUnaryExpression(UnaryExpression expr)
         {
             var operand = Visit(expr.Operand) as Expression;
-            return new UnaryExpression(expr.Operator, operand, expr.IsPrefix);
+            return new UnaryExpression(expr.Operator, operand!, expr.IsPrefix);
         }
         
         public virtual Expression VisitLiteralExpression(LiteralExpression expr)
@@ -1301,14 +1305,14 @@ namespace Ouro.Optimization
         {
             var target = Visit(expr.Target) as Expression;
             var value = Visit(expr.Value) as Expression;
-            return new AssignmentExpression(target, expr.Operator, value);
+            return new AssignmentExpression(target!, expr.Operator, value!);
         }
         
         public virtual Expression VisitCallExpression(CallExpression expr)
         {
             var callee = Visit(expr.Callee) as Expression;
             var arguments = expr.Arguments.Select(a => Visit(a) as Expression).ToList();
-            return new CallExpression(callee, arguments, expr.IsAsync, expr.GenericTypeArguments);
+            return new CallExpression(callee!, arguments!, expr.IsAsync, expr.GenericTypeArguments);
         }
     }
 } 

@@ -15,7 +15,9 @@ namespace Ouro.GPU.CUDA
         private readonly string nvccPath;
         private readonly CompilerOptions defaultOptions;
 
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public CudaCompiler(string nvccPath = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             this.nvccPath = nvccPath ?? FindNvcc();
             this.defaultOptions = new CompilerOptions
@@ -29,7 +31,9 @@ namespace Ouro.GPU.CUDA
         /// <summary>
         /// Compile Ouroboros GPU kernel to PTX
         /// </summary>
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public CompiledPTX CompileKernel(string source, string entryPoint, CompilerOptions options = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             options ??= defaultOptions;
 
@@ -268,10 +272,10 @@ namespace Ouro.GPU.CUDA
 
     public class CompiledPTX
     {
-        public string PTXCode { get; set; }
-        public string EntryPoint { get; set; }
+        public string? PTXCode { get; set; }
+        public string? EntryPoint { get; set; }
         public DateTime CompileTime { get; set; }
-        public CompilerOptions Options { get; set; }
+        public CompilerOptions? Options { get; set; }
     }
 
     public class CompilerOptions

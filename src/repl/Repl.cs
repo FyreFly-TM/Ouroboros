@@ -726,8 +726,8 @@ namespace Ouro.REPL
 
     internal class VariableInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string? Name { get; set; }
+        public string? Type { get; set; }
         public bool IsConst { get; set; }
         public bool IsReadonly { get; set; }
 

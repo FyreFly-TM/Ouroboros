@@ -48,8 +48,8 @@ namespace Ouro.StdLib.ML
     public class ModelBuilder
     {
         private readonly Sequential model = new();
-        private IOptimizer optimizer;
-        private Func<Tensor, Tensor, (double, Tensor)> lossFunction;
+        private IOptimizer? optimizer;
+        private Func<Tensor, Tensor, (double, Tensor)>? lossFunction;
         private int? inputSize;
         private int lastLayerOutputSize;
         
@@ -60,7 +60,9 @@ namespace Ouro.StdLib.ML
             return this;
         }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public ModelBuilder Dense(int units, string activation = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             // Get input size from previous layer or initial input
             var inputSize = this.inputSize ?? GetLastLayerOutputSize();
@@ -95,14 +97,20 @@ namespace Ouro.StdLib.ML
             return this;
         }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public ModelBuilder Compile(string optimizer = "adam", string loss = "mse", List<string> metrics = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             this.optimizer = GetOptimizer(optimizer);
             this.lossFunction = GetLossFunction(loss);
             return this;
         }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public async Task<History> Fit(Dataset trainData, Dataset validationData = null, TrainConfig config = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             config ??= new TrainConfig();
             var history = new History();
@@ -118,7 +126,7 @@ namespace Ouro.StdLib.ML
                     var predictions = model.Forward(inputs);
                     
                     // Calculate loss
-                    var (loss, gradOutput) = lossFunction(predictions, targets);
+                    var (loss, gradOutput) = lossFunction!(predictions, targets);
                     epochLoss += loss;
                     batches++;
                     
@@ -126,7 +134,7 @@ namespace Ouro.StdLib.ML
                     model.Backward(gradOutput);
                     
                     // Update weights
-                    optimizer.Step(model.GetParameters(), model.GetParameters().Select(p => Tensor.Zeros(p.Shape)).ToList());
+                    optimizer!.Step(model.GetParameters(), model.GetParameters().Select(static p => Tensor.Zeros(p.Shape)).ToList());
                 }
                 
                 epochLoss /= batches;
@@ -151,7 +159,7 @@ namespace Ouro.StdLib.ML
             return model.Forward(input);
         }
         
-        public async Task<double> EvaluateAsync(Dataset testData)
+        public Task<double> EvaluateAsync(Dataset testData)
         {
             double totalLoss = 0;
             int batches = 0;
@@ -159,12 +167,12 @@ namespace Ouro.StdLib.ML
             foreach (var (inputs, targets) in testData.GetBatches(32))
             {
                 var predictions = model.Forward(inputs);
-                var (loss, _) = lossFunction(predictions, targets);
+                var (loss, _) = lossFunction!(predictions, targets);
                 totalLoss += loss;
                 batches++;
             }
             
-            return totalLoss / batches;
+            return Task.FromResult(totalLoss / batches);
         }
         
         private ILayer GetActivation(string name)
@@ -314,7 +322,7 @@ namespace Ouro.StdLib.ML
         public int Epochs { get; set; } = 10;
         public int BatchSize { get; set; } = 32;
         public double LearningRate { get; set; } = 0.001;
-        public Action<int, double> OnEpochEnd { get; set; }
+        public Action<int, double>? OnEpochEnd { get; set; }
         public bool Shuffle { get; set; } = true;
         public double ValidationSplit { get; set; } = 0.2;
     }
@@ -352,7 +360,7 @@ namespace Ouro.StdLib.ML
     public class DropoutLayer : ILayer
     {
         private readonly double rate;
-        private Tensor mask;
+        private Tensor? mask;
         private readonly Random random = new();
         
         public DropoutLayer(double rate)
@@ -372,7 +380,7 @@ namespace Ouro.StdLib.ML
         
         public Tensor Backward(Tensor gradOutput)
         {
-            return gradOutput * mask;
+            return gradOutput * mask!;
         }
         
         public void UpdateWeights(double learningRate) { }
@@ -385,10 +393,10 @@ namespace Ouro.StdLib.ML
     /// </summary>
     public class BatchNormLayer : ILayer
     {
-        private Tensor gamma;
-        private Tensor beta;
-        private Tensor runningMean;
-        private Tensor runningVar;
+        private Tensor? gamma;
+        private Tensor? beta;
+        private Tensor? runningMean;
+        private Tensor? runningVar;
         private readonly double momentum = 0.9;
         private readonly double epsilon = 1e-5;
         
@@ -415,7 +423,7 @@ namespace Ouro.StdLib.ML
             var normalized = (input - mean) * (1.0 / stdDev);
             
             // Scale and shift
-            return normalized * gamma + beta;
+            return normalized * gamma! + beta!;
         }
         
         private Tensor ComputeMean(Tensor input, int axis)
@@ -444,7 +452,7 @@ namespace Ouro.StdLib.ML
             // For now, no updates needed as we're using default values
         }
         
-        public List<Tensor> GetParameters() => new List<Tensor> { gamma, beta };
+        public List<Tensor> GetParameters() => new List<Tensor> { gamma!, beta! };
         public List<Tensor> GetGradients() => new List<Tensor>();
     }
     

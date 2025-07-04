@@ -12,7 +12,9 @@ namespace Ouro.Core.VM
         public Opcode Opcode { get; set; }
         public object Operand { get; set; }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public Instruction(Opcode opcode, object operand = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             Opcode = opcode;
             Operand = operand;
@@ -24,17 +26,17 @@ namespace Ouro.Core.VM
     /// </summary>
     public class Bytecode
     {
-        public byte[] Instructions { get; set; }
-        public object[] ConstantPool { get; set; }
-        public FunctionInfo[] Functions { get; set; }
-        public ClassInfo[] Classes { get; set; }
-        public InterfaceInfo[] Interfaces { get; set; }
-        public StructInfo[] Structs { get; set; }
-        public EnumInfo[] Enums { get; set; }
-        public ComponentInfo[] Components { get; set; }
-        public SystemInfo[] Systems { get; set; }
-        public EntityInfo[] Entities { get; set; }
-        public ExceptionHandler[] ExceptionHandlers { get; set; }
+        public byte[]? Instructions { get; set; }
+        public object[]? ConstantPool { get; set; }
+        public FunctionInfo[]? Functions { get; set; }
+        public ClassInfo[]? Classes { get; set; }
+        public InterfaceInfo[]? Interfaces { get; set; }
+        public StructInfo[]? Structs { get; set; }
+        public EnumInfo[]? Enums { get; set; }
+        public ComponentInfo[]? Components { get; set; }
+        public SystemInfo[]? Systems { get; set; }
+        public EntityInfo[]? Entities { get; set; }
+        public ExceptionHandler[]? ExceptionHandlers { get; set; }
         
         // Legacy properties for compatibility
         public List<byte> Code 
@@ -55,10 +57,10 @@ namespace Ouro.Core.VM
     /// </summary>
     public class CompiledProgram
     {
-        public Bytecode Bytecode { get; set; }
-        public SymbolTable SymbolTable { get; set; }
-        public string SourceFile { get; set; }
-        public ProgramMetadata Metadata { get; set; }
+        public Bytecode? Bytecode { get; set; }
+        public SymbolTable? SymbolTable { get; set; }
+        public string? SourceFile { get; set; }
+        public ProgramMetadata? Metadata { get; set; }
     }
     
     /// <summary>
@@ -66,12 +68,12 @@ namespace Ouro.Core.VM
     /// </summary>
     public class ProgramMetadata
     {
-        public string Version { get; set; }
-        public string CompilerVersion { get; set; }
+        public string? Version { get; set; }
+        public string? CompilerVersion { get; set; }
         public int OptimizationLevel { get; set; } // 0=None, 1=Basic, 2=Full
-        public string[] SourceFiles { get; set; }
+        public string[]? SourceFiles { get; set; }
         public DateTime CompileTime { get; set; }
-        public string TargetPlatform { get; set; }
+        public string? TargetPlatform { get; set; }
     }
     
     /// <summary>
@@ -79,7 +81,7 @@ namespace Ouro.Core.VM
     /// </summary>
     public class FunctionInfo
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public int StartAddress { get; set; }
         public int EndAddress { get; set; }
         public int LocalCount { get; set; }
@@ -93,12 +95,12 @@ namespace Ouro.Core.VM
     /// </summary>
     public class ClassInfo
     {
-        public string Name { get; set; }
-        public string BaseClass { get; set; }
-        public List<string> Interfaces { get; set; }
-        public List<FieldInfo> Fields { get; set; }
-        public List<MethodInfo> Methods { get; set; }
-        public List<PropertyInfo> Properties { get; set; }
+        public string? Name { get; set; }
+        public string? BaseClass { get; set; }
+        public List<string>? Interfaces { get; set; }
+        public List<FieldInfo>? Fields { get; set; }
+        public List<MethodInfo>? Methods { get; set; }
+        public List<PropertyInfo>? Properties { get; set; }
         public int ConstructorAddress { get; set; }
         public int VTableOffset { get; set; }
     }
@@ -108,11 +110,11 @@ namespace Ouro.Core.VM
     /// </summary>
     public class FieldInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
-        public List<string> Modifiers { get; set; }
+        public string? Name { get; set; }
+        public string? Type { get; set; }
+        public List<string>? Modifiers { get; set; }
         public int Offset { get; set; }
-        public object DefaultValue { get; set; }
+        public object? DefaultValue { get; set; }
     }
     
     /// <summary>
@@ -120,10 +122,10 @@ namespace Ouro.Core.VM
     /// </summary>
     public class MethodInfo
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public int StartAddress { get; set; }
         public int EndAddress { get; set; }
-        public List<string> Modifiers { get; set; }
+        public List<string>? Modifiers { get; set; }
         public int VTableIndex { get; set; }
         public bool IsVirtual { get; set; }
         public bool IsAbstract { get; set; }
@@ -134,8 +136,8 @@ namespace Ouro.Core.VM
     /// </summary>
     public class PropertyInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string? Name { get; set; }
+        public string? Type { get; set; }
         public int GetterAddress { get; set; }
         public int GetterEndAddress { get; set; }
         public int SetterAddress { get; set; }
@@ -147,10 +149,10 @@ namespace Ouro.Core.VM
     /// </summary>
     public class InterfaceInfo
     {
-        public string Name { get; set; }
-        public List<string> BaseInterfaces { get; set; }
-        public List<InterfaceMethodInfo> Methods { get; set; }
-        public List<InterfacePropertyInfo> Properties { get; set; }
+        public string? Name { get; set; }
+        public List<string>? BaseInterfaces { get; set; }
+        public List<InterfaceMethodInfo>? Methods { get; set; }
+        public List<InterfacePropertyInfo>? Properties { get; set; }
     }
     
     /// <summary>
@@ -158,9 +160,9 @@ namespace Ouro.Core.VM
     /// </summary>
     public class InterfaceMethodInfo
     {
-        public string Name { get; set; }
-        public string ReturnType { get; set; }
-        public List<ParameterInfo> Parameters { get; set; }
+        public string? Name { get; set; }
+        public string? ReturnType { get; set; }
+        public List<ParameterInfo>? Parameters { get; set; }
         public int VTableIndex { get; set; }
     }
     
@@ -169,8 +171,8 @@ namespace Ouro.Core.VM
     /// </summary>
     public class InterfacePropertyInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string? Name { get; set; }
+        public string? Type { get; set; }
         public bool HasGetter { get; set; }
         public bool HasSetter { get; set; }
     }
@@ -180,10 +182,10 @@ namespace Ouro.Core.VM
     /// </summary>
     public class ParameterInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string? Name { get; set; }
+        public string? Type { get; set; }
         public bool IsOptional { get; set; }
-        public object DefaultValue { get; set; }
+        public object? DefaultValue { get; set; }
         public bool IsParams { get; set; }
         public bool IsRef { get; set; }
         public bool IsOut { get; set; }
@@ -194,10 +196,10 @@ namespace Ouro.Core.VM
     /// </summary>
     public class StructInfo
     {
-        public string Name { get; set; }
-        public List<string> Interfaces { get; set; }
-        public List<FieldInfo> Fields { get; set; }
-        public List<MethodInfo> Methods { get; set; }
+        public string? Name { get; set; }
+        public List<string>? Interfaces { get; set; }
+        public List<FieldInfo>? Fields { get; set; }
+        public List<MethodInfo>? Methods { get; set; }
         public int Size { get; set; }
         public int Alignment { get; set; }
     }
@@ -207,9 +209,9 @@ namespace Ouro.Core.VM
     /// </summary>
     public class EnumInfo
     {
-        public string Name { get; set; }
-        public string UnderlyingType { get; set; }
-        public List<EnumMemberInfo> Members { get; set; }
+        public string? Name { get; set; }
+        public string? UnderlyingType { get; set; }
+        public List<EnumMemberInfo>? Members { get; set; }
     }
     
     /// <summary>
@@ -217,7 +219,7 @@ namespace Ouro.Core.VM
     /// </summary>
     public class EnumMemberInfo
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public int Value { get; set; }
     }
     
@@ -226,8 +228,8 @@ namespace Ouro.Core.VM
     /// </summary>
     public class ComponentInfo
     {
-        public string Name { get; set; }
-        public List<ComponentFieldInfo> Fields { get; set; }
+        public string? Name { get; set; }
+        public List<ComponentFieldInfo>? Fields { get; set; }
         public int Size { get; set; }
         public int Alignment { get; set; }
     }
@@ -237,8 +239,8 @@ namespace Ouro.Core.VM
     /// </summary>
     public class ComponentFieldInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string? Name { get; set; }
+        public string? Type { get; set; }
         public int Offset { get; set; }
     }
     
@@ -247,8 +249,8 @@ namespace Ouro.Core.VM
     /// </summary>
     public class SystemInfo
     {
-        public string Name { get; set; }
-        public List<string> RequiredComponents { get; set; }
+        public string? Name { get; set; }
+        public List<string>? RequiredComponents { get; set; }
         public int UpdateMethodAddress { get; set; }
         public int Priority { get; set; }
     }
@@ -258,8 +260,8 @@ namespace Ouro.Core.VM
     /// </summary>
     public class EntityInfo
     {
-        public string Name { get; set; }
-        public List<string> Components { get; set; }
+        public string? Name { get; set; }
+        public List<string>? Components { get; set; }
     }
     
     /// <summary>
@@ -271,7 +273,7 @@ namespace Ouro.Core.VM
         public int TryEnd { get; set; }
         public int HandlerStart { get; set; }
         public int CatchStart { get; set; }
-        public string ExceptionType { get; set; }
+        public string? ExceptionType { get; set; }
         public int FilterStart { get; set; }
     }
     
@@ -283,7 +285,7 @@ namespace Ouro.Core.VM
         private class Scope
         {
             public Dictionary<string, Symbol> Symbols { get; } = new Dictionary<string, Symbol>();
-            public Scope Parent { get; set; }
+            public Scope? Parent { get; set; }
         }
         
         private Scope currentScope;
@@ -321,7 +323,7 @@ namespace Ouro.Core.VM
             var symbol = new Symbol
             {
                 Name = name,
-                Type = type?.Name,
+                Type = type?.Name ?? string.Empty,
                 IsGlobal = currentScope.Parent == null,
                 Index = currentScope.Parent == null ? nextGlobalIndex++ : nextLocalIndex++
             };
@@ -341,7 +343,7 @@ namespace Ouro.Core.VM
                 }
                 scope = scope.Parent;
             }
-            return null;
+            return null!;
         }
         
         public void DefineFunction(string name, TypeNode returnType, List<AST.Parameter> parameters)
@@ -349,8 +351,8 @@ namespace Ouro.Core.VM
             var funcSymbol = new FunctionSymbol
             {
                 Name = name,
-                ReturnType = returnType?.Name,
-                Parameters = parameters.Select(p => new ParameterInfo 
+                ReturnType = returnType?.Name ?? string.Empty,
+                Parameters = parameters.Select(static p => new ParameterInfo 
                 { 
                     Name = p.Name, 
                     Type = p.Type?.Name,
@@ -369,7 +371,7 @@ namespace Ouro.Core.VM
             typeAliases[name] = new TypeAlias
             {
                 Name = name,
-                AliasedType = aliasedType?.Name
+                AliasedType = aliasedType?.Name ?? string.Empty
             };
         }
         
@@ -380,12 +382,12 @@ namespace Ouro.Core.VM
         
         public TypeAlias GetTypeAlias(string name)
         {
-            return typeAliases.TryGetValue(name, out var alias) ? alias : null;
+            return typeAliases.TryGetValue(name, out var alias) ? alias : null!;
         }
         
         public string GetModuleAlias(string alias)
         {
-            return moduleAliases.TryGetValue(alias, out var path) ? path : null;
+            return moduleAliases.TryGetValue(alias, out var path) ? path : null!;
         }
     }
     
@@ -394,8 +396,8 @@ namespace Ouro.Core.VM
     /// </summary>
     public class Symbol
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
+        public string? Name { get; set; }
+        public string? Type { get; set; }
         public bool IsGlobal { get; set; }
         public int Index { get; set; }
         public bool IsConst { get; set; }
@@ -407,8 +409,8 @@ namespace Ouro.Core.VM
     /// </summary>
     public class FunctionSymbol : Symbol
     {
-        public string ReturnType { get; set; }
-        public List<ParameterInfo> Parameters { get; set; }
+        public string? ReturnType { get; set; }
+        public List<ParameterInfo>? Parameters { get; set; }
         public bool IsAsync { get; set; }
         public bool IsGenerator { get; set; }
     }
@@ -418,8 +420,8 @@ namespace Ouro.Core.VM
     /// </summary>
     public class TypeAlias
     {
-        public string Name { get; set; }
-        public string AliasedType { get; set; }
+        public string? Name { get; set; }
+        public string? AliasedType { get; set; }
     }
     
     /// <summary>
@@ -435,7 +437,7 @@ namespace Ouro.Core.VM
     /// </summary>
     public class ConstantPattern : Pattern
     {
-        public Expression Value { get; set; }
+        public Expression? Value { get; set; }
         
         public override bool Match(object value)
         {
@@ -457,8 +459,8 @@ namespace Ouro.Core.VM
     /// </summary>
     public class TypePattern : Pattern
     {
-        public TypeNode Type { get; set; }
-        public string VariableName { get; set; }
+        public TypeNode? Type { get; set; }
+        public string? VariableName { get; set; }
         
         public override bool Match(object value)
         {
@@ -470,9 +472,9 @@ namespace Ouro.Core.VM
             
             // Simple type name matching
             // In a full implementation, this would handle generics, inheritance, etc.
-            return valueType.Name == Type.Name || 
-                   valueType.FullName == Type.Name ||
-                   IsAssignableToType(valueType, Type.Name);
+            return valueType.Name == Type?.Name || 
+                   valueType.FullName == Type?.Name ||
+                   IsAssignableToType(valueType, Type?.Name ?? string.Empty);
         }
         
         private bool IsAssignableToType(Type valueType, string typeName)

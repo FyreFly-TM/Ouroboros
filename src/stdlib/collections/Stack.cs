@@ -39,8 +39,7 @@ namespace Ouro.StdLib.Collections
             if (collection == null)
                 throw new ArgumentNullException(nameof(collection));
             
-            ICollection<T> c = collection as ICollection<T>;
-            if (c != null)
+            if (collection is ICollection<T> c)
             {
                 int count = c.Count;
                 items = new T[count];
@@ -127,7 +126,7 @@ namespace Ouro.StdLib.Collections
             
             version++;
             T item = items[--count];
-            items[count] = default(T);
+            items[count] = default!;
             return item;
         }
 
@@ -173,7 +172,7 @@ namespace Ouro.StdLib.Collections
         {
             if (count == 0)
             {
-                result = default(T);
+                result = default!;
                 return false;
             }
             
@@ -185,13 +184,13 @@ namespace Ouro.StdLib.Collections
         {
             if (count == 0)
             {
-                result = default(T);
+                result = default!;
                 return false;
             }
             
             version++;
             result = items[--count];
-            items[count] = default(T);
+            items[count] = default!;
             return true;
         }
 

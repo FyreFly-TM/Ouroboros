@@ -53,7 +53,7 @@ namespace Ouro.Types
         
         public void RegisterType(Type type)
         {
-            types[type.Name] = type;
+            types[type.Name!] = type;
         }
         
         public void RegisterAlias(string alias, Type type)
@@ -67,9 +67,9 @@ namespace Ouro.Types
                 return type;
             
             if (aliases.TryGetValue(name, out var alias))
-                return alias.Type;
+                return alias.Type!;
             
-            return null;
+            return PrimitiveType.Object;
         }
         
         public Type InferType(Expression expr)
@@ -119,12 +119,12 @@ namespace Ouro.Types
     /// </summary>
     public abstract class Type
     {
-        public string Name { get; protected set; }
-        public string FullName { get; protected set; }
+        public string? Name { get; protected set; }
+        public string? FullName { get; protected set; }
         public TypeKind Kind { get; protected set; }
         public bool IsReference { get; protected set; }
         public bool IsNullable { get; protected set; }
-        public Type BaseType { get; protected set; }
+        public Type? BaseType { get; protected set; }
         public List<Type> Interfaces { get; protected set; }
         
         protected Type()
@@ -134,7 +134,7 @@ namespace Ouro.Types
         
         public abstract bool IsSubtypeOf(Type other);
         public abstract Type GetCommonBase(Type other);
-        public abstract string ToString();
+        public abstract override string ToString();
     }
     
     /// <summary>
@@ -216,10 +216,10 @@ namespace Ouro.Types
             if (other is PrimitiveType)
                 return Object;
             
-            return null;
+            return null!;
         }
         
-        public override string ToString() => Name;
+        public override string ToString() => Name!;
         
         public bool IsNumeric()
         {
@@ -275,7 +275,9 @@ namespace Ouro.Types
         public List<string> GenericParameters { get; set; }
         public List<Variance> GenericParameterVariances { get; set; }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public ClassType(string name, string namespaceName = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             Name = name;
             FullName = namespaceName != null ? $"{namespaceName}.{name}" : name;
@@ -298,7 +300,7 @@ namespace Ouro.Types
             if (BaseType != null && BaseType.IsSubtypeOf(other))
                 return true;
             
-            return Interfaces.Any(i => i.IsSubtypeOf(other));
+            return Interfaces!.Any(i => i.IsSubtypeOf(other));
         }
         
         public override Type GetCommonBase(Type other)
@@ -311,14 +313,14 @@ namespace Ouro.Types
                 {
                     if (other.IsSubtypeOf(current))
                         return current;
-                    current = current.BaseType;
+                    current = current.BaseType!;
                 }
             }
             
             return PrimitiveType.Object;
         }
         
-        public override string ToString() => FullName;
+        public override string ToString() => FullName!;
     }
     
     /// <summary>
@@ -332,7 +334,9 @@ namespace Ouro.Types
         public List<string> GenericParameters { get; set; }
         public List<Variance> GenericParameterVariances { get; set; }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public InterfaceType(string name, string namespaceName = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             Name = name;
             FullName = namespaceName != null ? $"{namespaceName}.{name}" : name;
@@ -350,13 +354,13 @@ namespace Ouro.Types
             if (other == this)
                 return true;
             
-            return Interfaces.Any(i => i.IsSubtypeOf(other));
+            return Interfaces!.Any(i => i.IsSubtypeOf(other));
         }
         
         public override Type GetCommonBase(Type other)
         {
             // Find common interface
-            foreach (var iface in Interfaces)
+            foreach (var iface in Interfaces!)
             {
                 if (other.IsSubtypeOf(iface))
                     return iface;
@@ -365,7 +369,7 @@ namespace Ouro.Types
             return PrimitiveType.Object;
         }
         
-        public override string ToString() => FullName;
+        public override string ToString() => FullName!;
     }
     
     /// <summary>
@@ -377,7 +381,9 @@ namespace Ouro.Types
         public List<MethodInfo> Methods { get; }
         public List<PropertyInfo> Properties { get; }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public StructType(string name, string namespaceName = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             Name = name;
             FullName = namespaceName != null ? $"{namespaceName}.{name}" : name;
@@ -396,7 +402,7 @@ namespace Ouro.Types
             if (other == PrimitiveType.Object)
                 return true;
             
-            return Interfaces.Any(i => i.IsSubtypeOf(other));
+            return Interfaces!.Any(i => i.IsSubtypeOf(other));
         }
         
         public override Type GetCommonBase(Type other)
@@ -404,7 +410,7 @@ namespace Ouro.Types
             return PrimitiveType.Object;
         }
         
-        public override string ToString() => FullName;
+        public override string ToString() => FullName!;
     }
     
     /// <summary>
@@ -453,7 +459,7 @@ namespace Ouro.Types
             return PrimitiveType.Object;
         }
         
-        public override string ToString() => Name;
+        public override string ToString() => Name!;
     }
     
     /// <summary>
@@ -464,7 +470,9 @@ namespace Ouro.Types
         public List<Type> ElementTypes { get; }
         public List<string> ElementNames { get; }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public TupleType(List<Type> elementTypes, List<string> elementNames = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             ElementTypes = elementTypes;
             ElementNames = elementNames ?? new List<string>();
@@ -517,7 +525,7 @@ namespace Ouro.Types
             return PrimitiveType.Object;
         }
         
-        public override string ToString() => Name;
+        public override string ToString() => Name!;
     }
     
     /// <summary>
@@ -533,11 +541,11 @@ namespace Ouro.Types
             Definition = definition;
             TypeArguments = typeArguments;
             Name = $"{definition.Name}<{string.Join(", ", typeArguments)}>";
-            FullName = $"{definition.FullName}<{string.Join(", ", typeArguments.Select(t => t.FullName))}>";
+            FullName = $"{definition.FullName}<{string.Join(", ", typeArguments.Select(static t => t.FullName))}>";
             Kind = TypeKind.Generic;
             IsReference = definition.IsReference;
             BaseType = definition.BaseType;
-            Interfaces.AddRange(definition.Interfaces);
+            Interfaces!.AddRange(definition.Interfaces!);
         }
         
         public override bool IsSubtypeOf(Type other)
@@ -576,7 +584,7 @@ namespace Ouro.Types
             return Definition.GetCommonBase(other);
         }
         
-        public override string ToString() => Name;
+        public override string ToString() => Name!;
         
         private bool CheckVariance(Type arg1, Type arg2, int position)
         {
@@ -644,7 +652,7 @@ namespace Ouro.Types
             IsReference = true;
             IsNullable = true;
             BaseType = underlyingType.BaseType;
-            Interfaces.AddRange(underlyingType.Interfaces);
+            Interfaces!.AddRange(underlyingType.Interfaces!);
         }
         
         public override bool IsSubtypeOf(Type other)
@@ -669,7 +677,7 @@ namespace Ouro.Types
             return new NullableType(UnderlyingType.GetCommonBase(other));
         }
         
-        public override string ToString() => Name;
+        public override string ToString() => Name!;
     }
     
     /// <summary>
@@ -687,7 +695,7 @@ namespace Ouro.Types
         
         public override bool IsSubtypeOf(Type other) => true;
         public override Type GetCommonBase(Type other) => this;
-        public override string ToString() => Name;
+        public override string ToString() => Name!;
     }
     
     /// <summary>
@@ -705,7 +713,7 @@ namespace Ouro.Types
         
         public override bool IsSubtypeOf(Type other) => false;
         public override Type GetCommonBase(Type other) => PrimitiveType.Object;
-        public override string ToString() => Name;
+        public override string ToString() => Name!;
     }
     
     /// <summary>
@@ -724,7 +732,7 @@ namespace Ouro.Types
         
         public override bool IsSubtypeOf(Type other) => other.IsReference && other.IsNullable;
         public override Type GetCommonBase(Type other) => other.IsReference ? other : PrimitiveType.Object;
-        public override string ToString() => Name;
+        public override string ToString() => Name!;
     }
     
     /// <summary>
@@ -779,7 +787,7 @@ namespace Ouro.Types
             return PrimitiveType.Object;
         }
         
-        public override string ToString() => Name;
+        public override string ToString() => Name!;
     }
     
     /// <summary>
@@ -787,8 +795,8 @@ namespace Ouro.Types
     /// </summary>
     public class TypeAlias
     {
-        public string Name { get; set; }
-        public Type Type { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public Type Type { get; set; } = PrimitiveType.Object;
     }
     
     /// <summary>
@@ -796,8 +804,8 @@ namespace Ouro.Types
     /// </summary>
     public class MemberInfo
     {
-        public string Name { get; set; }
-        public Type Type { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public Type Type { get; set; } = PrimitiveType.Object;
         public AccessModifier Access { get; set; }
         public bool IsStatic { get; set; }
         public bool IsReadOnly { get; set; }
@@ -809,13 +817,13 @@ namespace Ouro.Types
     /// </summary>
     public class MethodInfo : MemberInfo
     {
-        public List<ParameterInfo> Parameters { get; set; }
-        public Type ReturnType { get; set; }
+        public List<ParameterInfo> Parameters { get; set; } = new List<ParameterInfo>();
+        public Type ReturnType { get; set; } = PrimitiveType.Object;
         public bool IsVirtual { get; set; }
         public bool IsOverride { get; set; }
         public bool IsAbstract { get; set; }
         public bool IsAsync { get; set; }
-        public List<string> GenericParameters { get; set; }
+        public List<string> GenericParameters { get; set; } = new List<string>();
     }
     
     /// <summary>
@@ -834,7 +842,7 @@ namespace Ouro.Types
     /// </summary>
     public class EventInfo : MemberInfo
     {
-        public Type DelegateType { get; set; }
+        public Type DelegateType { get; set; } = PrimitiveType.Object;
     }
     
     /// <summary>
@@ -842,10 +850,10 @@ namespace Ouro.Types
     /// </summary>
     public class ParameterInfo
     {
-        public string Name { get; set; }
-        public Type Type { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public Type Type { get; set; } = PrimitiveType.Object;
         public bool IsOptional { get; set; }
-        public object DefaultValue { get; set; }
+        public object? DefaultValue { get; set; }
         public bool IsRef { get; set; }
         public bool IsOut { get; set; }
         public bool IsParams { get; set; }
@@ -1009,14 +1017,14 @@ namespace Ouro.Types
             if (expr.Elements.Count == 0)
                 return new ArrayType(PrimitiveType.Object);
             
-            Type elementType = null;
+            Type elementType = null!;
             foreach (var element in expr.Elements)
             {
                 var type = Infer(element);
                 elementType = elementType == null ? type : typeSystem.GetCommonType(elementType, type);
             }
             
-            return new ArrayType(elementType);
+            return new ArrayType(elementType!);
         }
         
         private Type GetNumericResultType(Type left, Type right)

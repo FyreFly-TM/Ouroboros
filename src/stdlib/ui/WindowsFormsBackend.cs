@@ -14,7 +14,9 @@ namespace Ouro.StdLib.UI
         private static Dictionary<Widget, Control> widgetToControl = new Dictionary<Widget, Control>();
         private static Dictionary<Control, Widget> controlToWidget = new Dictionary<Control, Widget>();
         private static bool initialized = false;
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         private static Form mainForm = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         
         public static void Initialize()
         {
@@ -66,7 +68,9 @@ namespace Ouro.StdLib.UI
                 // If this is the main form, clear the reference
                 if (form == mainForm)
                 {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                     mainForm = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                 }
             };
             
@@ -110,7 +114,7 @@ namespace Ouro.StdLib.UI
         
         private static Control CreateControl(Widget widget)
         {
-            Control control = null;
+            Control? control = null;
             
             switch (widget)
             {
@@ -237,7 +241,7 @@ namespace Ouro.StdLib.UI
                 controlToWidget[control] = widget;
             }
             
-            return control;
+            return control!;
         }
         
         private static global::System.Drawing.Color ConvertColor(Ouro.StdLib.UI.Color? color)
@@ -317,7 +321,9 @@ namespace Ouro.StdLib.UI
                 // If this was the main form, clear the reference
                 if (control == mainForm)
                 {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                     mainForm = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                 }
             }
         }

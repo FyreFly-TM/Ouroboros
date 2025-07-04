@@ -16,8 +16,8 @@ namespace Ouro.StdLib.Data.Providers
     public class SQLiteProvider : IDatabaseProvider
     {
         private readonly string connectionString;
-        private DbConnection connection;
-        private DbTransaction currentTransaction;
+        private DbConnection? connection;
+        private DbTransaction? currentTransaction;
         private readonly DbProviderFactory factory;
         
         public SQLiteProvider(string connectionString)
@@ -41,7 +41,7 @@ namespace Ouro.StdLib.Data.Providers
             if (connection == null || connection.State != ConnectionState.Open)
             {
                 connection = factory.CreateConnection();
-                connection.ConnectionString = connectionString;
+                connection!.ConnectionString = connectionString;
                 await connection.OpenAsync();
                 
                 // Enable foreign keys for SQLite
@@ -58,7 +58,9 @@ namespace Ouro.StdLib.Data.Providers
             {
                 await connection.CloseAsync();
                 await connection.DisposeAsync();
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 connection = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
         }
         
@@ -76,7 +78,9 @@ namespace Ouro.StdLib.Data.Providers
             {
                 await currentTransaction.CommitAsync();
                 await currentTransaction.DisposeAsync();
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 currentTransaction = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
         }
         
@@ -86,7 +90,9 @@ namespace Ouro.StdLib.Data.Providers
             {
                 await currentTransaction.RollbackAsync();
                 await currentTransaction.DisposeAsync();
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 currentTransaction = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
         }
         
@@ -105,7 +111,7 @@ namespace Ouro.StdLib.Data.Providers
             using var cmd = CreateCommand(sql, parameters);
             cmd.Connection = conn;
             cmd.Transaction = currentTransaction;
-            return await cmd.ExecuteScalarAsync();
+            return await cmd.ExecuteScalarAsync() ?? DBNull.Value;
         }
         
         public async Task<List<T>> ExecuteQueryAsync<T>(string sql, params object[] parameters) where T : new()
@@ -119,7 +125,7 @@ namespace Ouro.StdLib.Data.Providers
             using var reader = await cmd.ExecuteReaderAsync();
             
             var properties = typeof(T).GetProperties()
-                .Where(p => p.CanWrite)
+                .Where(static p => p.CanWrite)
                 .ToList();
             
             while (await reader.ReadAsync())
@@ -171,7 +177,7 @@ namespace Ouro.StdLib.Data.Providers
                 var row = new Dictionary<string, object>();
                 for (int i = 0; i < reader.FieldCount; i++)
                 {
-                    row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                    row[reader.GetName(i)] = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i);
                 }
                 results.Add(row);
             }
@@ -185,10 +191,10 @@ namespace Ouro.StdLib.Data.Providers
             if (!itemList.Any()) return 0;
             
             var properties = typeof(T).GetProperties()
-                .Where(p => p.CanRead)
+                .Where(static p => p.CanRead)
                 .ToList();
             
-            var columns = string.Join(", ", properties.Select(p => $"\"{p.Name}\""));
+            var columns = string.Join(", ", properties.Select(static p => $"\"{p.Name}\""));
             
             // Start a transaction for bulk insert if not already in one
             bool ownTransaction = currentTransaction == null;
@@ -250,7 +256,9 @@ namespace Ouro.StdLib.Data.Providers
             }
         }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public async Task<bool> TableExistsAsync(string tableName, string schema = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             // SQLite doesn't use schemas in the same way, so we ignore the schema parameter
             var sql = @"
@@ -263,7 +271,9 @@ namespace Ouro.StdLib.Data.Providers
             return Convert.ToInt32(result) > 0;
         }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public async Task CreateTableAsync(string tableName, Dictionary<string, string> columns, string primaryKey = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             var columnDefs = columns.Select(kvp => 
                 $"\"{kvp.Key}\" {MapDataType(kvp.Value)}"
@@ -286,7 +296,9 @@ namespace Ouro.StdLib.Data.Providers
             await ExecuteNonQueryAsync(sql);
         }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public async Task<List<string>> GetTableNamesAsync(string schema = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             // SQLite doesn't use schemas, so we ignore the schema parameter
             var sql = @"
@@ -297,22 +309,24 @@ namespace Ouro.StdLib.Data.Providers
                 ORDER BY name";
             
             var results = await ExecuteQueryAsync(sql);
-            return results.Select(r => (string)r["name"]).ToList();
+            return results.Select(static r => (string)r["name"]).ToList();
         }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public async Task<List<ColumnInfo>> GetTableColumnsAsync(string tableName, string schema = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             // Use PRAGMA table_info to get column information
             var sql = $"PRAGMA table_info(\"{tableName}\")";
             var results = await ExecuteQueryAsync(sql);
             
-            return results.Select(r => new ColumnInfo
+            return results.Select(static r => new ColumnInfo
             {
                 Name = (string)r["name"],
                 DataType = (string)r["type"],
                 MaxLength = null, // SQLite doesn't provide this
                 IsNullable = Convert.ToInt32(r["notnull"]) == 0,
-                DefaultValue = r["dflt_value"]?.ToString(),
+                DefaultValue = r["dflt_value"]?.ToString() ?? string.Empty,
                 IsPrimaryKey = Convert.ToInt32(r["pk"]) > 0,
                 ColumnType = (string)r["type"]
             }).ToList();
@@ -321,7 +335,7 @@ namespace Ouro.StdLib.Data.Providers
         private DbCommand CreateCommand(string sql, object[] parameters)
         {
             var cmd = factory.CreateCommand();
-            cmd.CommandText = sql;
+            cmd!.CommandText = sql;
             
             // SQLite uses @p0, @p1, etc. for parameters
             for (int i = 0; i < parameters.Length; i++)

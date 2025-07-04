@@ -202,7 +202,7 @@ namespace Ouro.IDE
             }
 
             // Use default token color
-            return tokenColors.ContainsKey(token.Type) ? tokenColors[token.Type] : null;
+            return tokenColors.ContainsKey(token.Type) ? tokenColors[token.Type] : null!;
         }
 
         private bool IsType(string identifier)

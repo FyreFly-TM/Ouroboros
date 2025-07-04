@@ -7,8 +7,8 @@ namespace Ouro.Tokens
     /// </summary>
     public class UnitLiteral
     {
-        public double Value { get; }
-        public string Unit { get; }
+        public double? Value { get; }
+        public string? Unit { get; }
         
         public UnitLiteral(double value, string unit)
         {
@@ -21,7 +21,7 @@ namespace Ouro.Tokens
             return $"{Value} {Unit}";
         }
         
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is UnitLiteral other && 
                    Value == other.Value && 

@@ -388,7 +388,9 @@ namespace Ouro.Core.Compiler
         /// </summary>
         public void EmitLoadNull()
         {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             Emit(Opcode.LoadConstant, AddConstant(null));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
         
         /// <summary>
@@ -562,7 +564,7 @@ namespace Ouro.Core.Compiler
         {
             var parts = instruction.Split(' ', 2);
             var mnemonic = parts[0].ToUpper();
-            var operands = parts.Length > 1 ? parts[1].Split(',').Select(s => s.Trim()).ToArray() : new string[0];
+            var operands = parts.Length > 1 ? parts[1].Split(',').Select(static s => s.Trim()).ToArray() : new string[0];
             
             switch (mnemonic)
             {
@@ -1276,7 +1278,7 @@ namespace Ouro.Core.Compiler
         // Overload for AST.Modifier types
         public void AddField(string name, string type, List<AST.Modifier> modifiers)
         {
-            AddField(name, type, modifiers?.Select(m => m.ToString()).ToList() ?? new List<string>());
+            AddField(name, type, modifiers?.Select(static m => m.ToString()).ToList() ?? new List<string>());
         }
         
         public void AddProperty(string name, string type, int getterStart, int setterEnd, List<string> modifiers)
@@ -1294,7 +1296,7 @@ namespace Ouro.Core.Compiler
         // Overload for AST.Modifier types
         public void AddProperty(string name, string type, int getterStart, int setterEnd, List<AST.Modifier> modifiers)
         {
-            AddProperty(name, type, getterStart, setterEnd, modifiers?.Select(m => m.ToString()).ToList() ?? new List<string>());
+            AddProperty(name, type, getterStart, setterEnd, modifiers?.Select(static m => m.ToString()).ToList() ?? new List<string>());
         }
         
         public void AddMethod(string name, int startAddress, int endAddress, List<string> modifiers)
@@ -1311,7 +1313,7 @@ namespace Ouro.Core.Compiler
         // Overload for AST.Modifier types
         public void AddMethod(string name, int startAddress, int endAddress, List<AST.Modifier> modifiers)
         {
-            AddMethod(name, startAddress, endAddress, modifiers?.Select(m => m.ToString()).ToList() ?? new List<string>());
+            AddMethod(name, startAddress, endAddress, modifiers?.Select(static m => m.ToString()).ToList() ?? new List<string>());
         }
         
         public ClassInfo Build()
@@ -1345,8 +1347,8 @@ namespace Ouro.Core.Compiler
             interfaceInfo.Methods.Add(new InterfaceMethodInfo
             {
                 Name = name,
-                ReturnType = returnType?.Name,
-                Parameters = parameters.Select(p => new ParameterInfo { Name = p.Name, Type = p.Type?.Name }).ToList()
+                ReturnType = returnType?.Name ?? "any",
+                Parameters = parameters.Select(static p => new ParameterInfo { Name = p.Name, Type = p.Type?.Name ?? "any" }).ToList()
             });
         }
         
@@ -1355,7 +1357,7 @@ namespace Ouro.Core.Compiler
             interfaceInfo.Properties.Add(new InterfacePropertyInfo
             {
                 Name = name,
-                Type = type?.Name,
+                Type = type?.Name ?? "any",
                 HasGetter = hasGetter,
                 HasSetter = hasSetter
             });
@@ -1400,7 +1402,7 @@ namespace Ouro.Core.Compiler
         // Overload for AST.Modifier types
         public void AddField(string name, string type, List<AST.Modifier> modifiers)
         {
-            AddField(name, type, modifiers?.Select(m => m.ToString()).ToList() ?? new List<string>());
+            AddField(name, type, modifiers?.Select(static m => m.ToString()).ToList() ?? new List<string>());
         }
         
         public void AddMethod(string name, int startAddress, int endAddress, List<string> modifiers)
@@ -1417,7 +1419,7 @@ namespace Ouro.Core.Compiler
         // Overload for AST.Modifier types
         public void AddMethod(string name, int startAddress, int endAddress, List<AST.Modifier> modifiers)
         {
-            AddMethod(name, startAddress, endAddress, modifiers?.Select(m => m.ToString()).ToList() ?? new List<string>());
+            AddMethod(name, startAddress, endAddress, modifiers?.Select(static m => m.ToString()).ToList() ?? new List<string>());
         }
         
         public StructInfo Build()

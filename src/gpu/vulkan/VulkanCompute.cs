@@ -17,7 +17,7 @@ namespace Ouro.GPU.Vulkan
         private VkCommandPool commandPool;
         private bool disposed;
 
-        public VulkanDeviceInfo DeviceInfo { get; private set; }
+        public VulkanDeviceInfo? DeviceInfo { get; private set; }
 
         public VulkanCompute()
         {
@@ -357,7 +357,7 @@ namespace Ouro.GPU.Vulkan
 
     public class VulkanDeviceInfo
     {
-        public string DeviceName { get; set; }
+        public string? DeviceName { get; set; }
         public uint VendorID { get; set; }
         public uint DeviceID { get; set; }
         public uint ApiVersion { get; set; }

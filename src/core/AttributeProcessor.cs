@@ -898,7 +898,7 @@ namespace Ouro.Core
             {
                 return (T)value;
             }
-            return default(T);
+            return default!;
         }
         
         public void SetAttributeContext(string key, object value)

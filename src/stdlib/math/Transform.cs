@@ -7,12 +7,12 @@ namespace Ouro.StdLib.Math
     /// </summary>
     public class Transform
     {
-        public Vector Position { get; set; }
-        public Quaternion Rotation { get; set; }
-        public Vector Scale { get; set; }
+        public Vector? Position { get; set; } = Vector.Zero3;
+        public Quaternion? Rotation { get; set; } = Quaternion.Identity;
+        public Vector? Scale { get; set; } = Vector.One3;
 
         // Parent transform for hierarchical transformations
-        public Transform Parent { get; set; }
+        public Transform? Parent { get; set; }
 
         #region Constructors
 
@@ -37,9 +37,9 @@ namespace Ouro.StdLib.Math
 
         public Transform(Transform other)
         {
-            Position = new Vector(other.Position);
-            Rotation = new Quaternion(other.Rotation);
-            Scale = new Vector(other.Scale);
+            Position = new Vector(other.Position!);
+            Rotation = new Quaternion(other.Rotation!);
+            Scale = new Vector(other.Scale!);
             Parent = other.Parent;
         }
 
@@ -75,7 +75,7 @@ namespace Ouro.StdLib.Math
         public Matrix ToMatrix()
         {
             // Create rotation matrix from quaternion
-            var rotMatrix = Rotation.ToRotationMatrix();
+            var rotMatrix = Rotation!.ToRotationMatrix();
             
             // Build 4x4 transformation matrix
             var result = new Matrix(4, 4);
@@ -85,14 +85,14 @@ namespace Ouro.StdLib.Math
             {
                 for (int j = 0; j < 3; j++)
                 {
-                    result[i, j] = rotMatrix[i, j] * Scale[j];
+                    result[i, j] = rotMatrix[i, j] * Scale![j];
                 }
             }
             
             // Apply translation
-            result[0, 3] = Position.X;
-            result[1, 3] = Position.Y;
-            result[2, 3] = Position.Z;
+            result[0, 3] = Position!.X;
+            result[1, 3] = Position!.Y;
+            result[2, 3] = Position!.Z;
             
             // Homogeneous coordinate
             result[3, 3] = 1;
@@ -141,9 +141,9 @@ namespace Ouro.StdLib.Math
                 throw new ArgumentException("Point must be a 3D vector");
                 
             // Scale, rotate, then translate
-            var scaled = new Vector(point.X * Scale.X, point.Y * Scale.Y, point.Z * Scale.Z);
-            var rotated = Rotation.Rotate(scaled);
-            return Position + rotated;
+            var scaled = new Vector(point.X * Scale!.X, point.Y * Scale!.Y, point.Z * Scale!.Z);
+            var rotated = Rotation!.Rotate(scaled);
+            return Position! + rotated;
         }
 
         // Transform a direction (affected by rotation and scale only)
@@ -153,8 +153,8 @@ namespace Ouro.StdLib.Math
                 throw new ArgumentException("Direction must be a 3D vector");
                 
             // Scale then rotate (no translation for directions)
-            var scaled = new Vector(direction.X * Scale.X, direction.Y * Scale.Y, direction.Z * Scale.Z);
-            return Rotation.Rotate(scaled);
+            var scaled = new Vector(direction.X * Scale!.X, direction.Y * Scale!.Y, direction.Z * Scale!.Z);
+            return Rotation!.Rotate(scaled);
         }
 
         // Transform a vector (affected by rotation only, preserves length)
@@ -163,7 +163,7 @@ namespace Ouro.StdLib.Math
             if (vector.Dimensions != 3)
                 throw new ArgumentException("Vector must be a 3D vector");
                 
-            return Rotation.Rotate(vector);
+            return Rotation!.Rotate(vector);
         }
 
         // Inverse transform operations
@@ -173,9 +173,9 @@ namespace Ouro.StdLib.Math
                 throw new ArgumentException("Point must be a 3D vector");
                 
             // Inverse: translate, rotate inverse, then scale inverse
-            var translated = point - Position;
-            var rotated = Rotation.Inverse.Rotate(translated);
-            return new Vector(rotated.X / Scale.X, rotated.Y / Scale.Y, rotated.Z / Scale.Z);
+            var translated = point - Position!;
+            var rotated = Rotation!.Inverse.Rotate(translated);
+            return new Vector(rotated.X / Scale!.X, rotated.Y / Scale!.Y, rotated.Z / Scale!.Z);
         }
 
         public Vector InverseTransformDirection(Vector direction)
@@ -184,8 +184,8 @@ namespace Ouro.StdLib.Math
                 throw new ArgumentException("Direction must be a 3D vector");
                 
             // Inverse: rotate inverse, then scale inverse
-            var rotated = Rotation.Inverse.Rotate(direction);
-            return new Vector(rotated.X / Scale.X, rotated.Y / Scale.Y, rotated.Z / Scale.Z);
+            var rotated = Rotation!.Inverse.Rotate(direction);
+            return new Vector(rotated.X / Scale!.X, rotated.Y / Scale!.Y, rotated.Z / Scale!.Z);
         }
 
         public Vector InverseTransformVector(Vector vector)
@@ -193,7 +193,7 @@ namespace Ouro.StdLib.Math
             if (vector.Dimensions != 3)
                 throw new ArgumentException("Vector must be a 3D vector");
                 
-            return Rotation.Inverse.Rotate(vector);
+            return Rotation!.Inverse.Rotate(vector);
         }
 
         #endregion
@@ -206,15 +206,15 @@ namespace Ouro.StdLib.Math
             get
             {
                 if (Parent == null)
-                    return Position;
-                return Parent.TransformPoint(Position);
+                    return Position!;
+                return Parent.TransformPoint(Position!);
             }
             set
             {
                 if (Parent == null)
-                    Position = value;
+                    Position = value!;
                 else
-                    Position = Parent.InverseTransformPoint(value);
+                    Position = Parent.InverseTransformPoint(value!);
             }
         }
 
@@ -224,8 +224,8 @@ namespace Ouro.StdLib.Math
             get
             {
                 if (Parent == null)
-                    return Rotation;
-                return Parent.WorldRotation * Rotation;
+                    return Rotation!;
+                return Parent.WorldRotation * Rotation!;
             }
             set
             {
@@ -242,13 +242,13 @@ namespace Ouro.StdLib.Math
             get
             {
                 if (Parent == null)
-                    return Scale;
+                    return Scale!;
                     
                 var parentScale = Parent.WorldScale;
                 return new Vector(
-                    Scale.X * parentScale.X,
-                    Scale.Y * parentScale.Y,
-                    Scale.Z * parentScale.Z
+                    Scale!.X * parentScale.X,
+                    Scale!.Y * parentScale.Y,
+                    Scale!.Z * parentScale.Z
                 );
             }
         }
@@ -269,11 +269,11 @@ namespace Ouro.StdLib.Math
         #region Direction Vectors
 
         // Local direction vectors
-        public Vector Forward => Rotation.Forward;
+        public Vector Forward => Rotation!.Forward;
         public Vector Back => -Forward;
-        public Vector Right => Rotation.Right;
+        public Vector Right => Rotation!.Right;
         public Vector Left => -Right;
-        public Vector Up => Rotation.Up;
+        public Vector Up => Rotation!.Up;
         public Vector Down => -Up;
 
         // World direction vectors
@@ -300,7 +300,7 @@ namespace Ouro.StdLib.Math
             }
             else
             {
-                Position = Position + translation;
+                Position = Position! + translation;
             }
         }
 
@@ -309,11 +309,11 @@ namespace Ouro.StdLib.Math
         {
             if (worldSpace)
             {
-                Rotation = rotation * Rotation;
+                Rotation = rotation * Rotation!;
             }
             else
             {
-                Rotation = Rotation * rotation;
+                Rotation = Rotation! * rotation;
             }
         }
 
@@ -337,7 +337,7 @@ namespace Ouro.StdLib.Math
         // Scale uniformly
         public void ScaleUniform(double factor)
         {
-            Scale = Scale * factor;
+            Scale = Scale! * factor;
         }
 
         #endregion
@@ -350,9 +350,9 @@ namespace Ouro.StdLib.Math
             t = global::System.Math.Max(0, global::System.Math.Min(1, t));
             
             return new Transform(
-                Vector.Lerp(a.Position, b.Position, t),
-                Quaternion.Slerp(a.Rotation, b.Rotation, t),
-                Vector.Lerp(a.Scale, b.Scale, t)
+                Vector.Lerp(a.Position!, b.Position!, t),
+                Quaternion.Slerp(a.Rotation!, b.Rotation!, t),
+                Vector.Lerp(a.Scale!, b.Scale!, t)
             );
         }
 
@@ -365,12 +365,12 @@ namespace Ouro.StdLib.Math
         {
             get
             {
-                var invRotation = Rotation.Inverse;
-                var invScale = new Vector(1.0 / Scale.X, 1.0 / Scale.Y, 1.0 / Scale.Z);
+                var invRotation = Rotation!.Inverse;
+                var invScale = new Vector(1.0 / Scale!.X, 1.0 / Scale!.Y, 1.0 / Scale!.Z);
                 var invPosition = invRotation.Rotate(new Vector(
-                    -Position.X * invScale.X,
-                    -Position.Y * invScale.Y,
-                    -Position.Z * invScale.Z
+                    -Position!.X * invScale.X,
+                    -Position!.Y * invScale.Y,
+                    -Position!.Z * invScale.Z
                 ));
                 
                 return new Transform(invPosition, invRotation, invScale);
@@ -381,9 +381,9 @@ namespace Ouro.StdLib.Math
         public static Transform operator *(Transform a, Transform b)
         {
             return new Transform(
-                a.TransformPoint(b.Position),
-                a.Rotation * b.Rotation,
-                new Vector(a.Scale.X * b.Scale.X, a.Scale.Y * b.Scale.Y, a.Scale.Z * b.Scale.Z)
+                a.TransformPoint(b.Position!),
+                a.Rotation! * b.Rotation!,
+                new Vector(a.Scale!.X * b.Scale!.X, a.Scale!.Y * b.Scale!.Y, a.Scale!.Z * b.Scale!.Z)
             );
         }
 
@@ -403,16 +403,16 @@ namespace Ouro.StdLib.Math
         {
             if (other == null) return false;
             
-            return Position.ApproximatelyEquals(other.Position, epsilon) &&
-                   Rotation.ApproximatelyEquals(other.Rotation, epsilon) &&
-                   Scale.ApproximatelyEquals(other.Scale, epsilon);
+            return Position!.ApproximatelyEquals(other.Position!, epsilon) &&
+                   Rotation!.ApproximatelyEquals(other.Rotation!, epsilon) &&
+                   Scale!.ApproximatelyEquals(other.Scale!, epsilon);
         }
 
         public override bool Equals(object? obj) => obj is Transform t && Equals(t);
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Position.GetHashCode(), Rotation.GetHashCode(), Scale.GetHashCode());
+            return HashCode.Combine(Position!.GetHashCode(), Rotation!.GetHashCode(), Scale!.GetHashCode());
         }
 
         #endregion
@@ -426,7 +426,7 @@ namespace Ouro.StdLib.Math
 
         public string ToString(string format)
         {
-            return $"Transform(Pos: {Position.ToString(format)}, Rot: {Rotation.ToString(format)}, Scale: {Scale.ToString(format)})";
+            return $"Transform(Pos: {Position!.ToString(format)}, Rot: {Rotation!.ToString(format)}, Scale: {Scale!.ToString(format)})";
         }
 
         #endregion

@@ -164,24 +164,24 @@ namespace Ouro.Stdlib.Data
             var columns = new List<string>();
             var values = new Dictionary<string, object>();
             
-            foreach (var column in mapping.Columns.Where(c => !c.IsIdentity))
+            foreach (var column in mapping.Columns.Where(static c => !c.IsIdentity))
             {
                 columns.Add(column.ColumnName);
                 values[column.ColumnName] = column.Property.GetValue(entity) ?? DBNull.Value;
             }
             
             var sql = $"INSERT INTO {mapping.TableName} ({string.Join(", ", columns)}) " +
-                     $"VALUES ({string.Join(", ", columns.Select(c => $"@{c}"))})";
+                     $"VALUES ({string.Join(", ", columns.Select(static c => $"@{c}"))})";
             
             var result = await database.ExecuteAsync(sql, values);
             
             // Get identity value if present
-            var identityColumn = mapping.Columns.FirstOrDefault(c => c.IsIdentity);
+            var identityColumn = mapping.Columns.FirstOrDefault(static c => c.IsIdentity);
             if (identityColumn != null)
             {
                 // For SQLite, use last_insert_rowid()
                 var identity = await database.ExecuteScalarAsync<long>("SELECT last_insert_rowid()");
-                if (identity != null && identity != default(long))
+                if (identity != default)
                 {
                     identityColumn.Property.SetValue(entity, Convert.ChangeType(identity, identityColumn.Property.PropertyType));
                 }
@@ -195,7 +195,7 @@ namespace Ouro.Stdlib.Data
             var setClauses = new List<string>();
             var values = new Dictionary<string, object>();
             
-            foreach (var column in mapping.Columns.Where(c => !c.IsPrimaryKey))
+            foreach (var column in mapping.Columns.Where(static c => !c.IsPrimaryKey))
             {
                 setClauses.Add($"{column.ColumnName} = @{column.ColumnName}");
                 values[column.ColumnName] = column.Property.GetValue(entity) ?? DBNull.Value;
@@ -220,7 +220,7 @@ namespace Ouro.Stdlib.Data
         {
             var conditions = new List<string>();
             
-            foreach (var pkColumn in mapping.Columns.Where(c => c.IsPrimaryKey))
+            foreach (var pkColumn in mapping.Columns.Where(static c => c.IsPrimaryKey))
             {
                 var paramName = $"pk_{pkColumn.ColumnName}";
                 conditions.Add($"{pkColumn.ColumnName} = @{paramName}");
@@ -366,7 +366,7 @@ namespace Ouro.Stdlib.Data
         /// </summary>
         public async Task<T?> FindAsync(params object[] keyValues)
         {
-            var pkColumns = mapping.Columns.Where(c => c.IsPrimaryKey).ToList();
+            var pkColumns = mapping.Columns.Where(static c => c.IsPrimaryKey).ToList();
             
             if (pkColumns.Count != keyValues.Length)
                 throw new ArgumentException("Number of key values doesn't match primary key columns");
@@ -738,7 +738,7 @@ namespace Ouro.Stdlib.Data
         {
             var sql = "SELECT Id FROM __Migrations";
             var results = await database.QueryAsync(sql);
-            return new HashSet<string>(results.Select(r => (string)r["Id"]));
+            return new HashSet<string>(results.Select(static r => (string)r["Id"]));
         }
 
         private async Task RecordMigrationAsync(Migration migration)
@@ -929,7 +929,7 @@ namespace Ouro.Stdlib.Data
 
         public override string ToString()
         {
-            return string.Join(";", parameters.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+            return string.Join(";", parameters.Select(static kvp => $"{kvp.Key}={kvp.Value}"));
         }
     }
 

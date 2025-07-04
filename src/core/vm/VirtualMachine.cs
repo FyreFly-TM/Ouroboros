@@ -15,25 +15,25 @@ namespace Ouro.Core.VM
     public class VirtualMachine
     {
         // Events
-        public event Action<int> OnMemoryAllocate;
-        public event Action<int> OnMemoryFree;
-        public event Action<Exception> OnException;
-        public event Action<string, int> OnFunctionEnter;
-        public event Action<string> OnFunctionExit;
-        public event Action<int, Opcode> OnInstructionExecute;
+        public event Action<int>? OnMemoryAllocate;
+        public event Action<int>? OnMemoryFree;
+        public event Action<Exception>? OnException;
+        public event Action<string, int>? OnFunctionEnter;
+        public event Action<string>? OnFunctionExit;
+        public event Action<int, Opcode>? OnInstructionExecute;
         private Stack<object> operandStack;
         private List<object> locals;
         private List<object> globals;
         private Stack<CallFrame> callStack;
-        private byte[] instructions;
-        private object[] constantPool;
+        private byte[]? instructions;
+        private object[]? constantPool;
         private Dictionary<string, Type> typeRegistry;
         private Dictionary<int, ExceptionHandler> exceptionHandlers;
         private RuntimeEnvironment environment;
         private int instructionPointer;
         private bool running;
-        private Compiler.CompiledProgram compiledProgram;
-        private SymbolTable symbolTable;
+        private Compiler.CompiledProgram? compiledProgram;
+        private SymbolTable? symbolTable;
         private Dictionary<int, GeneratorState> generatorStates = new Dictionary<int, GeneratorState>();
         private bool debugMode;
         
@@ -41,7 +41,7 @@ namespace Ouro.Core.VM
         public int ProgramCounter => instructionPointer;
         public int StackPointer => operandStack?.Count ?? 0;
         public int FramePointer => callStack?.Count > 0 ? callStack.Peek().LocalsBase : 0;
-        public object Accumulator => operandStack?.Count > 0 ? operandStack.Peek() : null;
+        public object? Accumulator => operandStack?.Count > 0 ? operandStack.Peek() : null;
         
         // Memory array for debugger
         private byte[] memory = new byte[65536]; // 64KB of memory
@@ -99,13 +99,15 @@ namespace Ouro.Core.VM
                 running = true;
                 instructionPointer = 0;
                 
+                if (instructions == null)
+                    throw new InvalidOperationException("Instructions array is null.");
                 while (running && instructionPointer < instructions.Length)
                 {
                     ExecuteInstruction();
                 }
                 
                 // Return the top of the stack if there's a result
-                return operandStack.Count > 0 ? operandStack.Pop() : null;
+                return operandStack.Count > 0 ? operandStack.Pop() : null!;
             }
             catch (Exception ex)
             {
@@ -116,8 +118,13 @@ namespace Ouro.Core.VM
         
         private void ExecuteInstruction()
         {
+<<<<<<< Updated upstream
             var opcode = (Opcode)instructions[instructionPointer++];
             Logger.Debug($"Executing opcode {opcode} at IP {instructionPointer - 1}");
+=======
+            var opcode = (Opcode)instructions![instructionPointer++];
+            LogDebug($"Executing opcode {opcode} at IP {instructionPointer - 1}");
+>>>>>>> Stashed changes
             
             switch (opcode)
             {
@@ -209,7 +216,7 @@ namespace Ouro.Core.VM
                     
                 case Opcode.Return:
                     {
-                        object returnValue = null;
+                        object? returnValue = null;
                         if (operandStack.Count > 0)
                             returnValue = operandStack.Pop();
                             
@@ -368,8 +375,13 @@ namespace Ouro.Core.VM
                 case Opcode.LoadConstant:
                     {
                         var index = ReadInt32();
+<<<<<<< Updated upstream
                         Logger.Debug($"LoadConstant trying to access index {index}");
                         operandStack.Push(constantPool[index]);
+=======
+                        LogDebug($"LoadConstant trying to access index {index}");
+                        operandStack.Push(constantPool![index]);
+>>>>>>> Stashed changes
                     }
                     break;
                     
@@ -383,7 +395,9 @@ namespace Ouro.Core.VM
                         if (localIndex >= locals.Count)
                         {
                             while (locals.Count <= localIndex)
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                                 locals.Add(null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                         }
                         
                         operandStack.Push(locals[localIndex]);
@@ -412,13 +426,17 @@ namespace Ouro.Core.VM
                     break;
                     
                 case Opcode.LoadNull:
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                     operandStack.Push(null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                     break;
                     
                 case Opcode.LoadThis:
                     // Load 'this' reference - for now, just push null
                     // In a full implementation, this would load the current object instance
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                     operandStack.Push(null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                     break;
                     
                 case Opcode.StoreLocal:
@@ -430,7 +448,9 @@ namespace Ouro.Core.VM
                         
                         // Ensure locals list is large enough
                         while (locals.Count <= localIndex)
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                             locals.Add(null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                             
                         locals[localIndex] = value;
                     }
@@ -443,7 +463,9 @@ namespace Ouro.Core.VM
                         
                         // Ensure globals list is large enough
                         while (globals.Count <= index)
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                             globals.Add(null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                             
                         var oldValue = globals[index];
                         globals[index] = value;
@@ -503,7 +525,9 @@ namespace Ouro.Core.VM
                 case Opcode.Negate:
                     {
                         var value = operandStack.Pop();
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                         operandStack.Push(ArithmeticOperation(value, null, (a, _) => -a));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                     }
                     break;
                     
@@ -662,7 +686,7 @@ namespace Ouro.Core.VM
                 case Opcode.TypeOf:
                     {
                         var typeIndex = ReadInt32();
-                        var typeName = (string)constantPool[typeIndex];
+                        var typeName = (string)constantPool![typeIndex];
                         operandStack.Push(typeRegistry[typeName]);
                     }
                     break;
@@ -670,7 +694,7 @@ namespace Ouro.Core.VM
                 case Opcode.SizeOf:
                     {
                         var typeIndex = ReadInt32();
-                        var typeName = (string)constantPool[typeIndex];
+                        var typeName = (string)constantPool![typeIndex];
                         var type = typeRegistry[typeName];
                         operandStack.Push(System.Runtime.InteropServices.Marshal.SizeOf(type));
                     }
@@ -681,7 +705,7 @@ namespace Ouro.Core.VM
                     {
                         var typeIndex = ReadInt32();
                         var argCount = ReadInt32();
-                        var typeName = (string)constantPool[typeIndex];
+                        var typeName = (string)constantPool![typeIndex];
                         var type = typeRegistry[typeName];
                         
                         // Collect constructor arguments
@@ -693,14 +717,14 @@ namespace Ouro.Core.VM
                         
                         // Create instance
                         var instance = Activator.CreateInstance(type, args);
-                        operandStack.Push(instance);
+                        operandStack.Push(instance!);
                     }
                     break;
                     
                 case Opcode.LoadMember:
                     {
                         var memberIndex = ReadInt32();
-                        var memberName = (string)constantPool[memberIndex];
+                        var memberName = (string)constantPool![memberIndex];
                         var obj = operandStack.Pop();
                         
                         if (obj == null)
@@ -714,12 +738,14 @@ namespace Ouro.Core.VM
                 case Opcode.LoadMemberNullSafe:
                     {
                         var memberIndex = ReadInt32();
-                        var memberName = (string)constantPool[memberIndex];
+                        var memberName = (string)constantPool![memberIndex];
                         var obj = operandStack.Pop();
                         
                         if (obj == null)
                         {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                             operandStack.Push(null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                         }
                         else
                         {
@@ -732,7 +758,7 @@ namespace Ouro.Core.VM
                 case Opcode.StoreMember:
                     {
                         var memberIndex = ReadInt32();
-                        var memberName = (string)constantPool[memberIndex];
+                        var memberName = (string)constantPool![memberIndex];
                         var value = operandStack.Pop();
                         var obj = operandStack.Pop();
                         
@@ -747,7 +773,7 @@ namespace Ouro.Core.VM
                     {
                         var methodNameIndex = ReadInt32();
                         var argCount = ReadInt32();
-                        var methodName = (string)constantPool[methodNameIndex];
+                        var methodName = (string)constantPool![methodNameIndex];
                         
                         // Special case: Runtime user function resolution
                         if (methodName == "__resolve_user_function")
@@ -766,7 +792,7 @@ namespace Ouro.Core.VM
                             Logger.Debug($"VM resolving user function '{functionName}' at runtime");
                             
                             // Look up function in function table by name
-                            var function = ResolveUserFunction(functionName);
+                            var function = ResolveUserFunction(functionName!);
                             if (function != null)
                             {
                                                             Console.WriteLine($"DEBUG: Found function '{functionName}' at address {function.StartAddress}");
@@ -789,7 +815,9 @@ namespace Ouro.Core.VM
                             // Most functions need a few extra locals beyond just parameters
                             for (int i = 0; i < 10; i++)
                             {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                                 locals.Add(null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                             }
                             
                             Console.WriteLine($"DEBUG: Set up function call - LocalsBase: {localsBase}, Arguments: [{string.Join(", ", actualArgs.Select(a => a?.ToString() ?? "null"))}]");
@@ -813,14 +841,14 @@ namespace Ouro.Core.VM
                             bool foundNativeFunction = false;
                             
                             // First try exact match
-                            if (environment.NativeFunctions.ContainsKey(functionName))
+                            if (environment.NativeFunctions.ContainsKey(functionName!))
                             {
-                                var nativeFunc = environment.NativeFunctions[functionName];
+                                var nativeFunc = environment.NativeFunctions[functionName!];
                                 try
                                 {
                                     var result = nativeFunc.DynamicInvoke(actualArgs);
                                     if (result != null && nativeFunc.Method.ReturnType != typeof(void))
-                                        operandStack.Push(result);
+                                        operandStack.Push(result!);
                                     foundNativeFunction = true;
                                 }
                                 catch (Exception ex)
@@ -828,10 +856,12 @@ namespace Ouro.Core.VM
                                     // Handle native function exceptions gracefully 
                                     Console.WriteLine($"DEBUG: Native function '{functionName}' threw exception: {ex.InnerException?.Message ?? ex.Message}");
                                     // Push default value for failed parsing
-                                    if (functionName.Contains("Parse"))
+                                    if (functionName!.Contains("Parse"))
                                         operandStack.Push(0.0);
                                     else 
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                                         operandStack.Push(null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                                     foundNativeFunction = true;
                                 }
                             }
@@ -848,7 +878,7 @@ namespace Ouro.Core.VM
                                         {
                                             var result = nativeFunc.DynamicInvoke(actualArgs);
                                             if (result != null && nativeFunc.Method.ReturnType != typeof(void))
-                                                operandStack.Push(result);
+                                                operandStack.Push(result!);
                                             foundNativeFunction = true;
                                             Console.WriteLine($"DEBUG: Found qualified native function '{nativeName}' for '{functionName}'");
                                         }
@@ -860,7 +890,9 @@ namespace Ouro.Core.VM
                                             if (nativeName.Contains("Parse"))
                                                 operandStack.Push(0.0);
                                             else 
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                                                 operandStack.Push(null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                                             foundNativeFunction = true;
                                         }
                                         break;
@@ -913,7 +945,7 @@ namespace Ouro.Core.VM
                             {
                                 var result = method.Invoke(null, methodArgs);
                                 if (method.ReturnType != typeof(void))
-                                    operandStack.Push(result);
+                                    operandStack.Push(result!);
                             }
                             else
                             {
@@ -923,9 +955,9 @@ namespace Ouro.Core.VM
                         else
                         {
                             // Instance method call
-                            var result = CallMethod(obj, methodName, methodArgs);
+                            var result = CallMethod(obj!, methodName, methodArgs);
                             if (result != null)
-                                operandStack.Push(result);
+                                operandStack.Push(result!);
                         }
                     }
                     break;
@@ -1091,7 +1123,6 @@ namespace Ouro.Core.VM
                             exception = new RuntimeException("Thrown value is not an exception");
                         throw exception;
                     }
-                    break;
                     
                 case Opcode.Rethrow:
                     throw new RuntimeException("No exception to rethrow");
@@ -1099,7 +1130,7 @@ namespace Ouro.Core.VM
                 // Import operations
                 case Opcode.Import:
                     {
-                        var moduleName = constantPool[ReadInt32()] as string;
+                        var moduleName = constantPool![ReadInt32()] as string;
                         if (moduleName == null)
                             throw new InvalidOperationException("Import module name must be a string");
                         
@@ -1117,7 +1148,7 @@ namespace Ouro.Core.VM
                                 // Import static console methods
                                 environment.Globals["Write"] = new Action<object>(Console.Write);
                                 environment.Globals["WriteLine"] = new Action<object>(Console.WriteLine);
-                                environment.Globals["ReadLine"] = new Func<string>(Console.ReadLine);
+                                environment.Globals["ReadLine"] = new Func<string>(() => Console.ReadLine() ?? "");
                             }
                             else if (staticModule == "Math")
                             {
@@ -1174,7 +1205,7 @@ namespace Ouro.Core.VM
                     {
                         // Read class name from constant pool
                         var classNameIndex = ReadInt32();
-                        var className = (string)constantPool[classNameIndex];
+                        var className = (string)constantPool![classNameIndex]!;
                         
                         // For now, just register the class as defined
                         // In a full implementation, this would create the class type
@@ -1195,7 +1226,7 @@ namespace Ouro.Core.VM
                     {
                         // Read name from constant pool and register the definition
                         var nameIndex = ReadInt32();
-                        var name = (string)constantPool[nameIndex];
+                        var name = (string)constantPool![nameIndex]!;
                         typeRegistry[name] = typeof(object); // Basic implementation
                     }
                     break;
@@ -1520,7 +1551,7 @@ namespace Ouro.Core.VM
                 case Opcode.BeginKernel:
                     {
                         // Begin GPU kernel execution
-                        var kernelName = constantPool[ReadInt32()] as string;
+                        var kernelName = constantPool![ReadInt32()] as string ?? string.Empty;
                         var gridDimX = Convert.ToInt32(operandStack.Pop());
                         var gridDimY = Convert.ToInt32(operandStack.Pop());
                         var gridDimZ = Convert.ToInt32(operandStack.Pop());
@@ -1604,13 +1635,13 @@ namespace Ouro.Core.VM
                 case Opcode.WasmExport:
                     {
                         // Export function to WebAssembly module
-                        var functionName = constantPool[ReadInt32()] as string;
-                        var exportName = constantPool[ReadInt32()] as string;
+                        var functionName = constantPool![ReadInt32()] as string ?? string.Empty;
+                        var exportName = constantPool![ReadInt32()] as string ?? string.Empty;
                         
                         if (environment.Globals.TryGetValue("__wasm_context", out var contextObj) &&
                             contextObj is Dictionary<string, object> wasmContext)
                         {
-                            var exports = wasmContext["exports"] as Dictionary<string, object>;
+                            var exports = wasmContext["exports"] as Dictionary<string, object> ?? new Dictionary<string, object>();
                             
                             // Find the function to export
                             if (environment.NativeFunctions.TryGetValue(functionName, out var function))
@@ -1629,14 +1660,14 @@ namespace Ouro.Core.VM
                 case Opcode.WasmImport:
                     {
                         // Import function from WebAssembly host
-                        var moduleName = constantPool[ReadInt32()] as string;
-                        var importName = constantPool[ReadInt32()] as string;
-                        var localName = constantPool[ReadInt32()] as string;
+                        var moduleName = constantPool![ReadInt32()] as string ?? string.Empty;
+                        var importName = constantPool![ReadInt32()] as string ?? string.Empty;
+                        var localName = constantPool![ReadInt32()] as string ?? string.Empty;
                         
                         if (environment.Globals.TryGetValue("__wasm_context", out var contextObj) &&
                             contextObj is Dictionary<string, object> wasmContext)
                         {
-                            var imports = wasmContext["imports"] as Dictionary<string, object>;
+                            var imports = wasmContext["imports"] as Dictionary<string, object> ?? new Dictionary<string, object>();
                             
                             // Create import key
                             var importKey = $"{moduleName}.{importName}";
@@ -1650,12 +1681,12 @@ namespace Ouro.Core.VM
                                     case "env.print_i32":
                                         if (args.Length > 0)
                                             Console.WriteLine($"WASM print_i32: {args[0]}");
-                                        return null;
+                                        return null!;
                                         
                                     case "env.print_f64":
                                         if (args.Length > 0)
                                             Console.WriteLine($"WASM print_f64: {args[0]}");
-                                        return null;
+                                        return null!;
                                         
                                     case "env.memory_grow":
                                         if (args.Length > 0)
@@ -1682,7 +1713,7 @@ namespace Ouro.Core.VM
                                     default:
                                         Console.WriteLine($"[VM] Called imported WASM function '{importKey}' with {args.Length} args");
                                         // Return default value based on expected return type
-                                        return null;
+                                        return null!;
                                 }
                             };
                             
@@ -1921,13 +1952,13 @@ namespace Ouro.Core.VM
                 case Opcode.EnterDomain:
                     {
                         // Enter domain scope
-                        var domainName = constantPool[ReadInt32()] as string;
+                        var domainName = constantPool![ReadInt32()] as string ?? string.Empty;
                         
                         // Create domain context
                         if (!environment.Globals.ContainsKey("__domain_stack"))
                             environment.Globals["__domain_stack"] = new Stack<Dictionary<string, object>>();
                             
-                        var domainStack = environment.Globals["__domain_stack"] as Stack<Dictionary<string, object>>;
+                        var domainStack = environment.Globals["__domain_stack"] as Stack<Dictionary<string, object>> ?? new Stack<Dictionary<string, object>>();
                         
                         // Create new domain context
                         var domainContext = new Dictionary<string, object>
@@ -1952,7 +1983,7 @@ namespace Ouro.Core.VM
                         // Exit domain scope
                         if (environment.Globals.ContainsKey("__domain_stack"))
                         {
-                            var domainStack = environment.Globals["__domain_stack"] as Stack<Dictionary<string, object>>;
+                            var domainStack = environment.Globals["__domain_stack"] as Stack<Dictionary<string, object>> ?? new Stack<Dictionary<string, object>>();
                             if (domainStack.Count > 0)
                             {
                                 var domain = domainStack.Pop();
@@ -1966,17 +1997,17 @@ namespace Ouro.Core.VM
                 case Opcode.RedefineOperator:
                     {
                         // Redefine operator in domain scope
-                        var operatorSymbol = constantPool[ReadInt32()] as string;
-                        var functionName = constantPool[ReadInt32()] as string;
-                        var typeName = constantPool[ReadInt32()] as string;
+                        var operatorSymbol = constantPool![ReadInt32()] as string ?? string.Empty;
+                        var functionName = constantPool![ReadInt32()] as string ?? string.Empty;
+                        var typeName = constantPool![ReadInt32()] as string ?? string.Empty;
                         
                         if (environment.Globals.ContainsKey("__domain_stack"))
                         {
-                            var domainStack = environment.Globals["__domain_stack"] as Stack<Dictionary<string, object>>;
+                            var domainStack = environment.Globals["__domain_stack"] as Stack<Dictionary<string, object>> ?? new Stack<Dictionary<string, object>>();
                             if (domainStack.Count > 0)
                             {
                                 var domain = domainStack.Peek();
-                                var operators = domain["operators"] as Dictionary<string, Delegate>;
+                                var operators = domain["operators"] as Dictionary<string, Delegate> ?? new Dictionary<string, Delegate>();
                                 
                                 // Create operator key with type info
                                 var operatorKey = $"{operatorSymbol}_{typeName}";
@@ -2003,21 +2034,23 @@ namespace Ouro.Core.VM
                             int idx = Convert.ToInt32(index);
                             if (idx < 0 || idx >= arr.Length)
                                 throw new VirtualMachineException($"Array index out of bounds: {idx}");
-                            operandStack.Push(arr.GetValue(idx));
+                            operandStack.Push(arr.GetValue(idx)!);
                         }
                         else if (array is System.Collections.IList list)
                         {
                             int idx = Convert.ToInt32(index);
                             if (idx < 0 || idx >= list.Count)
                                 throw new VirtualMachineException($"List index out of bounds: {idx}");
-                            operandStack.Push(list[idx]);
+                            operandStack.Push(list[idx]!);
                         }
                         else if (array is System.Collections.IDictionary dict)
                         {
                             if (!dict.Contains(index))
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                                 operandStack.Push(null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                             else
-                                operandStack.Push(dict[index]);
+                                operandStack.Push(dict[index]!);
                         }
                         else
                         {
@@ -2060,10 +2093,10 @@ namespace Ouro.Core.VM
                 // Type operations
                 case Opcode.Cast:
                     {
-                        var typeName = constantPool[ReadInt32()] as string;
+                        var typeName = constantPool![ReadInt32()] as string ?? string.Empty;
                         var value = operandStack.Pop();
                         
-                        if (typeRegistry.TryGetValue(typeName, out Type targetType))
+                        if (typeRegistry.TryGetValue(typeName, out Type? targetType))
                         {
                             try
                             {
@@ -2084,10 +2117,10 @@ namespace Ouro.Core.VM
                     
                 case Opcode.IsInstance:
                     {
-                        var typeName = constantPool[ReadInt32()] as string;
+                        var typeName = constantPool![ReadInt32()] as string ?? string.Empty;
                         var value = operandStack.Pop();
                         
-                        if (typeRegistry.TryGetValue(typeName, out Type checkType))
+                        if (typeRegistry.TryGetValue(typeName, out Type? checkType))
                         {
                             bool isInstance = value != null && checkType.IsAssignableFrom(value.GetType());
                             operandStack.Push(isInstance);
@@ -2574,7 +2607,7 @@ namespace Ouro.Core.VM
         
         private int ReadInt32()
         {
-            var value = BitConverter.ToInt32(instructions, instructionPointer);
+            var value = BitConverter.ToInt32(instructions!, instructionPointer);
             instructionPointer += 4;
             return value;
         }
@@ -2635,14 +2668,14 @@ namespace Ouro.Core.VM
             // Register MathFunctions class and individual functions
             environment.Globals["MathFunctions"] = typeof(Ouro.StdLib.Math.MathFunctions);
             environment.NativeFunctions["MathFunctions.Sqrt"] = new Func<double, double>(Ouro.StdLib.Math.MathFunctions.Sqrt);
-            environment.NativeFunctions["formatNumber"] = new Func<object, string>(obj => obj?.ToString() ?? "");
+            environment.NativeFunctions["formatNumber"] = new Func<object, string>(static obj => obj?.ToString() ?? "");
             
             // Register additional parsing functions for type conversions
-            environment.NativeFunctions["parseNumber"] = new Func<string, double>(s => {
+            environment.NativeFunctions["parseNumber"] = new Func<string, double>(static s => {
                 if (double.TryParse(s, out double result)) return result;
                 return 0.0;
             });
-            environment.NativeFunctions["formatNumber"] = new Func<object, string>(obj => obj?.ToString() ?? "");
+            environment.NativeFunctions["formatNumber"] = new Func<object, string>(static obj => obj?.ToString() ?? "");
             
             // Register additional math functions
             environment.NativeFunctions["Math.Ceiling"] = new Func<double, double>(System.Math.Ceiling);
@@ -2652,7 +2685,7 @@ namespace Ouro.Core.VM
             // Register parsing functions for type conversions
             environment.NativeFunctions["double.Parse"] = new Func<string, double>(double.Parse);
             environment.NativeFunctions["int.Parse"] = new Func<string, int>(int.Parse);
-            environment.NativeFunctions["string.Parse"] = new Func<object, string>(obj => obj?.ToString() ?? "");
+            environment.NativeFunctions["string.Parse"] = new Func<object, string>(static obj => obj?.ToString() ?? "");
             
             // Register Threading functions
             environment.Globals["Thread"] = typeof(System.Threading.Thread);
@@ -2698,7 +2731,7 @@ namespace Ouro.Core.VM
             environment.NativeFunctions["Sqrt"] = new Func<double, double>(MathSymbols.Sqrt);
             environment.NativeFunctions["Sum"] = new Func<int, int, Func<int, double>, double>(MathSymbols.Sum);
             environment.NativeFunctions["Product"] = new Func<int, int, Func<int, double>, double>(MathSymbols.Product);
-            environment.NativeFunctions["Integral"] = new Func<double, double, Func<double, double>, double>((a, b, f) => MathSymbols.Integral(a, b, f));
+            environment.NativeFunctions["Integral"] = new Func<double, double, Func<double, double>, double>(static (a, b, f) => MathSymbols.Integral(a, b, f));
             environment.NativeFunctions["Mu"] = new Func<double[], double>(MathSymbols.Mu);
             environment.NativeFunctions["Sigma"] = new Func<double[], double>(MathSymbols.Sigma);
             environment.NativeFunctions["SigmaSquared"] = new Func<double[], double>(MathSymbols.SigmaSquared);
@@ -2709,33 +2742,33 @@ namespace Ouro.Core.VM
         private void LoadTypes(Bytecode bytecode)
         {
             // Load classes
-            foreach (var classInfo in bytecode.Classes)
+            foreach (var classInfo in bytecode.Classes!)
             {
                 // Generate runtime type from ClassInfo
                 var type = CreateDynamicClass(classInfo);
-                typeRegistry[classInfo.Name] = type;
+                typeRegistry[classInfo.Name ?? string.Empty] = type;
                 environment.Globals[$"__class_{classInfo.Name}"] = classInfo;
             }
             
             // Load structs
-            foreach (var structInfo in bytecode.Structs)
+            foreach (var structInfo in bytecode.Structs!)
             {
                 // Generate runtime type from StructInfo
                 var type = CreateDynamicStruct(structInfo);
-                typeRegistry[structInfo.Name] = type;
+                typeRegistry[structInfo.Name ?? string.Empty] = type;
                 environment.Globals[$"__struct_{structInfo.Name}"] = structInfo;
             }
             
             // Load enums
-            foreach (var enumInfo in bytecode.Enums)
+            foreach (var enumInfo in bytecode.Enums!)
             {
                 // Generate runtime type from EnumInfo
                 var type = CreateDynamicEnum(enumInfo);
-                typeRegistry[enumInfo.Name] = type;
+                typeRegistry[enumInfo.Name ?? string.Empty] = type;
                 environment.Globals[$"__enum_{enumInfo.Name}"] = enumInfo;
                 
                 // Register all enum values as constants
-                foreach (var member in enumInfo.Members)
+                foreach (var member in enumInfo.Members ?? new List<EnumMemberInfo>())
                 {
                     environment.Globals[$"{enumInfo.Name}.{member.Name}"] = member.Value;
                 }
@@ -2817,12 +2850,12 @@ namespace Ouro.Core.VM
                 // Try static field
                 var field = type.GetField(memberName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
                 if (field != null)
-                    return field.GetValue(null);
+                    return field.GetValue(null)!;
                     
                 // Try static property
                 var property = type.GetProperty(memberName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
                 if (property != null)
-                    return property.GetValue(null);
+                    return property.GetValue(null)!;
                     
                 // Try static method - return a method reference that can be called
                 if (type.ContainsGenericParameters)
@@ -2847,12 +2880,12 @@ namespace Ouro.Core.VM
             // Try field
             var objField = objType.GetField(memberName);
             if (objField != null)
-                return objField.GetValue(obj);
+                return objField.GetValue(obj)!;
                 
             // Try property
             var objProperty = objType.GetProperty(memberName);
             if (objProperty != null)
-                return objProperty.GetValue(obj);
+                return objProperty.GetValue(obj)!;
                 
             throw new VirtualMachineException($"Member '{memberName}' not found on type {objType.Name}");
         }
@@ -2895,7 +2928,7 @@ namespace Ouro.Core.VM
             if (method == null)
                 throw new VirtualMachineException($"Method '{methodName}' not found on type {type.Name}");
                 
-            return method.Invoke(obj, args);
+            return method.Invoke(obj, args)!;
         }
         
         private void RegisterImportedTypes(string modulePath)
@@ -3109,7 +3142,7 @@ namespace Ouro.Core.VM
                             typeRegistry[type.Name] = type;
                             
                             // Also register with full name
-                            typeRegistry[type.FullName] = type;
+                            typeRegistry[type.FullName!] = type;
                         }
                         
                         Console.WriteLine($"[VM] Loaded external assembly: {moduleName}");
@@ -3144,7 +3177,7 @@ namespace Ouro.Core.VM
                                 foreach (var type in assembly.GetExportedTypes())
                                 {
                                     typeRegistry[type.Name] = type;
-                                    typeRegistry[type.FullName] = type;
+                                    typeRegistry[type.FullName!] = type;
                                 }
                                 Console.WriteLine($"[VM] Loaded external module from: {path}");
                                 return;
@@ -3220,7 +3253,7 @@ namespace Ouro.Core.VM
         private Type GetDelegateType(System.Reflection.MethodInfo method)
         {
             var parameters = method.GetParameters();
-            var paramTypes = parameters.Select(p => p.ParameterType).ToList();
+            var paramTypes = parameters.Select(static p => p.ParameterType).ToList();
             
             if (method.ReturnType == typeof(void))
             {
@@ -3298,7 +3331,7 @@ namespace Ouro.Core.VM
             }
             
             Console.WriteLine($"DEBUG: Function '{functionName}' not found in any location");
-            return null;
+            return null!;
         }
         
         private bool ShouldUnwind()
@@ -3319,19 +3352,19 @@ namespace Ouro.Core.VM
         
         private class Closure
         {
-            public object Function { get; set; }
-            public object[] Captures { get; set; }
+            public object? Function { get; set; }
+            public object[]? Captures { get; set; }
         }
         
         private class DynamicClassInstance
         {
-            public ClassInfo ClassInfo { get; set; }
+            public ClassInfo? ClassInfo { get; set; }
             public Dictionary<string, object> Fields { get; set; } = new Dictionary<string, object>();
         }
         
         private class DynamicStructInstance
         {
-            public StructInfo StructInfo { get; set; }
+            public StructInfo? StructInfo { get; set; }
             public Dictionary<string, object> Fields { get; set; } = new Dictionary<string, object>();
         }
         
@@ -3350,7 +3383,7 @@ namespace Ouro.Core.VM
         /// </summary>
         public void Step()
         {
-            if (instructionPointer < instructions.Length)
+            if (instructionPointer < instructions!.Length)
             {
                 ExecuteInstruction();
             }
@@ -3382,9 +3415,11 @@ namespace Ouro.Core.VM
         /// <summary>
         /// Try to get a global variable by name (for debugger variable inspection)
         /// </summary>
-        public bool TryGetGlobalVariable(string name, out object value)
+        public bool TryGetGlobalVariable(string name, out object? value)
         {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             value = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             if (symbolTable != null)
             {
@@ -3432,8 +3467,8 @@ namespace Ouro.Core.VM
 
         private void LoadDomainOperators(string domainName, Dictionary<string, object> domainContext)
         {
-            var operators = domainContext["operators"] as Dictionary<string, Delegate>;
-            var constants = domainContext["constants"] as Dictionary<string, object>;
+            var operators = domainContext["operators"] as Dictionary<string, Delegate> ?? new Dictionary<string, Delegate>();
+            var constants = domainContext["constants"] as Dictionary<string, object> ?? new Dictionary<string, object>();
             
             switch (domainName)
             {
@@ -3476,7 +3511,7 @@ namespace Ouro.Core.VM
     {
         public int ReturnAddress { get; set; }
         public int LocalsBase { get; set; }
-        public FunctionInfo Function { get; set; }
+        public FunctionInfo? Function { get; set; }
     }
     
     /// <summary>

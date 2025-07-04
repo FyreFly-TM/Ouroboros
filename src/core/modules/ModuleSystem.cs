@@ -354,7 +354,9 @@ namespace Ouro.Core.Modules
 
         public bool TryGetModule(string path, out LoadedModule module)
         {
-            return cache.TryGetValue(path, out module);
+            var found = cache.TryGetValue(path, out module!);
+            if (!found) module = null!;
+            return found;
         }
 
         public void AddModule(string path, LoadedModule module)

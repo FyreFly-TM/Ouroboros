@@ -19,7 +19,9 @@ namespace Ouro.StdLib.Data.Mocks
     // Minimal mock implementations for testing
     internal abstract class MockDbConnection : DbConnection
     {
+#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
         public override string ConnectionString { get; set; } = string.Empty;
+#pragma warning restore CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
         public abstract override string Database { get; }
         public abstract override string DataSource { get; }
         public abstract override string ServerVersion { get; }
@@ -34,7 +36,9 @@ namespace Ouro.StdLib.Data.Mocks
     
     internal class MockDbCommand : DbCommand
     {
+#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
         public override string CommandText { get; set; } = string.Empty;
+#pragma warning restore CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
         public override int CommandTimeout { get; set; } = 30;
         public override CommandType CommandType { get; set; } = CommandType.Text;
         public override bool DesignTimeVisible { get; set; } = false;
@@ -45,7 +49,7 @@ namespace Ouro.StdLib.Data.Mocks
         
         public override void Cancel() { }
         public override int ExecuteNonQuery() => 0;
-        public override object ExecuteScalar() => null;
+        public override object? ExecuteScalar() => null;
         public override void Prepare() { }
         protected override DbParameter CreateDbParameter() => new MockDbParameter();
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => new MockDbDataReader();
@@ -71,8 +75,12 @@ namespace Ouro.StdLib.Data.Mocks
         public override DbType DbType { get; set; } = DbType.String;
         public override ParameterDirection Direction { get; set; } = ParameterDirection.Input;
         public override bool IsNullable { get; set; } = false;
+#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
         public override string ParameterName { get; set; } = string.Empty;
+#pragma warning restore CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
+#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
         public override string SourceColumn { get; set; } = string.Empty;
+#pragma warning restore CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
         public override object? Value { get; set; }
         public override bool SourceColumnNullMapping { get; set; } = false;
         public override int Size { get; set; } = 0;
@@ -94,14 +102,14 @@ namespace Ouro.StdLib.Data.Mocks
         
         public override void AddRange(Array values)
         {
-            foreach (DbParameter param in values)
-                parameters.Add(param);
+            foreach (object value in values)
+                parameters.Add((DbParameter)value);
         }
         
         public override void Clear() => parameters.Clear();
         public override bool Contains(object value) => parameters.Contains((DbParameter)value);
         public override bool Contains(string value) => parameters.Any(p => p.ParameterName == value);
-        public override void CopyTo(Array array, int index) => parameters.CopyTo((DbParameter[])array, index);
+        public override void CopyTo(Array? array, int index) => parameters.CopyTo((DbParameter[])array!, index);
         public override global::System.Collections.IEnumerator GetEnumerator() => parameters.GetEnumerator();
         public override int IndexOf(object value) => parameters.IndexOf((DbParameter)value);
         public override int IndexOf(string parameterName) => parameters.FindIndex(p => p.ParameterName == parameterName);
@@ -110,7 +118,7 @@ namespace Ouro.StdLib.Data.Mocks
         public override void RemoveAt(int index) => parameters.RemoveAt(index);
         public override void RemoveAt(string parameterName) => parameters.RemoveAll(p => p.ParameterName == parameterName);
         protected override DbParameter GetParameter(int index) => parameters[index];
-        protected override DbParameter? GetParameter(string parameterName) => parameters.FirstOrDefault(p => p.ParameterName == parameterName);
+        protected override DbParameter GetParameter(string parameterName) => parameters.FirstOrDefault(p => p.ParameterName == parameterName) ?? new MockDbParameter();
         protected override void SetParameter(int index, DbParameter value) => parameters[index] = value;
         protected override void SetParameter(string parameterName, DbParameter value)
         {
@@ -124,8 +132,8 @@ namespace Ouro.StdLib.Data.Mocks
     {
         protected virtual string DefaultDataType => "TEXT";
         
-        public override object this[int ordinal] => null;
-        public override object this[string name] => null;
+        public override object this[int ordinal] => null!;
+        public override object this[string name] => null!;
         public override int Depth => 0;
         public override int FieldCount => 0;
         public override bool HasRows => false;
@@ -134,9 +142,9 @@ namespace Ouro.StdLib.Data.Mocks
         
         public override bool GetBoolean(int ordinal) => false;
         public override byte GetByte(int ordinal) => 0;
-        public override long GetBytes(int ordinal, long dataOffset, byte[] buffer, int bufferOffset, int length) => 0;
+        public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length) => 0;
         public override char GetChar(int ordinal) => '\0';
-        public override long GetChars(int ordinal, long dataOffset, char[] buffer, int bufferOffset, int length) => 0;
+        public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length) => 0;
         public override string GetDataTypeName(int ordinal) => DefaultDataType;
         public override DateTime GetDateTime(int ordinal) => DateTime.MinValue;
         public override decimal GetDecimal(int ordinal) => 0;
@@ -150,7 +158,7 @@ namespace Ouro.StdLib.Data.Mocks
         public override string GetName(int ordinal) => "";
         public override int GetOrdinal(string name) => -1;
         public override string GetString(int ordinal) => "";
-        public override object GetValue(int ordinal) => null;
+        public override object GetValue(int ordinal) => null!;
         public override int GetValues(object[] values) => 0;
         public override bool IsDBNull(int ordinal) => true;
         public override bool NextResult() => false;

@@ -14,7 +14,7 @@ namespace Ouro
     /// </summary>
     public class Program
     {
-        private static Runtime.Runtime runtime;
+        private static Runtime.Runtime? runtime;
         
         private static bool debugMode = false;
         
@@ -200,7 +200,7 @@ namespace Ouro
             }
         }
 
-        static CompiledProgram CompileSource(string sourceCode, string fileName)
+        static CompiledProgram? CompileSource(string sourceCode, string fileName)
         {
             try
             {

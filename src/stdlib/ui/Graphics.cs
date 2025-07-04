@@ -16,7 +16,9 @@ namespace Ouro.StdLib.UI
         private Stack<Rectangle> clipStack = new Stack<Rectangle>();
         private Matrix currentTransform = Matrix.Identity3;
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public GraphicsContext(object context = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             platformContext = context;
             transformStack.Push(currentTransform);
@@ -520,10 +522,10 @@ namespace Ouro.StdLib.UI
     /// </summary>
     public class Image
     {
-        public string Source { get; set; }
+        public string? Source { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
-        public byte[] PixelData { get; set; }
+        public byte[]? PixelData { get; set; }
         
         public Image(string source)
         {
@@ -651,7 +653,7 @@ namespace Ouro.StdLib.UI
         public Color SelectionColor { get; set; }
         public Color PlaceholderColor { get; set; }
         public Color TrackColor { get; set; }
-        public Font DefaultFont { get; set; }
+        public Font? DefaultFont { get; set; }
         
         // Default themes
         public static Theme Default => new Theme

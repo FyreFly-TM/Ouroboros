@@ -10,11 +10,6 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <UseWindowsForms>true</UseWindowsForms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    
-    <!-- Custom build output paths -->
-    <OutputPath>build/bin/$(Configuration)/$(TargetFramework)/</OutputPath>
-    <BaseIntermediateOutputPath>build/obj/</BaseIntermediateOutputPath>
-    <IntermediateOutputPath>$(BaseIntermediateOutputPath)$(Configuration)/$(TargetFramework)/</IntermediateOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -49,7 +44,6 @@
     <Compile Remove="src/stdlib/io/AdvancedFileSystem.cs" />
     <Compile Remove="src/stdlib/concurrency/Atomics.cs" />
     <Compile Remove="src/syntaxes/low/LowLevelParser.cs" />
-    <Compile Remove="src/syntaxes/high/HighLevelParser.cs" />
     <Compile Remove="src/stdlib/collections/Dictionary.cs" />
     <!-- Temporarily exclude LLVM files until API fixed -->
     <Compile Remove="src/codegen/LLVMBackend.cs" />

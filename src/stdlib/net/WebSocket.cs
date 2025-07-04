@@ -279,9 +279,9 @@ namespace Ouro.StdLib.Net
                     await HandleFrameAsync(opcode, fin, payload, message);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                OnError?.Invoke(ex);
+                // Cannot invoke OnError from outside the class
             }
             finally
             {
@@ -458,10 +458,9 @@ namespace Ouro.StdLib.Net
                 
                 await client.HandleMessagesAsync();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Cannot invoke OnError from outside the class
-                // The exception will be handled by the client's own error handling
             }
             finally
             {

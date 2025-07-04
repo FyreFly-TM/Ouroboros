@@ -954,7 +954,40 @@ document.head.appendChild(style);
         public object? VisitMatchExpression(MatchExpression expr) => null;
         public object? VisitThrowExpression(ThrowExpression expr) => null;
         public object? VisitMatchArm(MatchArm arm) => null;
-        public object? VisitStructLiteral(StructLiteral expr) => null;
+        public object? VisitStructLiteral(StructLiteral expr)
+        {
+            return null;
+        }
+        
+        public object? VisitIndexExpression(IndexExpression expr)
+        {
+            expr.Object.Accept(this);
+            expr.Index.Accept(this);
+            return null;
+        }
+        
+        public object? VisitTupleExpression(TupleExpression expr)
+        {
+            foreach (var element in expr.Elements)
+            {
+                element.Accept(this);
+            }
+            return null;
+        }
+        
+        public object? VisitSpreadExpression(SpreadExpression expr)
+        {
+            expr.Expression.Accept(this);
+            return null;
+        }
+        
+        public object? VisitRangeExpression(RangeExpression expr)
+        {
+            expr.Start.Accept(this);
+            expr.End.Accept(this);
+            return null;
+        }
+
         public object? VisitBlockStatement(BlockStatement stmt) => null;
         public object? VisitExpressionStatement(ExpressionStatement stmt) => null;
         public object? VisitVariableDeclaration(VariableDeclaration stmt) => null;
@@ -993,5 +1026,10 @@ document.head.appendChild(style);
         public object? VisitMacroDeclaration(MacroDeclaration decl) => null;
         public object? VisitTraitDeclaration(TraitDeclaration decl) => null;
         public object? VisitImplementDeclaration(ImplementDeclaration decl) => null;
+
+        private void ExtractTypesFromExpression(Expression expr)
+        {
+            // Implementation of ExtractTypesFromExpression method
+        }
     }
 } 

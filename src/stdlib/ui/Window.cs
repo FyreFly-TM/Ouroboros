@@ -17,13 +17,13 @@ namespace Ouro.StdLib.UI
         private Layout layout;
         private bool isInitialized;
         
-        public event EventHandler<ResizeEventArgs> Resized;
-        public event EventHandler<MouseEventArgs> MouseMoved;
-        public event EventHandler<MouseEventArgs> MouseClicked;
-        public event EventHandler<KeyEventArgs> KeyPressed;
-        public event EventHandler Closed;
+        public event EventHandler<ResizeEventArgs>? Resized;
+        public event EventHandler<MouseEventArgs>? MouseMoved;
+        public event EventHandler<MouseEventArgs>? MouseClicked;
+        public event EventHandler<KeyEventArgs>? KeyPressed;
+        public event EventHandler? Closed;
         
-        public Action OnClosed { get; set; }
+        public Action? OnClosed { get; set; }
 
         public Window(string title = "Ouroboros Window", int width = 800, int height = 600)
         {
@@ -146,11 +146,21 @@ namespace Ouro.StdLib.UI
             UIBackend.UnregisterWindow(this);
             
             // Clear event handlers to prevent memory leaks
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             Resized = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             MouseMoved = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             MouseClicked = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             KeyPressed = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             Closed = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
         
         private void PlatformInvalidate() 

@@ -154,7 +154,7 @@ namespace Ouro.StdLib.UI
             Style = ButtonStyle.Primary;
             Icon = new Image("button-icon.png");
             
-            Click += (sender, e) =>
+            Click += static (sender, e) =>
             {
                 Console.WriteLine("Button clicked!");
                 // Animation would be implemented here
@@ -387,7 +387,7 @@ namespace Ouro.StdLib.UI
             // Draw selected item text
             if (SelectedItem != null)
             {
-                context.DrawText(SelectedItem.ToString(), 
+                context.DrawText(SelectedItem?.ToString() ?? string.Empty, 
                                Position + new Vector(Padding.Left, Padding.Top),
                                Font, ForegroundColor ?? Theme.Default.ForegroundColor);
             }
@@ -412,7 +412,7 @@ namespace Ouro.StdLib.UI
                     
                     context.FillRectangle(dropdownPos + new Vector(0, i * 25), 
                                         new Vector(Size.X, 25), itemBgColor);
-                    context.DrawText(Items[i].ToString(), itemPos, Font, ForegroundColor ?? Theme.Default.ForegroundColor);
+                    context.DrawText(Items[i]?.ToString() ?? string.Empty, itemPos, Font, ForegroundColor ?? Theme.Default.ForegroundColor);
                 }
             }
         }
@@ -652,10 +652,10 @@ namespace Ouro.StdLib.UI
                 }
             }
         }
-        public TabPage SelectedTab => selectedIndex >= 0 ? tabs[selectedIndex] : null;
+        public TabPage? SelectedTab => selectedIndex >= 0 ? tabs[selectedIndex] : null;
         public TabHeaderPosition HeaderPosition { get; set; } = TabHeaderPosition.Top;
         
-        public event EventHandler<TabChangedEventArgs> TabChanged;
+        public event EventHandler<TabChangedEventArgs>? TabChanged;
         
         public TabControl()
         {
@@ -726,7 +726,7 @@ namespace Ouro.StdLib.UI
     public class TabPage : Widget
     {
         public string Title { get; set; }
-        public Image Icon { get; set; }
+        public Image? Icon { get; set; }
         
         public TabPage(string title)
         {
@@ -768,12 +768,12 @@ namespace Ouro.StdLib.UI
                 }
             }
         }
-        public object SelectedItem => SelectedIndex >= 0 ? items[SelectedIndex] : null;
+        public object? SelectedItem => SelectedIndex >= 0 ? items[SelectedIndex] : null;
         public SelectionMode SelectionMode { get; set; } = SelectionMode.Single;
         public double ItemHeight { get; set; } = 25;
         
-        public event EventHandler<SelectionChangedEventArgs> SelectionChanged;
-        public event EventHandler<ItemEventArgs> ItemDoubleClick;
+        public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
+        public event EventHandler<ItemEventArgs>? ItemDoubleClick;
         
         public ListBox()
         {
@@ -849,7 +849,7 @@ namespace Ouro.StdLib.UI
                 
                 // Draw item text
                 context.DrawText(
-                    items[i].ToString(),
+                    items[i]?.ToString() ?? string.Empty,
                     new Vector(Position.X + Padding.Left, y + 2),
                     Font,
                     selectedIndices.Contains(i) ? Color.White : (ForegroundColor ?? Theme.Default.ForegroundColor)
@@ -894,7 +894,7 @@ namespace Ouro.StdLib.UI
     public class TreeView : Widget
     {
         private TreeNode rootNode;
-        private TreeNode selectedNode;
+        private TreeNode? selectedNode;
         private double scrollOffset = 0;
         private double nodeHeight = 25;
         
@@ -908,7 +908,7 @@ namespace Ouro.StdLib.UI
                     rootNode.TreeView = this;
             }
         }
-        public TreeNode SelectedNode 
+        public TreeNode? SelectedNode 
         { 
             get => selectedNode;
             set 
@@ -921,9 +921,9 @@ namespace Ouro.StdLib.UI
         public bool ShowRootNode { get; set; } = true;
         public bool ShowLines { get; set; } = true;
         
-        public event EventHandler<TreeNodeEventArgs> SelectionChanged;
-        public event EventHandler<TreeNodeEventArgs> NodeExpanded;
-        public event EventHandler<TreeNodeEventArgs> NodeCollapsed;
+        public event EventHandler<TreeNodeEventArgs>? SelectionChanged;
+        public event EventHandler<TreeNodeEventArgs>? NodeExpanded;
+        public event EventHandler<TreeNodeEventArgs>? NodeCollapsed;
         
         public TreeView()
         {
@@ -1034,27 +1034,31 @@ namespace Ouro.StdLib.UI
         
         internal void OnNodeExpanded(TreeNode node)
         {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             NodeExpanded?.Invoke(this, new TreeNodeEventArgs(null, node));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
         
         internal void OnNodeCollapsed(TreeNode node)
         {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             NodeCollapsed?.Invoke(this, new TreeNodeEventArgs(null, node));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
     }
     
     public class TreeNode
     {
         private List<TreeNode> children = new List<TreeNode>();
-        private TreeNode parent;
+        private TreeNode? parent;
         private bool isExpanded = false;
         
         public string Text { get; set; }
-        public object Tag { get; set; }
-        public Image Icon { get; set; }
+        public object? Tag { get; set; }
+        public Image? Icon { get; set; }
         public List<TreeNode> Children => children;
-        public TreeNode Parent => parent;
-        public TreeView TreeView { get; internal set; }
+        public TreeNode? Parent => parent;
+        public TreeView? TreeView { get; internal set; }
         
         public bool IsExpanded 
         { 
@@ -1093,8 +1097,12 @@ namespace Ouro.StdLib.UI
         {
             if (children.Remove(child))
             {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 child.parent = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 child.TreeView = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
         }
         
@@ -1102,8 +1110,12 @@ namespace Ouro.StdLib.UI
         {
             foreach (var child in children)
             {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 child.parent = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 child.TreeView = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
             children.Clear();
         }
@@ -1115,7 +1127,9 @@ namespace Ouro.StdLib.UI
     public class MenuBar : Widget
     {
         private List<MenuItem> items = new List<MenuItem>();
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         private MenuItem openMenu = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         
         public List<MenuItem> Items => items;
         
@@ -1249,15 +1263,15 @@ namespace Ouro.StdLib.UI
         private List<MenuItem> children = new List<MenuItem>();
         
         public string Text { get; set; }
-        public string Shortcut { get; set; }
-        public Image Icon { get; set; }
+        public string? Shortcut { get; set; }
+        public Image? Icon { get; set; }
         public bool IsEnabled { get; set; } = true;
         public bool IsChecked { get; set; }
         public bool IsSeparator { get; set; }
         public bool IsTopLevel { get; internal set; }
         public List<MenuItem> Children => children;
         
-        public event EventHandler Click;
+        public event EventHandler? Click;
         
         public MenuItem(string text)
         {
@@ -1269,7 +1283,9 @@ namespace Ouro.StdLib.UI
             return new MenuItem("-") { IsSeparator = true };
         }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public MenuItem AddItem(string text, EventHandler handler = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             var item = new MenuItem(text);
             if (handler != null)
@@ -1304,7 +1320,9 @@ namespace Ouro.StdLib.UI
             Size = new Vector(800, 35);
         }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public ToolBarButton AddButton(string text, Image icon = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             var button = new ToolBarButton { Text = text, Icon = icon };
             items.Add(button);
@@ -1339,14 +1357,14 @@ namespace Ouro.StdLib.UI
     
     public class ToolBarButton : ToolBarItem
     {
-        public string Text { get; set; }
-        public Image Icon { get; set; }
-        public string ToolTip { get; set; }
+        public string? Text { get; set; }
+        public Image? Icon { get; set; }
+        public string? ToolTip { get; set; }
         public bool IsEnabled { get; set; } = true;
         public bool IsToggle { get; set; }
         public bool IsChecked { get; set; }
         
-        public event EventHandler Click;
+        public event EventHandler? Click;
         
         public override void Render(GraphicsContext context, Vector position, double height)
         {
@@ -1458,7 +1476,7 @@ namespace Ouro.StdLib.UI
                 
                 // Draw panel text
                 context.DrawText(
-                    panel.Text,
+                    panel.Text ?? string.Empty,
                     new Vector(x + 5, Position.Y + 2),
                     Font.Small,
                     ForegroundColor ?? Color.Black
@@ -1482,9 +1500,9 @@ namespace Ouro.StdLib.UI
     
     public class StatusBarPanel
     {
-        public string Text { get; set; }
+        public string? Text { get; set; }
         public double Width { get; set; }
-        public Image Icon { get; set; }
+        public Image? Icon { get; set; }
     }
     
     /// <summary>
@@ -1652,9 +1670,9 @@ namespace Ouro.StdLib.UI
     
     public class TreeNodeEventArgs : EventArgs
     {
-        public TreeNode OldNode { get; }
-        public TreeNode NewNode { get; }
-        public TreeNodeEventArgs(TreeNode oldNode, TreeNode newNode)
+        public TreeNode? OldNode { get; }
+        public TreeNode? NewNode { get; }
+        public TreeNodeEventArgs(TreeNode? oldNode, TreeNode? newNode)
         {
             OldNode = oldNode;
             NewNode = newNode;

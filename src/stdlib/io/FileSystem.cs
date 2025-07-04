@@ -65,7 +65,7 @@ namespace Ouro.StdLib.IO
             var lines = new List<string>();
             using (var reader = new StreamReader(path))
             {
-                string line;
+                string? line;
                 while ((line = await reader.ReadLineAsync()) != null)
                 {
                     lines.Add(line);
@@ -249,7 +249,7 @@ namespace Ouro.StdLib.IO
         /// </summary>
         public static string GetDirectoryName(string path)
         {
-            return Path.GetDirectoryName(path);
+            return Path.GetDirectoryName(path) ?? string.Empty;
         }
         
         /// <summary>
@@ -268,11 +268,11 @@ namespace Ouro.StdLib.IO
     {
         private FileSystemWatcher watcher;
         
-        public event EventHandler<FileSystemEventArgs> Changed;
-        public event EventHandler<FileSystemEventArgs> Created;
-        public event EventHandler<FileSystemEventArgs> Deleted;
-        public event EventHandler<RenamedEventArgs> Renamed;
-        public event EventHandler<ErrorEventArgs> Error;
+        public event EventHandler<FileSystemEventArgs>? Changed;
+        public event EventHandler<FileSystemEventArgs>? Created;
+        public event EventHandler<FileSystemEventArgs>? Deleted;
+        public event EventHandler<RenamedEventArgs>? Renamed;
+        public event EventHandler<ErrorEventArgs>? Error;
         
         public FileWatcher(string path, string filter = "*")
         {

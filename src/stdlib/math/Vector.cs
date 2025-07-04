@@ -103,7 +103,7 @@ namespace Ouro.StdLib.Math
         {
             get
             {
-                double sumOfSquares = _components.Sum(x => x * x);
+                double sumOfSquares = _components.Sum(static x => x * x);
                 return SystemMath.Sqrt(sumOfSquares);
             }
         }
@@ -111,7 +111,7 @@ namespace Ouro.StdLib.Math
         /// <summary>
         /// Squared magnitude (more efficient than Magnitude when comparing)
         /// </summary>
-        public double SqrMagnitude => _components.Sum(x => x * x);
+        public double SqrMagnitude => _components.Sum(static x => x * x);
 
         /// <summary>
         /// Unit vector in the same direction
@@ -347,7 +347,7 @@ namespace Ouro.StdLib.Math
         /// </summary>
         public override string ToString()
         {
-            return $"({string.Join(", ", _components.Select(x => x.ToString("F3")))})";
+            return $"({string.Join(", ", _components.Select(static x => x.ToString("F3")))})";
         }
 
         /// <summary>
@@ -361,7 +361,7 @@ namespace Ouro.StdLib.Math
         /// <summary>
         /// Equality comparison
         /// </summary>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is Vector other)
                 return ApproximatelyEquals(other);
