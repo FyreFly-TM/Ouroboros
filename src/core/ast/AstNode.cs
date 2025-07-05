@@ -58,6 +58,10 @@ namespace Ouro.Core.AST
         T VisitThrowExpression(ThrowExpression expr);
         T VisitMatchArm(MatchArm arm);
         T VisitStructLiteral(StructLiteral expr);
+        T VisitIndexExpression(IndexExpression expr);
+        T VisitTupleExpression(TupleExpression expr);
+        T VisitSpreadExpression(SpreadExpression expr);
+        T VisitRangeExpression(RangeExpression expr);
 
         // Statements
         T VisitBlockStatement(BlockStatement stmt);
@@ -275,14 +279,18 @@ namespace Ouro.Core.AST
     public class ConditionalExpression : Expression
     {
         public Expression Condition { get; }
+        public Token QuestionToken { get; }
         public Expression TrueExpression { get; }
+        public Token ColonToken { get; }
         public Expression FalseExpression { get; }
 
-        public ConditionalExpression(Expression condition, Expression trueExpr, Expression falseExpr) 
+        public ConditionalExpression(Expression condition, Token questionToken, Expression trueExpr, Token colonToken, Expression falseExpr) 
             : base(condition.Token)
         {
             Condition = condition;
+            QuestionToken = questionToken;
             TrueExpression = trueExpr;
+            ColonToken = colonToken;
             FalseExpression = falseExpr;
         }
 
@@ -474,6 +482,63 @@ namespace Ouro.Core.AST
         }
 
         public override T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitQuaternionExpression(this);
+    }
+
+    public class IndexExpression : Expression
+    {
+        public Expression Object { get; }
+        public Expression Index { get; }
+
+        public IndexExpression(Expression obj, Expression index) : base(obj.Token)
+        {
+            Object = obj;
+            Index = index;
+        }
+
+        public override T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitIndexExpression(this);
+    }
+    
+    public class TupleExpression : Expression
+    {
+        public List<Expression> Elements { get; }
+
+        public TupleExpression(List<Expression> elements) : base(elements.FirstOrDefault()?.Token)
+        {
+            Elements = elements;
+        }
+
+        public override T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitTupleExpression(this);
+    }
+    
+    public class SpreadExpression : Expression
+    {
+        public Expression Expression { get; }
+
+        public SpreadExpression(Token spreadToken, Expression expression) : base(spreadToken)
+        {
+            Expression = expression;
+        }
+
+        public override T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitSpreadExpression(this);
+    }
+    
+    public class RangeExpression : Expression
+    {
+        public Expression Start { get; }
+        public Token RangeOperator { get; }
+        public Expression End { get; }
+        public bool IsExclusive { get; }
+
+        public RangeExpression(Expression start, Token rangeOperator, Expression end, bool isExclusive) 
+            : base(rangeOperator)
+        {
+            Start = start;
+            RangeOperator = rangeOperator;
+            End = end;
+            IsExclusive = isExclusive;
+        }
+
+        public override T Accept<T>(IAstVisitor<T> visitor) => visitor.VisitRangeExpression(this);
     }
 
     #endregion
@@ -749,12 +814,12 @@ namespace Ouro.Core.AST
 
     public class CatchClause
     {
-        public TypeNode ExceptionType { get; }
-        public string ExceptionName { get; }
+        public TypeNode? ExceptionType { get; }
+        public string? ExceptionName { get; }
         public Statement Body { get; }
         public Expression? WhenCondition { get; } // Exception filter condition
 
-        public CatchClause(TypeNode exceptionType, string exceptionName, Statement body, Expression? whenCondition = null)
+        public CatchClause(TypeNode? exceptionType, string? exceptionName, Statement body, Expression? whenCondition = null)
         {
             ExceptionType = exceptionType;
             ExceptionName = exceptionName;

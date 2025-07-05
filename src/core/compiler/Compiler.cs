@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Ouro.Core.AST;
 using Ouro.Core.VM;
-using Ouro.src.tools;
+using Ouro.Tools;
 using Ouro.Tokens;
 
 namespace Ouro.Core.Compiler
@@ -11,7 +11,7 @@ namespace Ouro.Core.Compiler
     /// <summary>
     /// Main compiler that generates bytecode from AST
     /// </summary>
-    public class Compiler : IAstVisitor<object>
+    public class Compiler : IAstVisitor<object?>
     {
         private BytecodeBuilder builder;
         private SymbolTable symbols;
@@ -20,7 +20,7 @@ namespace Ouro.Core.Compiler
         private List<CompilerError> errors;
         private CompilerContext context;
         private Dictionary<string, Type> importedTypes;
-        private CompiledProgram program;
+        private CompiledProgram? program;
         
         public Compiler(OptimizationLevel optimization = OptimizationLevel.Release)
         {
@@ -56,21 +56,39 @@ namespace Ouro.Core.Compiler
             importedTypes["Thread"] = typeof(System.Threading.Thread);
             
             // Register console functions
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             symbols.Define("print", null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             symbols.Define("println", null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             // Register math constants and functions
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             symbols.Define("PI", null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             symbols.Define("E", null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             // Register parsing functions
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             symbols.Define("parseNumber", null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             symbols.Define("formatNumber", null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             // Register additional built-in symbols that might be used
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             symbols.Define("true", null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             symbols.Define("false", null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             symbols.Define("null", null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
         
         public CompiledProgram Compile(object ast)
@@ -244,7 +262,7 @@ namespace Ouro.Core.Compiler
         
         #region Expression Compilation
         
-        public object VisitBinaryExpression(BinaryExpression expr)
+        public object? VisitBinaryExpression(BinaryExpression expr)
         {
             // Handle mathematical symbol preprocessing
             if (expr.Operator.Type == TokenType.Times && expr.Left is IdentifierExpression leftId && expr.Right is IdentifierExpression rightId)
@@ -453,7 +471,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitUnaryExpression(UnaryExpression expr)
+        public object? VisitUnaryExpression(UnaryExpression expr)
         {
             // Handle pointer dereference specially
             if (expr.Operator.Type == TokenType.Multiply)
@@ -540,7 +558,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitLiteralExpression(LiteralExpression expr)
+        public object? VisitLiteralExpression(LiteralExpression expr)
         {
             var index = builder.AddConstant(expr.Value);
             Logger.Debug($"Added literal constant '{expr.Value}' at index {index}");
@@ -548,7 +566,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitIdentifierExpression(IdentifierExpression expr)
+        public object? VisitIdentifierExpression(IdentifierExpression expr)
         {
             // Check if it's 'this'
             if (expr.Name == "this")
@@ -570,9 +588,9 @@ namespace Ouro.Core.Compiler
             Logger.Debug($"VisitIdentifierExpression for '{expr.Name}': symbol={symbol} (null={symbol == null})");
             
             // Check if it's a type or if symbol was not found 
-            if (symbol != null && symbol.Type == "type")
+            if (symbol != null && string.Equals(symbol.Type?.ToString(), "type", StringComparison.Ordinal))
             {
-                var typeConstantIndex = builder.AddConstant(symbol.Type);
+                var typeConstantIndex = builder.AddConstant(symbol.Type ?? "type");
                 builder.Emit(Opcode.LoadConstant, typeConstantIndex);
                 return null;
             }
@@ -611,7 +629,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitGenericIdentifierExpression(GenericIdentifierExpression expr)
+        public object? VisitGenericIdentifierExpression(GenericIdentifierExpression expr)
         {
             // For now, treat generic identifiers similar to regular identifiers
             // The generic type information will be used when this becomes part of a function call
@@ -655,7 +673,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitAssignmentExpression(AssignmentExpression expr)
+        public object? VisitAssignmentExpression(AssignmentExpression expr)
         {
             // Handle different assignment operators
             if (expr.Operator.Type != TokenType.Assign)
@@ -718,7 +736,7 @@ namespace Ouro.Core.Compiler
                 if (symbol == null)
                 {
                     // Create new variable
-                    symbol = symbols.Define(id.Name, expr.Value?.GetType());
+                    symbol = symbols.Define(id.Name, expr.Value?.GetType() ?? typeof(object));
                 }
                 
                 if (symbol.IsGlobal)
@@ -760,7 +778,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitCallExpression(CallExpression expr)
+        public object? VisitCallExpression(CallExpression expr)
         {
             // For static method calls on imported types
             if (expr.Callee is MemberExpression memberExpr && 
@@ -846,7 +864,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitMemberExpression(MemberExpression expr)
+        public object? VisitMemberExpression(MemberExpression expr)
         {
             expr.Object.Accept(this);
             
@@ -860,7 +878,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitArrayExpression(ArrayExpression expr)
+        public object? VisitArrayExpression(ArrayExpression expr)
         {
             // Compile elements
             foreach (var element in expr.Elements)
@@ -873,7 +891,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitLambdaExpression(LambdaExpression expr)
+        public object? VisitLambdaExpression(LambdaExpression expr)
         {
             // Create new function scope
             symbols.EnterScope();
@@ -904,7 +922,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitNewExpression(NewExpression expr)
+        public object? VisitNewExpression(NewExpression expr)
         {
             // Compile arguments
             foreach (var arg in expr.Arguments)
@@ -929,7 +947,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitMathExpression(MathExpression expr)
+        public object? VisitMathExpression(MathExpression expr)
         {
             // Compile operands
             foreach (var operand in expr.Operands)
@@ -976,7 +994,7 @@ namespace Ouro.Core.Compiler
         
         #region Statement Compilation
         
-        public object VisitBlockStatement(BlockStatement stmt)
+        public object? VisitBlockStatement(BlockStatement stmt)
         {
             symbols.EnterScope();
             
@@ -989,7 +1007,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitExpressionStatement(ExpressionStatement stmt)
+        public object? VisitExpressionStatement(ExpressionStatement stmt)
         {
             var result = stmt.Expression.Accept(this);
             
@@ -1002,7 +1020,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitVariableDeclaration(VariableDeclaration stmt)
+        public object? VisitVariableDeclaration(VariableDeclaration stmt)
         {
             // Define variable
             var symbol = symbols.Define(stmt.Name, stmt.Type);
@@ -1030,7 +1048,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitIfStatement(IfStatement stmt)
+        public object? VisitIfStatement(IfStatement stmt)
         {
             // Compile condition
             stmt.Condition.Accept(this);
@@ -1064,7 +1082,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitWhileStatement(WhileStatement stmt)
+        public object? VisitWhileStatement(WhileStatement stmt)
         {
             // Mark loop start for BytecodeBuilder tracking
             builder.MarkLoopStart();
@@ -1100,7 +1118,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitForStatement(ForStatement stmt)
+        public object? VisitForStatement(ForStatement stmt)
         {
             symbols.EnterScope();
             
@@ -1162,7 +1180,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitForEachStatement(ForEachStatement stmt)
+        public object? VisitForEachStatement(ForEachStatement stmt)
         {
             symbols.EnterScope();
             
@@ -1220,7 +1238,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitRepeatStatement(RepeatStatement stmt)
+        public object? VisitRepeatStatement(RepeatStatement stmt)
         {
             // This handles "repeat N times" loops
             symbols.EnterScope();
@@ -1229,7 +1247,9 @@ namespace Ouro.Core.Compiler
             stmt.Count.Accept(this);
             
             // Create counter variable
-            var counterSymbol = symbols.Define("$repeat_counter", (object)null);
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+            var counterSymbol = symbols.Define("$repeat_counter", "var");
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             builder.Emit(Opcode.LoadConstant, builder.AddConstant(0));
             if (counterSymbol.IsGlobal)
                 builder.Emit(Opcode.StoreGlobal, counterSymbol.Index);
@@ -1290,13 +1310,15 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitIterateStatement(IterateStatement stmt)
+        public object? VisitIterateStatement(IterateStatement stmt)
         {
             // This handles "iterate from X to Y [step Z]" loops
             symbols.EnterScope();
             
             // Create iterator variable
-            var iteratorSymbol = symbols.Define(stmt.IteratorName, (object)null);
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+            var iteratorSymbol = symbols.Define(stmt.IteratorName, "var");
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             // Initialize iterator with start value
             stmt.Start.Accept(this);
@@ -1366,7 +1388,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitParallelForStatement(ParallelForStatement stmt)
+        public object? VisitParallelForStatement(ParallelForStatement stmt)
         {
             // Emit parallel for setup
             if (stmt.MaxDegreeOfParallelism.HasValue)
@@ -1384,7 +1406,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitReturnStatement(ReturnStatement stmt)
+        public object? VisitReturnStatement(ReturnStatement stmt)
         {
             if (stmt.Value != null)
             {
@@ -1399,26 +1421,26 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitBreakStatement(BreakStatement stmt)
+        public object? VisitBreakStatement(BreakStatement stmt)
         {
             context.EmitBreak(builder);
             return null;
         }
         
-        public object VisitContinueStatement(ContinueStatement stmt)
+        public object? VisitContinueStatement(ContinueStatement stmt)
         {
             context.EmitContinue(builder);
             return null;
         }
         
-        public object VisitThrowStatement(ThrowStatement stmt)
+        public object? VisitThrowStatement(ThrowStatement stmt)
         {
             stmt.Exception.Accept(this);
             builder.Emit(Opcode.Throw);
             return null;
         }
         
-        public object VisitTryStatement(TryStatement stmt)
+        public object? VisitTryStatement(TryStatement stmt)
         {
             var tryStart = builder.CurrentPosition;
             
@@ -1469,7 +1491,7 @@ namespace Ouro.Core.Compiler
                 }
                 
                 builder.RegisterExceptionHandler(tryStart, tryEnd, catchStart, 
-                                               catchClause.ExceptionType?.Name);
+                                               catchClause.ExceptionType?.Name ?? "Exception");
             }
             
             // Re-throw if no catch matched
@@ -1490,7 +1512,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitMatchStatement(MatchStatement stmt)
+        public object? VisitMatchStatement(MatchStatement stmt)
         {
             // Compile expression to match
             stmt.Expression.Accept(this);
@@ -1545,7 +1567,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitAssemblyStatement(AssemblyStatement stmt)
+        public object? VisitAssemblyStatement(AssemblyStatement stmt)
         {
             // Emit raw assembly
             builder.EmitRawAssembly(stmt.AssemblyCode);
@@ -1556,7 +1578,7 @@ namespace Ouro.Core.Compiler
         
         #region Declaration Compilation
         
-        public object VisitClassDeclaration(ClassDeclaration decl)
+        public object? VisitClassDeclaration(ClassDeclaration decl)
         {
             var classBuilder = new ClassBuilder(decl.Name);
             
@@ -1575,7 +1597,7 @@ namespace Ouro.Core.Compiler
             // Add type parameters
             foreach (var typeParam in decl.TypeParameters ?? new List<TypeParameter>())
             {
-                classBuilder.AddTypeParameter(typeParam.Name, typeParam.Constraints?.Select(c => c.Name).ToList());
+                classBuilder.AddTypeParameter(typeParam.Name, typeParam.Constraints?.Select(static c => c.Name).ToList() ?? new List<string>());
             }
             
             // Enter class scope
@@ -1614,7 +1636,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitFunctionDeclaration(FunctionDeclaration decl)
+        public object? VisitFunctionDeclaration(FunctionDeclaration decl)
         {
             // Process attributes first to modify compilation behavior
             ProcessFunctionAttributes(decl);
@@ -1641,8 +1663,11 @@ namespace Ouro.Core.Compiler
                 // ReturnType = decl.ReturnType,   // Comment out to fix type conversion issue
                 StartAddress = functionSymbol.Address
             };
-            program.Functions[decl.Name] = functionInfo;
-            Logger.Debug($"Added function {decl.Name} to CompiledProgram.Functions dictionary");
+            if (program != null)
+            {
+                program.Functions[decl.Name] = functionInfo;
+                Logger.Debug($"Added function {decl.Name} to CompiledProgram.Functions dictionary");
+            }
             
             // Enter function scope for parameter compilation
             symbols.EnterScope();
@@ -1701,7 +1726,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitConditionalExpression(ConditionalExpression expr)
+        public object? VisitConditionalExpression(ConditionalExpression expr)
         {
             expr.Condition.Accept(this);
             var elseJump = builder.EmitJump(Opcode.JumpIfFalse);
@@ -1716,33 +1741,33 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitThisExpression(ThisExpression expr)
+        public object? VisitThisExpression(ThisExpression expr)
         {
             builder.Emit(Opcode.LoadThis);
             return null;
         }
         
-        public object VisitBaseExpression(BaseExpression expr)
+        public object? VisitBaseExpression(BaseExpression expr)
         {
             builder.Emit(Opcode.LoadBase);
             return null;
         }
         
-        public object VisitTypeofExpression(TypeofExpression expr)
+        public object? VisitTypeofExpression(TypeofExpression expr)
         {
             var typeIndex = builder.AddConstant(expr.Type.Name);
             builder.Emit(Opcode.TypeOf, typeIndex);
             return null;
         }
         
-        public object VisitSizeofExpression(SizeofExpression expr)
+        public object? VisitSizeofExpression(SizeofExpression expr)
         {
             var typeIndex = builder.AddConstant(expr.Type.Name);
             builder.Emit(Opcode.SizeOf, typeIndex);
             return null;
         }
         
-        public object VisitNameofExpression(NameofExpression expr)
+        public object? VisitNameofExpression(NameofExpression expr)
         {
             // Get name as string constant
             string name = "";
@@ -1760,7 +1785,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitInterpolatedStringExpression(InterpolatedStringExpression expr)
+        public object? VisitInterpolatedStringExpression(InterpolatedStringExpression expr)
         {
             // Build string from parts
             foreach (var part in expr.Parts)
@@ -1778,7 +1803,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitVectorExpression(VectorExpression expr)
+        public object? VisitVectorExpression(VectorExpression expr)
         {
             foreach (var component in expr.Components)
             {
@@ -1789,7 +1814,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitMatrixExpression(MatrixExpression expr)
+        public object? VisitMatrixExpression(MatrixExpression expr)
         {
             foreach (var row in expr.Elements)
             {
@@ -1803,7 +1828,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitQuaternionExpression(QuaternionExpression expr)
+        public object? VisitQuaternionExpression(QuaternionExpression expr)
         {
             expr.W.Accept(this);
             expr.X.Accept(this);
@@ -1814,7 +1839,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitDoWhileStatement(DoWhileStatement stmt)
+        public object? VisitDoWhileStatement(DoWhileStatement stmt)
         {
             // Mark loop start for BytecodeBuilder tracking
             builder.MarkLoopStart();
@@ -1842,7 +1867,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitSwitchStatement(SwitchStatement stmt)
+        public object? VisitSwitchStatement(SwitchStatement stmt)
         {
             // Create switch context for break statements
             var switchInfo = new SwitchInfo();
@@ -1851,7 +1876,6 @@ namespace Ouro.Core.Compiler
             stmt.Expression.Accept(this);
             
             var endJumps = new List<int>();
-            var hasDefault = false;
             
             foreach (var caseClause in stmt.Cases)
             {
@@ -1877,7 +1901,6 @@ namespace Ouro.Core.Compiler
             {
                 builder.Emit(Opcode.Pop); // Remove switch value
                 stmt.DefaultCase.Accept(this);
-                hasDefault = true;
             }
             else
             {
@@ -1901,7 +1924,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitUsingStatement(UsingStatement stmt)
+        public object? VisitUsingStatement(UsingStatement stmt)
         {
             stmt.Resource.Accept(this);
             
@@ -1917,7 +1940,7 @@ namespace Ouro.Core.Compiler
             
             // Dispose resource in finally
             builder.Emit(Opcode.BeginFinally);
-            builder.Emit(Opcode.LoadLocal, symbols.Lookup(stmt.Resource.Name).Index);
+            builder.Emit(Opcode.LoadLocal, symbols.Lookup(stmt.Resource.Name)?.Index ?? 0);
             builder.Emit(Opcode.CallMethod, builder.AddConstant("Dispose"), 0);
             builder.Emit(Opcode.EndFinally);
             
@@ -1926,7 +1949,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitLockStatement(LockStatement stmt)
+        public object? VisitLockStatement(LockStatement stmt)
         {
             stmt.LockObject.Accept(this);
             builder.Emit(Opcode.MonitorEnter);
@@ -1952,7 +1975,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitUnsafeStatement(UnsafeStatement stmt)
+        public object? VisitUnsafeStatement(UnsafeStatement stmt)
         {
             // The unsafe statement creates a context where certain unsafe operations are allowed,
             // allowing pointer operations. For now, we just compile the body.
@@ -1970,7 +1993,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitFixedStatement(FixedStatement stmt)
+        public object? VisitFixedStatement(FixedStatement stmt)
         {
             // Fixed statement pins memory during GC
             // In a real implementation, this would interact with the GC to pin memory.
@@ -1996,7 +2019,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitYieldStatement(YieldStatement stmt)
+        public object? VisitYieldStatement(YieldStatement stmt)
         {
             if (stmt.IsBreak)
             {
@@ -2004,14 +2027,14 @@ namespace Ouro.Core.Compiler
             }
             else
             {
-                stmt.Value.Accept(this);
+                stmt.Value?.Accept(this);
                 builder.Emit(Opcode.YieldReturn);
             }
             
             return null;
         }
         
-        public object VisitInterfaceDeclaration(InterfaceDeclaration decl)
+        public object? VisitInterfaceDeclaration(InterfaceDeclaration decl)
         {
             var interfaceBuilder = new InterfaceBuilder(decl.Name);
             
@@ -2038,7 +2061,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitStructDeclaration(StructDeclaration decl)
+        public object? VisitStructDeclaration(StructDeclaration decl)
         {
             var structBuilder = new StructBuilder(decl.Name);
             
@@ -2072,7 +2095,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitNamespaceDeclaration(NamespaceDeclaration decl)
+        public object? VisitNamespaceDeclaration(NamespaceDeclaration decl)
         {
             context.EnterNamespace(decl.Name);
             
@@ -2085,7 +2108,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitImportDeclaration(ImportDeclaration decl)
+        public object? VisitImportDeclaration(ImportDeclaration decl)
         {
             // Register the imported types in the compiler
             Logger.Debug($"Registering imported types for module: {decl.ModulePath}");
@@ -2101,13 +2124,13 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitTypeAliasDeclaration(TypeAliasDeclaration decl)
+        public object? VisitTypeAliasDeclaration(TypeAliasDeclaration decl)
         {
             symbols.DefineTypeAlias(decl.Name, decl.AliasedType);
             return null;
         }
         
-        public object VisitIsExpression(IsExpression expr)
+        public object? VisitIsExpression(IsExpression expr)
         {
             // Generate code to test if Left is of type Type
             expr.Left.Accept(this);
@@ -2147,7 +2170,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitCastExpression(CastExpression expr)
+        public object? VisitCastExpression(CastExpression expr)
         {
             // Generate code for the expression to cast
             expr.Expression.Accept(this);
@@ -2159,7 +2182,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitMatchExpression(MatchExpression expr)
+        public object? VisitMatchExpression(MatchExpression expr)
         {
             // Compile the target expression
             expr.Target.Accept(this);
@@ -2213,7 +2236,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitThrowExpression(ThrowExpression expr)
+        public object? VisitThrowExpression(ThrowExpression expr)
         {
             // Generate code for the expression to throw (if present)
             if (expr.Expression != null)
@@ -2232,7 +2255,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitMatchArm(MatchArm arm)
+        public object? VisitMatchArm(MatchArm arm)
         {
             // Generate pattern matching code
             CompilePattern(arm.Pattern);
@@ -2250,7 +2273,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitComponentDeclaration(ComponentDeclaration decl)
+        public object? VisitComponentDeclaration(ComponentDeclaration decl)
         {
             var componentBuilder = new ComponentBuilder(decl.Name);
             
@@ -2265,7 +2288,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitSystemDeclaration(SystemDeclaration decl)
+        public object? VisitSystemDeclaration(SystemDeclaration decl)
         {
             var systemBuilder = new SystemBuilder(decl.Name);
             
@@ -2288,7 +2311,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitEntityDeclaration(EntityDeclaration decl)
+        public object? VisitEntityDeclaration(EntityDeclaration decl)
         {
             // Create entity archetype
             var entityBuilder = new EntityBuilder(decl.Name);
@@ -2305,7 +2328,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitFieldDeclaration(FieldDeclaration decl)
+        public object? VisitFieldDeclaration(FieldDeclaration decl)
         {
             // When a field declaration appears at the top level (outside a class/struct),
             // treat it as a variable declaration
@@ -2336,7 +2359,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitEnumDeclaration(EnumDeclaration decl)
+        public object? VisitEnumDeclaration(EnumDeclaration decl)
         {
             var enumBuilder = new EnumBuilder(decl.Name, decl.UnderlyingType?.Name ?? "int");
             
@@ -2359,7 +2382,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitDomainDeclaration(DomainDeclaration decl)
+        public object? VisitDomainDeclaration(DomainDeclaration decl)
         {
             // For now, treat domain declarations as namespace-like containers
             context.EnterNamespace(decl.Name);
@@ -2373,19 +2396,19 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitMacroDeclaration(MacroDeclaration decl)
+        public object? VisitMacroDeclaration(MacroDeclaration decl)
         {
             // For now, treat macro declarations as compile-time definitions
             return null;
         }
         
-        public object VisitTraitDeclaration(TraitDeclaration decl)
+        public object? VisitTraitDeclaration(TraitDeclaration decl)
         {
             // For now, treat trait declarations as interface-like definitions
             return null;
         }
         
-        public object VisitImplementDeclaration(ImplementDeclaration decl)
+        public object? VisitImplementDeclaration(ImplementDeclaration decl)
         {
             // For now, treat implement declarations as method/operator definitions
             foreach (var member in decl.Members)
@@ -2396,13 +2419,13 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitPropertyDeclaration(PropertyDeclaration decl)
+        public object? VisitPropertyDeclaration(PropertyDeclaration decl)
         {
             // Properties are handled in class/struct compilation
             return null;
         }
         
-        public object VisitProgram(Ouro.Core.AST.Program program)
+        public object? VisitProgram(Ouro.Core.AST.Program program)
         {
             // SINGLE PASS: Compile everything in order but track function locations properly
             Logger.Debug("Compiling program with proper function address tracking");
@@ -2444,29 +2467,80 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public object VisitStructLiteral(StructLiteral expr)
+        public object? VisitStructLiteral(StructLiteral expr)
         {
-            // Look up the struct type
-            var structIndex = builder.AddConstant(expr.StructName.Lexeme);
-            builder.Emit(Opcode.LoadConstant, structIndex);
+            builder.Emit(Opcode.NewObject);
             
-            // Create a new instance
-            builder.Emit(Opcode.New);
+            // Store the struct name/type for runtime type checking
+            var structNameIndex = builder.AddConstant(expr.StructName.Lexeme);
+            builder.Emit(Opcode.LoadConstant, structNameIndex);
             
-            // Initialize fields
+            // Emit field assignments
             foreach (var field in expr.Fields)
             {
-                // Duplicate the instance
-                builder.Emit(Opcode.Duplicate);
-                
-                // Compile the field value
-                field.Value.Accept(this);
-                
-                // Store the field
                 var fieldNameIndex = builder.AddConstant(field.Key);
                 builder.Emit(Opcode.LoadConstant, fieldNameIndex);
+                field.Value.Accept(this);
                 builder.Emit(Opcode.StoreMember);
             }
+            
+            return null;
+        }
+        
+        public object? VisitIndexExpression(IndexExpression expr)
+        {
+            // Compile the object being indexed
+            expr.Object.Accept(this);
+            
+            // Compile the index expression
+            expr.Index.Accept(this);
+            
+            // Emit the array access instruction
+            builder.Emit(Opcode.LoadElement);
+            
+            return null;
+        }
+        
+        public object? VisitTupleExpression(TupleExpression expr)
+        {
+            // Create a new array to represent the tuple
+            var elementCount = expr.Elements.Count;
+            builder.Emit(Opcode.LoadConstant, builder.AddConstant(elementCount));
+            builder.Emit(Opcode.NewArray);
+            
+            // Add each element to the tuple array
+            for (int i = 0; i < expr.Elements.Count; i++)
+            {
+                builder.Emit(Opcode.Duplicate); // Duplicate array reference
+                builder.Emit(Opcode.LoadConstant, builder.AddConstant(i)); // Element index
+                expr.Elements[i].Accept(this); // Element value
+                builder.Emit(Opcode.StoreElement);
+            }
+            
+            return null;
+        }
+        
+        public object? VisitSpreadExpression(SpreadExpression expr)
+        {
+            // Compile the expression being spread
+            expr.Expression.Accept(this);
+            
+            // For now, just load the collection as-is
+            // In a more complete implementation, this would unpack the elements
+            // This is a simplified version that treats spread as identity
+            
+            return null;
+        }
+        
+        public object? VisitRangeExpression(RangeExpression expr)
+        {
+            // Compile start and end expressions
+            expr.Start.Accept(this);
+            expr.End.Accept(this);
+            
+            // Emit range creation instruction
+            var rangeType = expr.IsExclusive ? 1 : 0; // 1 = exclusive, 0 = inclusive
+            builder.Emit(Opcode.MakeRange, rangeType);
             
             return null;
         }

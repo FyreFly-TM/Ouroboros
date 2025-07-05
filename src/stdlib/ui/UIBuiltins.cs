@@ -8,7 +8,7 @@ namespace Ouro.StdLib.UI
     /// </summary>
     public static class UIBuiltins
     {
-        private static Window currentWindow;
+        private static Window? currentWindow;
         
         public static void CreateWindow(string title, double width, double height)
         {
@@ -90,7 +90,9 @@ namespace Ouro.StdLib.UI
             }
         }
         
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         private static TextBox displayTextBox = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         
         public static void AddTextBox(string text, double x, double y, double width, double height)
         {

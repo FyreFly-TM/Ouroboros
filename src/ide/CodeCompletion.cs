@@ -49,7 +49,7 @@ namespace Ouro.IDE
             }
 
             // Sort by relevance
-            return completions.OrderBy(c => c.SortText ?? c.Label).ToList();
+            return completions.OrderBy(static c => c.SortText ?? c.Label).ToList();
         }
 
         private CompletionContext AnalyzeContext(string code, int line, int column)
@@ -121,7 +121,7 @@ namespace Ouro.IDE
         private IEnumerable<CompletionItem> GetMemberCompletions(CompletionContext context)
         {
             // Get type of the object
-            var objectType = typeChecker.LookupVariable(context.ObjectName);
+            var objectType = typeChecker.LookupVariable(context.ObjectName!);
             if (objectType == null)
                 yield break;
 
@@ -273,7 +273,7 @@ namespace Ouro.IDE
             // Similar to statement completions but filtered for expressions
             return GetStatementCompletions(context)
                 .Where(c => c.Kind != CompletionItemKind.Keyword || 
-                           database.ExpressionKeywords.Contains(c.Label));
+                           database.ExpressionKeywords.Contains(c.Label!));
         }
 
         private IEnumerable<CompletionItem> GetImportCompletions(CompletionContext context)
@@ -371,7 +371,7 @@ namespace Ouro.IDE
             
             if (type is FunctionTypeNode funcType)
             {
-                var paramTypes = string.Join(", ", funcType.ParameterTypes.Select(p => p.Name));
+                var paramTypes = string.Join(", ", funcType.ParameterTypes.Select(static p => p.Name));
                 return $"({paramTypes}) => {funcType.ReturnType.Name}";
             }
             
@@ -386,15 +386,15 @@ namespace Ouro.IDE
 
     public class CompletionItem
     {
-        public string Label { get; set; }
+        public string? Label { get; set; }
         public CompletionItemKind Kind { get; set; }
-        public string Detail { get; set; }
-        public string Documentation { get; set; }
-        public string InsertText { get; set; }
+        public string? Detail { get; set; }
+        public string? Documentation { get; set; }
+        public string? InsertText { get; set; }
         public InsertTextFormat InsertTextFormat { get; set; }
-        public string SortText { get; set; }
-        public string FilterText { get; set; }
-        public CompletionItemTag[] Tags { get; set; }
+        public string? SortText { get; set; }
+        public string? FilterText { get; set; }
+        public CompletionItemTag[]? Tags { get; set; }
     }
 
     public enum CompletionItemKind
@@ -440,8 +440,8 @@ namespace Ouro.IDE
     public class CompletionContext
     {
         public CompletionContextType Type { get; set; }
-        public string ObjectName { get; set; }
-        public string Prefix { get; set; }
+        public string? ObjectName { get; set; }
+        public string? Prefix { get; set; }
     }
 
     public enum CompletionContextType
@@ -464,9 +464,9 @@ namespace Ouro.IDE
     // Placeholder types for integration
     public class MemberInfo
     {
-        public string Name { get; set; }
-        public string Type { get; set; }
-        public string Documentation { get; set; }
+        public string? Name { get; set; }
+        public string? Type { get; set; }
+        public string? Documentation { get; set; }
         public MemberType MemberType { get; set; }
     }
 

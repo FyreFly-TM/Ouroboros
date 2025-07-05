@@ -378,7 +378,7 @@ namespace Ouro.StdLib.Math
 
         public static bool operator !=(Quaternion a, Quaternion b) => !(a == b);
 
-        public override bool Equals(object obj) => obj is Quaternion q && this == q;
+        public override bool Equals(object? obj) => obj is Quaternion q && this == q;
 
         public override int GetHashCode()
         {

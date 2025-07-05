@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <!-- Custom build output paths - must be set before Microsoft.Common.props -->
+    <BaseIntermediateOutputPath>build/obj/</BaseIntermediateOutputPath>
+    <OutputPath>build/bin/$(Configuration)/$(TargetFramework)/</OutputPath>
+    <IntermediateOutputPath>$(BaseIntermediateOutputPath)$(Configuration)/$(TargetFramework)/</IntermediateOutputPath>
+  </PropertyGroup>
+</Project> 

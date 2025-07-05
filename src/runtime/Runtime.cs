@@ -63,10 +63,10 @@ namespace Ouro.Runtime
         private void InitializeBuiltins()
         {
             // Console functions
-            globals["Console.WriteLine"] = new Action<object>(obj => Console.WriteLine(obj?.ToString() ?? ""));
-            globals["Console.Write"] = new Action<object>(obj => Console.Write(obj?.ToString() ?? ""));
-            globals["Console.ReadLine"] = new Func<string>(() => Console.ReadLine() ?? "");
-            globals["Console.Clear"] = new Action(() => Console.Clear());
+            globals["Console.WriteLine"] = new Action<object>(static obj => Console.WriteLine(obj?.ToString() ?? ""));
+            globals["Console.Write"] = new Action<object>(static obj => Console.Write(obj?.ToString() ?? ""));
+            globals["Console.ReadLine"] = new Func<string>(static () => Console.ReadLine() ?? "");
+            globals["Console.Clear"] = new Action(static () => Console.Clear());
             
             // Math functions - full System.Math support
             globals["Math.PI"] = Math.PI;
@@ -91,14 +91,14 @@ namespace Ouro.Runtime
             globals["Math.Round"] = new Func<double, double>(Math.Round);
             
             // String parsing functions
-            globals["double.Parse"] = new Func<string, double>(s => double.Parse(s, CultureInfo.InvariantCulture));
-            globals["int.Parse"] = new Func<string, int>(s => int.Parse(s, CultureInfo.InvariantCulture));
+            globals["double.Parse"] = new Func<string, double>(static s => double.Parse(s, CultureInfo.InvariantCulture));
+            globals["int.Parse"] = new Func<string, int>(static s => int.Parse(s, CultureInfo.InvariantCulture));
             
             // String operations
             globals["string.Empty"] = "";
             
             // Type checking and conversion
-            globals["ToString"] = new Func<object, string>(obj => obj?.ToString() ?? "");
+            globals["ToString"] = new Func<object, string>(static obj => obj?.ToString() ?? "");
         }
         
         public void SetGlobal(string name, object value)
@@ -132,13 +132,13 @@ namespace Ouro.Runtime
             switch (name)
             {
                 case "Console.WriteLine":
-                    return new Action<object>(obj => Console.WriteLine(obj?.ToString() ?? ""));
+                    return new Action<object>(static obj => Console.WriteLine(obj?.ToString() ?? ""));
                 case "Console.Write":
-                    return new Action<object>(obj => Console.Write(obj?.ToString() ?? ""));
+                    return new Action<object>(static obj => Console.Write(obj?.ToString() ?? ""));
                 case "Console.ReadLine":
-                    return new Func<string>(() => Console.ReadLine() ?? "");
+                    return new Func<string>(static () => Console.ReadLine() ?? "");
                 case "Console.Clear":
-                    return new Action(() => Console.Clear());
+                    return new Action(static () => Console.Clear());
                 default:
                     throw new InvalidOperationException($"Unknown Console method: {name}");
             }
@@ -203,7 +203,7 @@ namespace Ouro.Runtime
                 args[i] = Pop();
             }
             
-            object result = null;
+            object? result = null;
             
             if (function is Action action && argCount == 0)
             {
@@ -227,11 +227,11 @@ namespace Ouro.Runtime
             }
             else if (function is Func<string, double> parseDouble && argCount == 1)
             {
-                result = parseDouble(args[0].ToString());
+                result = parseDouble(args[0]?.ToString() ?? string.Empty);
             }
             else if (function is Func<string, int> parseInt && argCount == 1)
             {
-                result = parseInt(args[0].ToString());
+                result = parseInt(args[0]?.ToString() ?? string.Empty);
             }
             else if (function is Func<object, string> toString && argCount == 1)
             {
@@ -302,7 +302,7 @@ namespace Ouro.Runtime
             catch (Exception ex)
             {
                 exceptionHandler.HandleFatalException(ex);
-                return null;
+                return null!;
             }
         }
         
@@ -506,7 +506,7 @@ namespace Ouro.Runtime
                 for (int i = allocations.Count - 1; i >= 0; i--)
                 {
                     var weakRef = allocations[i];
-                    if (weakRef.IsAlive && !marked.Contains(weakRef.Target))
+                    if (weakRef.IsAlive && !marked.Contains(weakRef.Target!))
                     {
                         // This object is unreachable
                         weakRef.Target = null;
@@ -870,7 +870,9 @@ namespace Ouro.Runtime
                 try
                 {
                     await work();
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                     tcs.SetResult(null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                 }
                 catch (Exception ex)
                 {
@@ -887,7 +889,7 @@ namespace Ouro.Runtime
             {
                 workAvailable.WaitOne();
                 
-                WorkItem workItem = null;
+                WorkItem? workItem = null;
                 lock (workQueue)
                 {
                     if (workQueue.Count > 0)
@@ -930,7 +932,7 @@ namespace Ouro.Runtime
         
         private class WorkItem
         {
-            public Action Work { get; set; } = () => { };
+            public Action Work { get; set; } = static () => { };
             public TaskPriority Priority { get; set; }
             public DateTime ScheduledTime { get; set; }
         }
@@ -984,7 +986,7 @@ namespace Ouro.Runtime
             {
                 taskAvailable.WaitOne();
                 
-                Action task = null;
+                Action? task = null;
                 lock (queueLock)
                 {
                     if (taskQueue.Count > 0)
@@ -1169,7 +1171,7 @@ namespace Ouro.Runtime
                 }
             }
             
-            return null;
+            return null!;
         }
         
         private Module LoadModuleFromFile(string path)
@@ -1446,8 +1448,8 @@ namespace Ouro.Runtime
         {
             // Return methods called frequently
             return methods.Values
-                .Where(m => m.CallCount > 100)
-                .OrderByDescending(m => m.CallCount)
+                .Where(static m => m.CallCount > 100)
+                .OrderByDescending(static m => m.CallCount)
                 .ToList();
         }
     }

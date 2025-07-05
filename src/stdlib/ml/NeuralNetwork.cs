@@ -23,11 +23,11 @@ namespace Ouro.StdLib.ML
     /// </summary>
     public class DenseLayer : ILayer
     {
-        private Tensor weights;
-        private Tensor bias;
-        private Tensor weightGrad;
-        private Tensor biasGrad;
-        private Tensor lastInput;
+        private Tensor? weights;
+        private Tensor? bias;
+        private Tensor? weightGrad;
+        private Tensor? biasGrad;
+        private Tensor? lastInput;
         
         public int InputSize { get; }
         public int OutputSize { get; }
@@ -51,7 +51,7 @@ namespace Ouro.StdLib.ML
             lastInput = input;
             
             // For simplicity, assuming input is 2D (batch_size, input_size)
-            var output = input.MatMul(weights.Transpose());
+            var output = input.MatMul(weights!.Transpose());
             
             // Add bias
             var batchSize = input.Shape[0];
@@ -59,7 +59,7 @@ namespace Ouro.StdLib.ML
             {
                 for (int i = 0; i < OutputSize; i++)
                 {
-                    output[b, i] += bias[i];
+                    output[b, i] += bias![i];
                 }
             }
             
@@ -71,7 +71,7 @@ namespace Ouro.StdLib.ML
             var batchSize = gradOutput.Shape[0];
             
             // Compute weight gradients
-            weightGrad = gradOutput.Transpose().MatMul(lastInput);
+            weightGrad = gradOutput.Transpose().MatMul(lastInput!);
             
             // Compute bias gradients
             for (int i = 0; i < OutputSize; i++)
@@ -81,11 +81,11 @@ namespace Ouro.StdLib.ML
                 {
                     sum += gradOutput[b, i];
                 }
-                biasGrad[i] = sum;
+                biasGrad![i] = sum;
             }
             
             // Compute input gradients
-            var gradInput = gradOutput.MatMul(weights);
+            var gradInput = gradOutput.MatMul(weights!);
             
             return gradInput;
         }
@@ -93,8 +93,8 @@ namespace Ouro.StdLib.ML
         public void UpdateWeights(double learningRate)
         {
             // Simple gradient descent
-            weights = weights - weightGrad * learningRate;
-            bias = bias - biasGrad * learningRate;
+            weights = weights! - weightGrad! * learningRate;
+            bias = bias! - biasGrad! * learningRate;
             
             // Reset gradients
             weightGrad = Tensor.Zeros(OutputSize, InputSize);
@@ -103,12 +103,12 @@ namespace Ouro.StdLib.ML
         
         public List<Tensor> GetParameters()
         {
-            return new List<Tensor> { weights, bias };
+            return new List<Tensor> { weights!, bias! };
         }
         
         public List<Tensor> GetGradients()
         {
-            return new List<Tensor> { weightGrad, biasGrad };
+            return new List<Tensor> { weightGrad!, biasGrad! };
         }
     }
     
@@ -128,12 +128,12 @@ namespace Ouro.StdLib.ML
     /// </summary>
     public class ReLULayer : ILayer
     {
-        private Tensor lastInput;
+        private Tensor? lastInput;
         
         public Tensor Forward(Tensor input)
         {
             lastInput = input;
-            return input.Apply(x => global::System.Math.Max(0, x));
+            return input.Apply(static x => global::System.Math.Max(0, x));
         }
         
         public Tensor Backward(Tensor gradOutput)
@@ -141,7 +141,7 @@ namespace Ouro.StdLib.ML
             // ReLU derivative: 1 if x > 0, 0 otherwise
             var gradInput = Tensor.Zeros(gradOutput.Shape);
             var flatGrad = new double[gradOutput.Size];
-            var flatInput = new double[lastInput.Size];
+            var flatInput = new double[lastInput!.Size];
             var flatGradOutput = new double[gradOutput.Size];
             
             // Flatten tensors for easier element-wise operations
@@ -184,19 +184,19 @@ namespace Ouro.StdLib.ML
     /// </summary>
     public class SigmoidLayer : ILayer
     {
-        private Tensor lastOutput;
+        private Tensor? lastOutput;
         
         public Tensor Forward(Tensor input)
         {
-            lastOutput = input.Apply(x => 1.0 / (1.0 + global::System.Math.Exp(-x)));
+            lastOutput = input.Apply(static x => 1.0 / (1.0 + global::System.Math.Exp(-x)));
             return lastOutput;
         }
         
         public Tensor Backward(Tensor gradOutput)
         {
             // sigmoid' = sigmoid * (1 - sigmoid)
-            var sigmoid = lastOutput;
-            var gradInput = gradOutput * sigmoid * sigmoid.Apply(x => 1 - x);
+            var sigmoid = lastOutput!;
+            var gradInput = gradOutput * sigmoid * sigmoid.Apply(static x => 1 - x);
             return gradInput;
         }
         
@@ -210,7 +210,7 @@ namespace Ouro.StdLib.ML
     /// </summary>
     public class TanhLayer : ILayer
     {
-        private Tensor lastOutput;
+        private Tensor? lastOutput;
         
         public Tensor Forward(Tensor input)
         {
@@ -221,8 +221,8 @@ namespace Ouro.StdLib.ML
         public Tensor Backward(Tensor gradOutput)
         {
             // tanh' = 1 - tanh^2
-            var tanh = lastOutput;
-            var gradInput = gradOutput * tanh.Apply(x => 1 - x * x);
+            var tanh = lastOutput!;
+            var gradInput = gradOutput * tanh.Apply(static x => 1 - x * x);
             return gradInput;
         }
         
@@ -236,7 +236,7 @@ namespace Ouro.StdLib.ML
     /// </summary>
     public class SoftmaxLayer : ILayer
     {
-        private Tensor lastOutput;
+        private Tensor? lastOutput;
         
         public Tensor Forward(Tensor input)
         {
@@ -349,7 +349,7 @@ namespace Ouro.StdLib.ML
                 throw new ArgumentException("Predicted and target must have same shape");
                 
             var diff = predicted - target;
-            var loss = diff.Apply(x => x * x).Mean();
+            var loss = diff.Apply(static x => x * x).Mean();
             var grad = diff * (2.0 / predicted.Size);
             
             return (loss, grad);

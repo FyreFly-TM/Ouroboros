@@ -68,7 +68,7 @@ namespace Ouro.StdLib.Data
         public async Task<List<dynamic>> QueryAsync(string sql, params object[] parameters)
         {
             var results = await provider.ExecuteQueryAsync(sql, parameters);
-            return results.Select(dict => 
+            return results.Select(static dict => 
             {
                 var expando = new ExpandoObject() as IDictionary<string, object>;
                 foreach (var kvp in dict)
@@ -130,7 +130,7 @@ namespace Ouro.StdLib.Data
         /// </summary>
         public async Task<bool> TableExistsAsync(string tableName, string? schema = null)
         {
-            return await provider.TableExistsAsync(tableName, schema);
+            return await provider.TableExistsAsync(tableName, schema ?? string.Empty);
         }
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace Ouro.StdLib.Data
         /// </summary>
         public async Task CreateTableAsync(string tableName, Dictionary<string, string> columns, string? primaryKey = null)
         {
-            await provider.CreateTableAsync(tableName, columns, primaryKey);
+            await provider.CreateTableAsync(tableName, columns, primaryKey ?? string.Empty);
         }
 
         /// <summary>
@@ -146,7 +146,7 @@ namespace Ouro.StdLib.Data
         /// </summary>
         public async Task<List<string>> GetTableNamesAsync(string? schema = null)
         {
-            return await provider.GetTableNamesAsync(schema);
+            return await provider.GetTableNamesAsync(schema ?? string.Empty);
         }
 
         /// <summary>
@@ -154,7 +154,7 @@ namespace Ouro.StdLib.Data
         /// </summary>
         public async Task<List<ColumnInfo>> GetTableColumnsAsync(string tableName, string? schema = null)
         {
-            return await provider.GetTableColumnsAsync(tableName, schema);
+            return await provider.GetTableColumnsAsync(tableName, schema ?? string.Empty);
         }
 
         /// <summary>
@@ -528,7 +528,7 @@ namespace Ouro.StdLib.Data
         public async Task<int> ExecuteAsync()
         {
             var columns = string.Join(", ", values.Keys);
-            var paramNames = values.Keys.Select((k, i) => $"@{i}").ToList();
+            var paramNames = values.Keys.Select(static (k, i) => $"@{i}").ToList();
             var sql = $"INSERT INTO {table} ({columns}) VALUES ({string.Join(", ", paramNames)})";
             
             return await database.ExecuteAsync(sql, values.Values.ToArray());
@@ -537,7 +537,7 @@ namespace Ouro.StdLib.Data
         public async Task<T> ExecuteScalarAsync<T>()
         {
             var columns = string.Join(", ", values.Keys);
-            var paramNames = values.Keys.Select((k, i) => $"@{i}").ToList();
+            var paramNames = values.Keys.Select(static (k, i) => $"@{i}").ToList();
             
             // Provider-specific returning clause
             string sql = database.ProviderType switch
@@ -592,7 +592,7 @@ namespace Ouro.StdLib.Data
 
         public async Task<int> ExecuteAsync()
         {
-            var setClauses = setValues.Select((kv, i) => $"{kv.Key} = @{i}");
+            var setClauses = setValues.Select(static (kv, i) => $"{kv.Key} = @{i}");
             var sql = $"UPDATE {table} SET {string.Join(", ", setClauses)}";
             
             if (whereConditions.Any())

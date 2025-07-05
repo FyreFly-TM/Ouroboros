@@ -240,7 +240,7 @@ namespace Ouro.Stdlib.Concurrency
         /// <summary>
         /// Async enumerable for channel
         /// </summary>
-        public async IAsyncEnumerable<T> GetAsyncEnumerable(CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<T> GetAsyncEnumerable([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -510,23 +510,23 @@ namespace Ouro.Stdlib.Concurrency
         /// <summary>
         /// Create a pipeline chain
         /// </summary>
-        public static Pipeline<TIn, TOut> Create<TIn, TMid, TOut>(
-            Channel<TIn> input,
-            Channel<TOut> output,
-            Func<TIn, Task<TMid>> stage1,
-            Func<TMid, Task<TOut>> stage2,
+        public static Pipeline<TInput, TOutput> Create<TInput, TMid, TOutput>(
+            Channel<TInput> input,
+            Channel<TOutput> output,
+            Func<TInput, Task<TMid>> stage1,
+            Func<TMid, Task<TOutput>> stage2,
             int workers = 1)
         {
             var middle = new Channel<TMid>(workers * 2);
             
-            var pipeline1 = new Pipeline<TIn, TMid>(input, middle, stage1, workers);
-            var pipeline2 = new Pipeline<TMid, TOut>(middle, output, stage2, workers);
+            var pipeline1 = new Pipeline<TInput, TMid>(input, middle, stage1, workers);
+            var pipeline2 = new Pipeline<TMid, TOutput>(middle, output, stage2, workers);
             
             pipeline1.Start();
             pipeline2.Start();
             
             // Return a composite pipeline
-            return new Pipeline<TIn, TOut>(input, output, 
+            return new Pipeline<TInput, TOutput>(input, output, 
                 async (item) => await stage2(await stage1(item)), workers);
         }
     }

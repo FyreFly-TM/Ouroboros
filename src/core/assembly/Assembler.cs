@@ -180,7 +180,7 @@ namespace Ouro.Core.Assembly
             }
         }
         
-        private AssemblyInstruction ParseInstruction(string line, int lineNumber)
+        private AssemblyInstruction? ParseInstruction(string line, int lineNumber)
         {
             // Check for label
             if (line.EndsWith(":"))
@@ -535,7 +535,7 @@ namespace Ouro.Core.Assembly
                 return true;
             
             // Decimal
-            return operand.All(c => char.IsDigit(c) || c == '-' || c == '+');
+            return operand.All(static c => char.IsDigit(c) || c == '-' || c == '+');
         }
         
         private long ParseNumber(string operand, int lineNumber)
@@ -649,12 +649,12 @@ namespace Ouro.Core.Assembly
             {
                 if (instruction.Type == InstructionType.Label)
                 {
-                    if (labelMap.ContainsKey(instruction.Label))
+                    if (labelMap.ContainsKey(instruction.Label ?? string.Empty))
                     {
                         throw new AssemblerException($"Duplicate label: {instruction.Label}", instruction.LineNumber);
                     }
                     
-                    labelMap[instruction.Label] = currentAddress;
+                    labelMap[instruction.Label ?? string.Empty] = currentAddress;
                 }
                 else
                 {
@@ -681,8 +681,8 @@ namespace Ouro.Core.Assembly
                         break;
                     
                     case InstructionType.Data:
-                        output.AddRange(instruction.Data);
-                        currentAddress += instruction.Data.Length;
+                        output.AddRange(instruction.Data ?? Array.Empty<byte>());
+                        currentAddress += instruction.Data?.Length ?? 0;
                         break;
                     
                     case InstructionType.Align:
@@ -699,7 +699,7 @@ namespace Ouro.Core.Assembly
             output.Add((byte)(instruction.Opcode >> 8));
             currentAddress += 2;
             
-            foreach (var operand in instruction.Operands)
+            foreach (var operand in instruction.Operands ?? System.Linq.Enumerable.Empty<Operand>())
             {
                 GenerateOperand(operand, instruction);
             }
@@ -718,10 +718,10 @@ namespace Ouro.Core.Assembly
                     break;
                 
                 case OperandType.Label:
-                    if (labelMap.TryGetValue(operand.Label, out int address))
+                    if (labelMap.TryGetValue(operand.Label ?? string.Empty, out int address))
                     {
                         // Calculate relative offset for jumps/calls
-                        if (IsJumpInstruction(instruction.Mnemonic))
+                        if (IsJumpInstruction(instruction.Mnemonic ?? string.Empty))
                         {
                             int offset = address - (currentAddress + GetInstructionSize(instruction));
                             GenerateImmediate(offset);
@@ -738,7 +738,7 @@ namespace Ouro.Core.Assembly
                     break;
                 
                 case OperandType.Memory:
-                    GenerateMemoryOperand(operand.MemoryOperand);
+                    GenerateMemoryOperand(operand.MemoryOperand ?? new MemoryOperand());
                     break;
             }
         }
@@ -829,14 +829,17 @@ namespace Ouro.Core.Assembly
                 
                 case InstructionType.Opcode:
                     int size = 2; // Opcode ushort (2 bytes)
-                    foreach (var operand in instruction.Operands)
+                    if (instruction.Operands is not null)
                     {
-                        size += GetOperandSize(operand);
+                        foreach (var operand in instruction.Operands)
+                        {
+                            size += GetOperandSize(operand);
+                        }
                     }
                     return size;
                 
                 case InstructionType.Data:
-                    return instruction.Data.Length;
+                    return instruction.Data?.Length ?? 0;
                 
                 case InstructionType.Align:
                     // Calculate padding needed
@@ -855,7 +858,7 @@ namespace Ouro.Core.Assembly
                 OperandType.Register => 1,
                 OperandType.Immediate => GetImmediateSize(operand.ImmediateValue),
                 OperandType.Label => 4,     // 32-bit address
-                OperandType.Memory => 1 + (operand.MemoryOperand.Displacement != 0 ? GetImmediateSize(operand.MemoryOperand.Displacement) : 0),
+                OperandType.Memory => 1 + (operand.MemoryOperand?.Displacement != 0 ? GetImmediateSize(operand.MemoryOperand!.Displacement) : 0),
                 _ => 0
             };
         }
@@ -885,12 +888,12 @@ namespace Ouro.Core.Assembly
     public class AssemblyInstruction
     {
         public InstructionType Type { get; set; }
-        public string Mnemonic { get; set; }
+        public string? Mnemonic { get; set; }
         public ushort Opcode { get; set; }
-        public List<Operand> Operands { get; set; }
-        public string Label { get; set; }
+        public List<Operand>? Operands { get; set; }
+        public string? Label { get; set; }
         public DataType DataType { get; set; }
-        public byte[] Data { get; set; }
+        public byte[]? Data { get; set; }
         public int AlignValue { get; set; }
         public int LineNumber { get; set; }
     }
@@ -920,8 +923,8 @@ namespace Ouro.Core.Assembly
         public OperandType Type { get; set; }
         public Register Register { get; set; }
         public long ImmediateValue { get; set; }
-        public string Label { get; set; }
-        public MemoryOperand MemoryOperand { get; set; }
+        public string?   Label { get; set; }
+        public MemoryOperand? MemoryOperand { get; set; }
     }
     
     public enum OperandType

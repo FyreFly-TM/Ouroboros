@@ -107,7 +107,7 @@ namespace Ouro.StdLib.Collections
             {
                 Array.Copy(items, index + 1, items, index, count - index);
             }
-            items[count] = default(T);
+            items[count] = default!;
         }
 
         public void Clear()
@@ -182,7 +182,7 @@ namespace Ouro.StdLib.Collections
                     return items[i];
                 }
             }
-            return default(T);
+            return default!;
         }
 
         public List<T> FindAll(Predicate<T> match)

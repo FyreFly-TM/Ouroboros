@@ -5,7 +5,7 @@ using Ouro.Core.Lexer;
 using Ouro.Core.Parser;
 using Ouro.Core.Compiler;
 using Ouro.Runtime;
-using Ouro.src.tools;
+using Ouro.Tools;
 
 namespace Ouro
 {
@@ -15,7 +15,7 @@ namespace Ouro
 
     public class Program
     {
-        private static Runtime.Runtime runtime;
+        private static Runtime.Runtime? runtime;
         
         private static bool debugMode = false;
         
@@ -201,7 +201,7 @@ namespace Ouro
             }
         }
 
-        static CompiledProgram CompileSource(string sourceCode, string fileName)
+        static CompiledProgram? CompileSource(string sourceCode, string fileName)
         {
             try
             {

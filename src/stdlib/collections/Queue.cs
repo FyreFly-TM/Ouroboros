@@ -136,7 +136,7 @@ namespace Ouro.StdLib.Collections
                 throw new InvalidOperationException("Queue is empty");
             
             T removed = items[head];
-            items[head] = default(T);
+            items[head] = default!;
             head = (head + 1) % items.Length;
             size--;
             version++;
@@ -155,12 +155,12 @@ namespace Ouro.StdLib.Collections
         {
             if (size == 0)
             {
-                result = default(T);
+                result = default!;
                 return false;
             }
             
             result = items[head];
-            items[head] = default(T);
+            items[head] = default!;
             head = (head + 1) % items.Length;
             size--;
             version++;
@@ -171,7 +171,7 @@ namespace Ouro.StdLib.Collections
         {
             if (size == 0)
             {
-                result = default(T);
+                result = default!;
                 return false;
             }
             

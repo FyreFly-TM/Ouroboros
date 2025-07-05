@@ -108,10 +108,10 @@ namespace Ouro.StdLib.System
         {
             if (target == EnvironmentVariableTarget.Custom)
             {
-                return customVariables.TryGetValue(name, out var value) ? value : null;
+                return customVariables.TryGetValue(name, out var value) ? value : string.Empty;
             }
             
-            return System.Environment.GetEnvironmentVariable(name, (System.EnvironmentVariableTarget)target);
+            return System.Environment.GetEnvironmentVariable(name, (System.EnvironmentVariableTarget)target) ?? string.Empty;
         }
         
         /// <summary>
@@ -148,7 +148,7 @@ namespace Ouro.StdLib.System
             {
                 if (entry is global::System.Collections.DictionaryEntry dictEntry)
                 {
-                    result[dictEntry.Key.ToString()] = dictEntry.Value?.ToString();
+                    result[dictEntry.Key.ToString()!] = dictEntry.Value?.ToString() ?? string.Empty;
                 }
             }
             
@@ -174,7 +174,9 @@ namespace Ouro.StdLib.System
         /// <summary>
         /// Immediately terminates a process after writing to event log
         /// </summary>
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         public static void FailFast(string message, Exception exception = null)
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             System.Environment.FailFast(message, exception);
         }
@@ -227,7 +229,7 @@ namespace Ouro.StdLib.System
         /// <summary>
         /// Get the path to the executable that started the process
         /// </summary>
-        public static string ProcessPath => Process.GetCurrentProcess().MainModule?.FileName;
+        public static string ProcessPath => Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty;
         
         /// <summary>
         /// Get the process ID

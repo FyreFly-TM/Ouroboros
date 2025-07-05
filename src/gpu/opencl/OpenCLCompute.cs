@@ -16,7 +16,7 @@ namespace Ouro.GPU.OpenCL
         private IntPtr commandQueue;
         private bool disposed;
 
-        public OpenCLDeviceInfo DeviceInfo { get; private set; }
+        public OpenCLDeviceInfo? DeviceInfo { get; private set; }
 
         public OpenCLCompute(int platformIndex = 0, int deviceIndex = 0)
         {
@@ -27,7 +27,9 @@ namespace Ouro.GPU.OpenCL
         {
             // Get platforms
             uint platformCount;
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             CheckError(OpenCLAPI.clGetPlatformIDs(0, null, out platformCount));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             if (platformCount == 0)
                 throw new Exception("No OpenCL platforms found");
@@ -38,7 +40,9 @@ namespace Ouro.GPU.OpenCL
 
             // Get devices
             uint deviceCount;
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             CheckError(OpenCLAPI.clGetDeviceIDs(platform, CLDeviceType.GPU, 0, null, out deviceCount));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             if (deviceCount == 0)
                 throw new Exception("No OpenCL GPU devices found");
@@ -161,9 +165,13 @@ namespace Ouro.GPU.OpenCL
             }
 
             // Execute kernel
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             CheckError(OpenCLAPI.clEnqueueNDRangeKernel(commandQueue, kernel.Kernel, 
                 (uint)globalWorkSize.Length, null, globalWorkSize, localWorkSize, 
                 0, null, IntPtr.Zero));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
             // Wait for completion
             CheckError(OpenCLAPI.clFinish(commandQueue));
@@ -232,7 +240,7 @@ namespace Ouro.GPU.OpenCL
     {
         public IntPtr Kernel { get; set; }
         public IntPtr Program { get; set; }
-        public string Name { get; set; }
+        public string? Name { get; set; }
     }
 
     public abstract class OpenCLBuffer
@@ -251,8 +259,10 @@ namespace Ouro.GPU.OpenCL
             var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
             try
             {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 OpenCLAPI.clEnqueueWriteBuffer(CommandQueue, Buffer, CLBool.True, 0, 
                     (uint)Size, handle.AddrOfPinnedObject(), 0, null, IntPtr.Zero);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
             finally
             {
@@ -266,8 +276,10 @@ namespace Ouro.GPU.OpenCL
             var handle = GCHandle.Alloc(data, GCHandleType.Pinned);
             try
             {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 OpenCLAPI.clEnqueueReadBuffer(CommandQueue, Buffer, CLBool.True, 0, 
                     (uint)Size, handle.AddrOfPinnedObject(), 0, null, IntPtr.Zero);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                 return data;
             }
             finally
@@ -279,7 +291,7 @@ namespace Ouro.GPU.OpenCL
 
     public class OpenCLDeviceInfo
     {
-        public string DeviceName { get; set; }
+        public string? DeviceName { get; set; }
         public long GlobalMemorySize { get; set; }
         public int MaxComputeUnits { get; set; }
         public int MaxWorkGroupSize { get; set; }

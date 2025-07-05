@@ -10,13 +10,13 @@ namespace Ouro.Core.Compiler
     /// <summary>
     /// Type checker for semantic analysis (simplified version)
     /// </summary>
-    public class TypeChecker : IAstVisitor<TypeNode>
+    public class TypeChecker : IAstVisitor<TypeNode?>
     {
         private SymbolTable symbols;
-        private TypeRegistry typeRegistry;
+        internal TypeRegistry typeRegistry;
         private List<TypeCheckError> errors;
         private Stack<Dictionary<string, TypeNode>> scopes;
-        private TypeNode currentReturnType;
+        private TypeNode? currentReturnType;
         private Stack<ContractContext> contractStack;
         private Dictionary<string, GenericTypeConstraints> genericConstraints;
         private TypeInferenceEngine inferenceEngine;
@@ -47,7 +47,7 @@ namespace Ouro.Core.Compiler
         
         public TypeNode GetType(Expression expr)
         {
-            return expr.Accept(this);
+            return expr.Accept(this) ?? typeRegistry.Unknown;
         }
         
         private void EnterScope()
@@ -66,7 +66,7 @@ namespace Ouro.Core.Compiler
             scopes.Peek()[name] = type;
         }
         
-        public TypeNode LookupVariable(string name)
+        public TypeNode? LookupVariable(string name)
         {
             foreach (var scope in scopes)
             {
@@ -108,17 +108,17 @@ namespace Ouro.Core.Compiler
         }
         
         // Visitor implementations
-        public TypeNode VisitProgram(Ouro.Core.AST.Program program) 
+        public TypeNode? VisitProgram(Ouro.Core.AST.Program program) 
         { 
             foreach (var s in program.Statements) 
                 s.Accept(this); 
             return null; 
         }
         
-        public TypeNode VisitBinaryExpression(BinaryExpression expr) 
+        public TypeNode? VisitBinaryExpression(BinaryExpression expr) 
         { 
-            var leftType = expr.Left.Accept(this);
-            var rightType = expr.Right.Accept(this);
+            var leftType = expr.Left.Accept(this) ?? typeRegistry.Unknown;
+            var rightType = expr.Right.Accept(this) ?? typeRegistry.Unknown;
             
             switch (expr.Operator.Type)
             {
@@ -134,7 +134,7 @@ namespace Ouro.Core.Compiler
                         (leftType?.Name == "string" || rightType?.Name == "string"))
                         return typeRegistry.String;
                     AddErrorWithSuggestion(
-                        $"Cannot apply operator '{expr.Operator.Lexeme}' to operands of type '{FormatType(leftType)}' and '{FormatType(rightType)}'",
+                        $"Cannot apply operator '{expr.Operator.Lexeme}' to operands of type '{FormatType(leftType ?? typeRegistry.Unknown)}' and '{FormatType(rightType ?? typeRegistry.Unknown)}'",
                         "Ensure both operands are numeric or use appropriate type conversions",
                         expr.Line, expr.Column);
                     return typeRegistry.Unknown;
@@ -148,7 +148,7 @@ namespace Ouro.Core.Compiler
                     if (!AreTypesComparable(leftType, rightType))
                     {
                         AddErrorWithSuggestion(
-                            $"Cannot compare values of type '{FormatType(leftType)}' and '{FormatType(rightType)}'",
+                            $"Cannot compare values of type '{FormatType(leftType ?? typeRegistry.Unknown)}' and '{FormatType(rightType ?? typeRegistry.Unknown)}'",
                             "Values must be of comparable types (numeric, string, or same type)",
                             expr.Line, expr.Column);
                     }
@@ -158,12 +158,12 @@ namespace Ouro.Core.Compiler
                 case TokenType.LogicalOr:
                     if (leftType?.Name != "bool")
                         AddErrorWithSuggestion(
-                            $"Left operand of '{expr.Operator.Lexeme}' must be boolean, but was '{FormatType(leftType)}'",
+                            $"Left operand of '{expr.Operator.Lexeme}' must be boolean, but was '{FormatType(leftType ?? typeRegistry.Unknown)}'",
                             "Consider using a comparison operator or converting to boolean",
                             expr.Left.Line, expr.Left.Column);
                     if (rightType?.Name != "bool")
                         AddErrorWithSuggestion(
-                            $"Right operand of '{expr.Operator.Lexeme}' must be boolean, but was '{FormatType(rightType)}'",
+                            $"Right operand of '{expr.Operator.Lexeme}' must be boolean, but was '{FormatType(rightType ?? typeRegistry.Unknown)}'",
                             "Consider using a comparison operator or converting to boolean",
                             expr.Right.Line, expr.Right.Column);
                     return typeRegistry.Bool;
@@ -173,7 +173,7 @@ namespace Ouro.Core.Compiler
             }
         }
         
-        public TypeNode VisitUnaryExpression(UnaryExpression expr) 
+        public TypeNode? VisitUnaryExpression(UnaryExpression expr) 
         { 
             var operandType = expr.Operand.Accept(this);
             
@@ -181,10 +181,10 @@ namespace Ouro.Core.Compiler
             {
                 case TokenType.Minus:
                 case TokenType.Plus:
-                    if (IsNumericType(operandType))
+                    if (IsNumericType(operandType ?? typeRegistry.Unknown))
                         return operandType;
                     AddErrorWithSuggestion(
-                        $"Unary '{expr.Operator.Lexeme}' cannot be applied to operand of type '{FormatType(operandType)}'",
+                        $"Unary '{expr.Operator.Lexeme}' cannot be applied to operand of type '{FormatType(operandType ?? typeRegistry.Unknown)}'",
                         "This operator requires a numeric operand",
                         expr.Line, expr.Column);
                     return typeRegistry.Unknown;
@@ -193,17 +193,17 @@ namespace Ouro.Core.Compiler
                     if (operandType?.Name == "bool")
                         return typeRegistry.Bool;
                     AddErrorWithSuggestion(
-                        $"Logical not (!) cannot be applied to operand of type '{FormatType(operandType)}'",
+                        $"Logical not (!) cannot be applied to operand of type '{FormatType(operandType ?? typeRegistry.Unknown)}'",
                         "Use a boolean expression or convert to boolean first",
                         expr.Line, expr.Column);
                     return typeRegistry.Bool;
                     
                 case TokenType.Increment:
                 case TokenType.Decrement:
-                    if (IsNumericType(operandType))
+                    if (IsNumericType(operandType ?? typeRegistry.Unknown))
                         return operandType;
                     AddErrorWithSuggestion(
-                        $"'{expr.Operator.Lexeme}' cannot be applied to operand of type '{FormatType(operandType)}'",
+                        $"'{expr.Operator.Lexeme}' cannot be applied to operand of type '{FormatType(operandType ?? typeRegistry.Unknown)}'",
                         "This operator can only be used with numeric types",
                         expr.Line, expr.Column);
                     return typeRegistry.Unknown;
@@ -263,7 +263,7 @@ namespace Ouro.Core.Compiler
             return type;
         }
         
-        private string FindSimilarVariableName(string name)
+        private string? FindSimilarVariableName(string name)
         {
             // Simple edit distance check for typos
             foreach (var scope in scopes)
@@ -304,7 +304,7 @@ namespace Ouro.Core.Compiler
             return d[n, m];
         }
         
-        public TypeNode VisitAssignmentExpression(AssignmentExpression expr) 
+        public TypeNode? VisitAssignmentExpression(AssignmentExpression expr) 
         { 
             var targetType = expr.Target.Accept(this);
             var valueType = expr.Value.Accept(this);
@@ -312,7 +312,7 @@ namespace Ouro.Core.Compiler
             if (targetType != null && valueType != null && !AreTypesCompatible(targetType, valueType))
             {
                 AddErrorWithSuggestion(
-                    $"Cannot implicitly convert type '{FormatType(valueType)}' to '{FormatType(targetType)}'",
+                    $"Cannot implicitly convert type '{FormatType(valueType ?? typeRegistry.Unknown)}' to '{FormatType(targetType ?? typeRegistry.Unknown)}'",
                     $"Consider using an explicit cast or changing the target type",
                     expr.Line, expr.Column);
             }
@@ -320,18 +320,18 @@ namespace Ouro.Core.Compiler
             return valueType;
         }
         
-        public TypeNode VisitVariableDeclaration(VariableDeclaration stmt) 
+        public TypeNode? VisitVariableDeclaration(VariableDeclaration stmt) 
         { 
             var declaredType = stmt.Type;
             
             if (stmt.Initializer != null)
             {
                 var initType = stmt.Initializer.Accept(this);
-                if (!AreTypesCompatible(declaredType, initType))
+                if (!AreTypesCompatible(declaredType, initType ?? typeRegistry.Unknown))
                 {
                     AddErrorWithSuggestion(
-                        $"Cannot initialize variable of type '{FormatType(declaredType)}' with value of type '{FormatType(initType)}'",
-                        $"Either change the variable type to '{FormatType(initType)}' or convert the initializer",
+                        $"Cannot initialize variable of type '{FormatType(declaredType ?? typeRegistry.Unknown)}' with value of type '{FormatType(initType ?? typeRegistry.Unknown)}'",
+                        $"Either change the variable type to '{FormatType(initType ?? typeRegistry.Unknown)}' or convert the initializer",
                         stmt.Line, stmt.Column);
                 }
             }
@@ -350,19 +350,19 @@ namespace Ouro.Core.Compiler
             }
             else
             {
-                DefineVariable(stmt.Name, declaredType);
+                DefineVariable(stmt.Name, declaredType ?? typeRegistry.Unknown);
             }
             
             return null;
         }
         
-        public TypeNode VisitIfStatement(IfStatement stmt) 
+        public TypeNode? VisitIfStatement(IfStatement stmt) 
         { 
             var condType = stmt.Condition.Accept(this);
             if (condType?.Name != "bool")
             {
                 AddErrorWithSuggestion(
-                    $"Condition must evaluate to boolean, but was '{FormatType(condType)}'",
+                    $"Condition must evaluate to boolean, but was '{FormatType(condType ?? typeRegistry.Unknown)}'",
                     "Use a comparison operator or boolean expression",
                     stmt.Line, stmt.Column);
             }
@@ -372,7 +372,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public TypeNode VisitBlockStatement(BlockStatement stmt) 
+        public TypeNode? VisitBlockStatement(BlockStatement stmt) 
         { 
             EnterScope();
             foreach (var s in stmt.Statements) 
@@ -381,7 +381,7 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public TypeNode VisitFunctionDeclaration(FunctionDeclaration decl) 
+        public TypeNode? VisitFunctionDeclaration(FunctionDeclaration decl) 
         { 
             EnterScope();
             
@@ -407,7 +407,7 @@ namespace Ouro.Core.Compiler
             {
                 AddErrorWithSuggestion(
                     $"Not all code paths return a value in function '{decl.Name}'",
-                    $"Add a return statement that returns a value of type '{FormatType(currentReturnType)}'",
+                    $"Add a return statement that returns a value of type '{FormatType(currentReturnType ?? typeRegistry.Unknown)}'",
                     decl.Line, decl.Column);
             }
             
@@ -416,7 +416,7 @@ namespace Ouro.Core.Compiler
             
             // Store function type
             var funcType = new FunctionTypeNode(
-                decl.Parameters.Select(p => p.Type).ToList(),
+                decl.Parameters.Select(static p => p.Type).ToList(),
                 decl.ReturnType
             );
             DefineVariable(decl.Name, funcType);
@@ -427,14 +427,16 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        private bool HasReturnPath(BlockStatement block)
+        private bool HasReturnPath(BlockStatement? block)
         {
+            if (block == null)
+                return false;
             // Simple check - a more sophisticated implementation would do control flow analysis
             foreach (var stmt in block.Statements)
             {
                 if (stmt is ReturnStatement)
                     return true;
-                if (stmt is IfStatement ifStmt && 
+                if (stmt is IfStatement ifStmt &&
                     ifStmt.ElseBranch != null &&
                     HasReturnPath(ifStmt.ThenBranch as BlockStatement) &&
                     HasReturnPath(ifStmt.ElseBranch as BlockStatement))
@@ -443,12 +445,12 @@ namespace Ouro.Core.Compiler
             return false;
         }
         
-        public TypeNode VisitReturnStatement(ReturnStatement stmt) 
+        public TypeNode? VisitReturnStatement(ReturnStatement stmt) 
         { 
             if (stmt.Value != null)
             {
                 var returnType = stmt.Value.Accept(this);
-                if (currentReturnType != null && !AreTypesCompatible(currentReturnType, returnType))
+                if (currentReturnType != null && !AreTypesCompatible(currentReturnType, returnType ?? typeRegistry.Unknown))
                 {
                     if (currentReturnType.Name == "void")
                     {
@@ -460,8 +462,8 @@ namespace Ouro.Core.Compiler
                     else
                     {
                         AddErrorWithSuggestion(
-                            $"Cannot return '{FormatType(returnType)}' from function declared to return '{FormatType(currentReturnType)}'",
-                            $"Return a value of type '{FormatType(currentReturnType)}' or change the function signature",
+                            $"Cannot return '{FormatType(returnType ?? typeRegistry.Unknown)}' from function declared to return '{FormatType(currentReturnType ?? typeRegistry.Unknown)}'",
+                            $"Return a value of type '{FormatType(currentReturnType ?? typeRegistry.Unknown)}' or change the function signature",
                             stmt.Line, stmt.Column);
                     }
                 }
@@ -469,7 +471,7 @@ namespace Ouro.Core.Compiler
             else if (currentReturnType?.Name != "void")
             {
                 AddErrorWithSuggestion(
-                    $"Must return a value of type '{FormatType(currentReturnType)}'",
+                    $"Must return a value of type '{FormatType(currentReturnType ?? typeRegistry.Unknown)}'",
                     "Add a return value or change the function to return void",
                     stmt.Line, stmt.Column);
             }
@@ -497,11 +499,11 @@ namespace Ouro.Core.Compiler
                     for (int i = 0; i < expr.Arguments.Count; i++)
                     {
                         var argType = expr.Arguments[i].Accept(this);
-                        if (!AreTypesCompatible(funcType.ParameterTypes[i], argType))
+                        if (!AreTypesCompatible(funcType.ParameterTypes[i], argType ?? typeRegistry.Unknown))
                         {
                             AddErrorWithSuggestion(
-                                $"Argument {i + 1}: cannot convert from '{FormatType(argType)}' to '{FormatType(funcType.ParameterTypes[i])}'",
-                                $"Expected type '{FormatType(funcType.ParameterTypes[i])}'",
+                                $"Argument {i + 1}: cannot convert from '{FormatType(argType ?? typeRegistry.Unknown)}' to '{FormatType(funcType.ParameterTypes[i] ?? typeRegistry.Unknown)}'",
+                                $"Expected type '{FormatType(funcType.ParameterTypes[i] ?? typeRegistry.Unknown)}'",
                                 expr.Arguments[i].Line, expr.Arguments[i].Column);
                         }
                     }
@@ -530,7 +532,7 @@ namespace Ouro.Core.Compiler
                                     return typeRegistry.Int;
                                 else
                                     AddErrorWithSuggestion(
-                                        $"'{id.Name}' can only be used with arrays or strings, not '{FormatType(argType)}'",
+                                        $"'{id.Name}' can only be used with arrays or strings, not '{FormatType(argType ?? typeRegistry.Unknown)}'",
                                         "Pass an array or string to this function",
                                         expr.Line, expr.Column);
                             }
@@ -629,7 +631,7 @@ namespace Ouro.Core.Compiler
                 else
                 {
                     AddErrorWithSuggestion(
-                        $"'{expr.MemberName}' is not a member of type '{FormatType(objectType)}'",
+                        $"'{expr.MemberName}' is not a member of type '{FormatType(objectType ?? typeRegistry.Unknown)}'",
                         "This property is only available on arrays and strings",
                         expr.Line, expr.Column);
                     return typeRegistry.Unknown;
@@ -663,18 +665,18 @@ namespace Ouro.Core.Compiler
             for (int i = 1; i < expr.Elements.Count; i++)
             {
                 var elemType = expr.Elements[i].Accept(this);
-                if (!AreTypesCompatible(elementType, elemType))
+                if (!AreTypesCompatible(elementType ?? typeRegistry.Unknown, elemType ?? typeRegistry.Unknown))
                 {
                     AddErrorWithSuggestion(
-                        $"Array element at index {i} has type '{FormatType(elemType)}' but expected '{FormatType(elementType)}'",
+                        $"Array element at index {i} has type '{FormatType(elemType ?? typeRegistry.Unknown)}' but expected '{FormatType(elementType ?? typeRegistry.Unknown)}'",
                         "Ensure all array elements have the same type or use explicit casts",
                         expr.Elements[i].Line, expr.Elements[i].Column);
                     // Try to find common base type
-                    elementType = FindCommonType(elementType, elemType);
+                    elementType = FindCommonType(elementType ?? typeRegistry.Unknown, elemType ?? typeRegistry.Unknown);
                 }
             }
             
-            return new ArrayTypeNode(elementType);
+            return new ArrayTypeNode(elementType ?? typeRegistry.Unknown);
         }
         
         private TypeNode FindCommonType(TypeNode type1, TypeNode type2)
@@ -713,13 +715,15 @@ namespace Ouro.Core.Compiler
             TypeNode returnType;
             if (expr.Body is Expression bodyExpr)
             {
-                returnType = bodyExpr.Accept(this);
+                returnType = bodyExpr.Accept(this) ?? typeRegistry.Unknown;
             }
             else
             {
                 // Statement body - need to analyze return statements
                 var previousReturnType = currentReturnType;
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 currentReturnType = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                 expr.Body.Accept(this);
                 returnType = currentReturnType ?? typeRegistry.Void;
                 currentReturnType = previousReturnType;
@@ -766,12 +770,12 @@ namespace Ouro.Core.Compiler
             }
             
             // Build generic type name
-            var typeArgs = expr.GenericTypeArguments.Select(t => t.Name).ToArray();
+            var typeArgs = expr.GenericTypeArguments.Select(static t => t.Name).ToArray();
             return new TypeNode($"{expr.Name}<{string.Join(", ", typeArgs)}>");
         }
         
         public TypeNode VisitNewExpression(NewExpression expr) { foreach (var a in expr.Arguments) a.Accept(this); return expr.Type; }
-        public TypeNode VisitConditionalExpression(ConditionalExpression expr) { expr.Condition.Accept(this); var t1 = expr.TrueExpression.Accept(this); var t2 = expr.FalseExpression.Accept(this); return t1; }
+        public TypeNode? VisitConditionalExpression(ConditionalExpression expr) { expr.Condition.Accept(this); var t1 = expr.TrueExpression.Accept(this); var t2 = expr.FalseExpression.Accept(this); return t1 ?? typeRegistry.Unknown; }
         public TypeNode VisitTypeofExpression(TypeofExpression expr) => typeRegistry.Type;
         public TypeNode VisitSizeofExpression(SizeofExpression expr) => typeRegistry.Int;
         public TypeNode VisitNameofExpression(NameofExpression expr) => typeRegistry.String;
@@ -781,14 +785,14 @@ namespace Ouro.Core.Compiler
         public TypeNode VisitQuaternionExpression(QuaternionExpression expr) { expr.W.Accept(this); expr.X.Accept(this); expr.Y.Accept(this); expr.Z.Accept(this); return new TypeNode("Quaternion"); }
         public TypeNode VisitMathExpression(MathExpression expr) { foreach (var o in expr.Operands) o.Accept(this); return typeRegistry.Double; }
         
-        public TypeNode VisitExpressionStatement(ExpressionStatement stmt) { stmt.Expression.Accept(this); return null; }
-        public TypeNode VisitWhileStatement(WhileStatement stmt) 
+        public TypeNode? VisitExpressionStatement(ExpressionStatement stmt) { stmt.Expression.Accept(this); return null; }
+        public TypeNode? VisitWhileStatement(WhileStatement stmt) 
         { 
             var cond = stmt.Condition.Accept(this); 
             if (cond?.Name != "bool") 
             {
                 AddErrorWithSuggestion(
-                    $"While loop condition must be boolean, but was '{FormatType(cond)}'",
+                    $"While loop condition must be boolean, but was '{FormatType(cond ?? typeRegistry.Unknown)}'",
                     "Use a comparison operator or boolean expression",
                     stmt.Line, stmt.Column);
             }
@@ -796,21 +800,21 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public TypeNode VisitDoWhileStatement(DoWhileStatement stmt) 
+        public TypeNode? VisitDoWhileStatement(DoWhileStatement stmt) 
         { 
             stmt.Body.Accept(this); 
             var cond = stmt.Condition.Accept(this); 
             if (cond?.Name != "bool") 
             {
                 AddErrorWithSuggestion(
-                    $"Do-while loop condition must be boolean, but was '{FormatType(cond)}'",
+                    $"Do-while loop condition must be boolean, but was '{FormatType(cond ?? typeRegistry.Unknown)}'",
                     "Use a comparison operator or boolean expression",
                     stmt.Line, stmt.Column);
             }
             return null;
         }
         
-        public TypeNode VisitForStatement(ForStatement stmt) 
+        public TypeNode? VisitForStatement(ForStatement stmt) 
         { 
             EnterScope(); 
             stmt.Initializer?.Accept(this); 
@@ -821,7 +825,7 @@ namespace Ouro.Core.Compiler
                 if (cond?.Name != "bool")
                 {
                     AddErrorWithSuggestion(
-                        $"For loop condition must be boolean, but was '{FormatType(cond)}'",
+                        $"For loop condition must be boolean, but was '{FormatType(cond ?? typeRegistry.Unknown)}'",
                         "Use a comparison operator or boolean expression",
                         stmt.Condition.Line, stmt.Condition.Column);
                 }
@@ -833,58 +837,145 @@ namespace Ouro.Core.Compiler
             return null;
         }
         
-        public TypeNode VisitForEachStatement(ForEachStatement stmt) { EnterScope(); stmt.Collection.Accept(this); DefineVariable(stmt.ElementName, stmt.ElementType); stmt.Body.Accept(this); ExitScope(); return null; }
-        public TypeNode VisitRepeatStatement(RepeatStatement stmt) { stmt.Count?.Accept(this); stmt.Body.Accept(this); return null; }
-        public TypeNode VisitIterateStatement(IterateStatement stmt) { EnterScope(); stmt.Start.Accept(this); stmt.End.Accept(this); stmt.Step.Accept(this); DefineVariable(stmt.IteratorName, typeRegistry.Int); stmt.Body.Accept(this); ExitScope(); return null; }
-        public TypeNode VisitParallelForStatement(ParallelForStatement stmt) { stmt.BaseFor.Accept(this); return null; }
-        public TypeNode VisitSwitchStatement(SwitchStatement stmt) { stmt.Expression.Accept(this); foreach (var c in stmt.Cases) { c.Value.Accept(this); foreach (var s in c.Statements) s.Accept(this); } stmt.DefaultCase?.Accept(this); return null; }
-        public TypeNode VisitBreakStatement(BreakStatement stmt) => null;
-        public TypeNode VisitContinueStatement(ContinueStatement stmt) => null;
-        public TypeNode VisitThrowStatement(ThrowStatement stmt) { stmt.Exception.Accept(this); return null; }
-        public TypeNode VisitTryStatement(TryStatement stmt) { stmt.TryBlock.Accept(this); foreach (var c in stmt.CatchClauses) c.Body.Accept(this); stmt.FinallyBlock?.Accept(this); return null; }
-        public TypeNode VisitMatchStatement(MatchStatement stmt) { stmt.Expression.Accept(this); foreach (var c in stmt.Cases) { c.Guard?.Accept(this); c.Body.Accept(this); } return null; }
-        public TypeNode VisitUsingStatement(UsingStatement stmt) { stmt.Resource.Accept(this); stmt.Body.Accept(this); return null; }
-        public TypeNode VisitLockStatement(LockStatement stmt) { stmt.LockObject.Accept(this); stmt.Body.Accept(this); return null; }
-        public TypeNode VisitUnsafeStatement(UnsafeStatement stmt) { stmt.Body.Accept(this); return null; }
-        public TypeNode VisitFixedStatement(FixedStatement stmt) { stmt.Target.Accept(this); stmt.Body.Accept(this); return null; }
-        public TypeNode VisitYieldStatement(YieldStatement stmt) { stmt.Value?.Accept(this); return null; }
-        public TypeNode VisitAssemblyStatement(AssemblyStatement stmt) => null;
+        public TypeNode? VisitForEachStatement(ForEachStatement stmt) { EnterScope(); stmt.Collection.Accept(this); DefineVariable(stmt.ElementName, stmt.ElementType); stmt.Body.Accept(this); ExitScope(); return null; }
+        public TypeNode? VisitRepeatStatement(RepeatStatement stmt) { stmt.Count?.Accept(this); stmt.Body.Accept(this); return null; }
+        public TypeNode? VisitIterateStatement(IterateStatement stmt) { EnterScope(); stmt.Start.Accept(this); stmt.End.Accept(this); stmt.Step.Accept(this); DefineVariable(stmt.IteratorName, typeRegistry.Int); stmt.Body.Accept(this); ExitScope(); return null; }
+        public TypeNode? VisitParallelForStatement(ParallelForStatement stmt) { stmt.BaseFor.Accept(this); return null; }
+        public TypeNode? VisitSwitchStatement(SwitchStatement stmt) { stmt.Expression.Accept(this); foreach (var c in stmt.Cases) { c.Value.Accept(this); foreach (var s in c.Statements) s.Accept(this); } stmt.DefaultCase?.Accept(this); return null; }
+        public TypeNode? VisitBreakStatement(BreakStatement stmt) => null;
+        public TypeNode? VisitContinueStatement(ContinueStatement stmt) => null;
+        public TypeNode? VisitThrowStatement(ThrowStatement stmt) { stmt.Exception.Accept(this); return null; }
+        public TypeNode? VisitTryStatement(TryStatement stmt) { stmt.TryBlock.Accept(this); foreach (var c in stmt.CatchClauses) c.Body.Accept(this); stmt.FinallyBlock?.Accept(this); return null; }
+        public TypeNode? VisitMatchStatement(MatchStatement stmt) { stmt.Expression.Accept(this); foreach (var c in stmt.Cases) { c.Guard?.Accept(this); c.Body.Accept(this); } return null; }
+        public TypeNode? VisitUsingStatement(UsingStatement stmt) { stmt.Resource.Accept(this); stmt.Body.Accept(this); return null; }
+        public TypeNode? VisitLockStatement(LockStatement stmt) { stmt.LockObject.Accept(this); stmt.Body.Accept(this); return null; }
+        public TypeNode? VisitUnsafeStatement(UnsafeStatement stmt) { stmt.Body.Accept(this); return null; }
+        public TypeNode? VisitFixedStatement(FixedStatement stmt) { stmt.Target.Accept(this); stmt.Body.Accept(this); return null; }
+        public TypeNode? VisitYieldStatement(YieldStatement stmt) { stmt.Value?.Accept(this); return null; }
+        public TypeNode? VisitAssemblyStatement(AssemblyStatement stmt) => null;
         
-        public TypeNode VisitClassDeclaration(ClassDeclaration decl) { EnterScope(); foreach (var m in decl.Members) m.Accept(this); ExitScope(); return null; }
-        public TypeNode VisitInterfaceDeclaration(InterfaceDeclaration decl) { foreach (var m in decl.Members) m.Accept(this); return null; }
-        public TypeNode VisitStructDeclaration(StructDeclaration decl) { EnterScope(); foreach (var m in decl.Members) m.Accept(this); ExitScope(); return null; }
-        public TypeNode VisitEnumDeclaration(EnumDeclaration decl) => null;
-        public TypeNode VisitDomainDeclaration(DomainDeclaration decl) => null;
-        public TypeNode VisitPropertyDeclaration(PropertyDeclaration decl) => null;
-        public TypeNode VisitFieldDeclaration(FieldDeclaration decl) => null;
-        public TypeNode VisitComponentDeclaration(ComponentDeclaration decl) => null;
-        public TypeNode VisitSystemDeclaration(SystemDeclaration decl) { foreach (var m in decl.Methods) m.Accept(this); return null; }
-        public TypeNode VisitEntityDeclaration(EntityDeclaration decl) => null;
-        public TypeNode VisitNamespaceDeclaration(NamespaceDeclaration decl) { EnterScope(); foreach (var m in decl.Members) m.Accept(this); ExitScope(); return null; }
-        public TypeNode VisitImportDeclaration(ImportDeclaration decl) => null;
-        public TypeNode VisitTypeAliasDeclaration(TypeAliasDeclaration decl) => null;
-        public TypeNode VisitIsExpression(IsExpression expr) { expr.Left.Accept(this); return typeRegistry.Bool; }
-        public TypeNode VisitCastExpression(CastExpression expr) { expr.Expression.Accept(this); return expr.TargetType; }
-        public TypeNode VisitMatchExpression(MatchExpression expr) { expr.Target.Accept(this); TypeNode resultType = null; foreach (var arm in expr.Arms) { arm.Guard?.Accept(this); var armType = arm.Body.Accept(this); if (resultType == null) resultType = armType; } return resultType ?? typeRegistry.Unknown; }
-        public TypeNode VisitThrowExpression(ThrowExpression expr) { expr.Expression?.Accept(this); return typeRegistry.Unknown; }
-        public TypeNode VisitMatchArm(MatchArm arm) { arm.Guard?.Accept(this); return arm.Body.Accept(this); }
-        public TypeNode VisitMacroDeclaration(MacroDeclaration decl) => null;
-        public TypeNode VisitTraitDeclaration(TraitDeclaration decl) => null;
-        public TypeNode VisitImplementDeclaration(ImplementDeclaration decl) => null;
+        public TypeNode? VisitClassDeclaration(ClassDeclaration decl) { EnterScope(); foreach (var m in decl.Members) m.Accept(this); ExitScope(); return null; }
+        public TypeNode? VisitInterfaceDeclaration(InterfaceDeclaration decl) { foreach (var m in decl.Members) m.Accept(this); return null; }
+        public TypeNode? VisitStructDeclaration(StructDeclaration decl) { EnterScope(); foreach (var m in decl.Members) m.Accept(this); ExitScope(); return null; }
+        public TypeNode? VisitEnumDeclaration(EnumDeclaration decl) => null;
+        public TypeNode? VisitDomainDeclaration(DomainDeclaration decl) => null;
+        public TypeNode? VisitPropertyDeclaration(PropertyDeclaration decl) => null;
+        public TypeNode? VisitFieldDeclaration(FieldDeclaration decl) => null;
+        public TypeNode? VisitComponentDeclaration(ComponentDeclaration decl) => null;
+        public TypeNode? VisitSystemDeclaration(SystemDeclaration decl) { foreach (var m in decl.Methods) m.Accept(this); return null; }
+        public TypeNode? VisitEntityDeclaration(EntityDeclaration decl) => null;
+        public TypeNode? VisitNamespaceDeclaration(NamespaceDeclaration decl) { EnterScope(); foreach (var m in decl.Members) m.Accept(this); ExitScope(); return null; }
+        public TypeNode? VisitImportDeclaration(ImportDeclaration decl) => null;
+        public TypeNode? VisitTypeAliasDeclaration(TypeAliasDeclaration decl) => null;
+        public TypeNode? VisitIsExpression(IsExpression expr) { expr.Left.Accept(this); return typeRegistry.Bool; }
+        public TypeNode? VisitCastExpression(CastExpression expr) { expr.Expression.Accept(this); return expr.TargetType; }
+        public TypeNode? VisitMatchExpression(MatchExpression expr) { expr.Target.Accept(this); TypeNode? resultType = null; foreach (var arm in expr.Arms) { arm.Guard?.Accept(this); var armType = arm.Body.Accept(this); if (resultType == null) resultType = armType; } return resultType ?? typeRegistry.Unknown; }
+        public TypeNode? VisitThrowExpression(ThrowExpression expr) { expr.Expression?.Accept(this); return typeRegistry.Unknown; }
+        public TypeNode? VisitMatchArm(MatchArm arm) { arm.Guard?.Accept(this); return arm.Body.Accept(this); }
+        public TypeNode? VisitMacroDeclaration(MacroDeclaration decl) => null;
+        public TypeNode? VisitTraitDeclaration(TraitDeclaration decl) => null;
+        public TypeNode? VisitImplementDeclaration(ImplementDeclaration decl) => null;
     
     public TypeNode VisitStructLiteral(StructLiteral expr) 
     { 
-        // Check if struct type exists and validate fields
-        // For now, return unknown type
-        foreach (var field in expr.Fields.Values)
+        // Check that all fields are type-compatible
+        foreach (var field in expr.Fields)
         {
-            field.Accept(this);
+            field.Value.Accept(this);
         }
         
-        // Try to infer struct type from name
+        // Return the struct type name
         return new TypeNode(expr.StructName.Lexeme);
     }
     
+    public TypeNode? VisitIndexExpression(IndexExpression expr)
+    {
+        var objectType = expr.Object.Accept(this);
+        var indexType = expr.Index.Accept(this);
+        
+        // Check that index is integer for arrays
+        if (indexType?.Name != "int")
+        {
+            AddErrorWithSuggestion(
+                $"Array index must be of type 'int', but was '{FormatType(indexType ?? typeRegistry.Unknown)}'",
+                "Use an integer expression as the array index",
+                expr.Index.Line, expr.Index.Column);
+        }
+        
+        // If object is an array type, return element type
+        if (objectType is ArrayTypeNode arrayType)
+        {
+            return arrayType.ElementType;
+        }
+        else if (objectType?.IsArray == true)
+        {
+            // For simple array notation like int[]
+            return new TypeNode(objectType.Name.Replace("[]", ""));
+        }
+        
+        // For other indexable types, try to infer element type
+        return typeRegistry.Unknown;
+    }
+    
+    public TypeNode VisitTupleExpression(TupleExpression expr)
+    {
+        // Check all tuple elements and create tuple type
+        var elementTypes = new List<TypeNode>();
+        foreach (var element in expr.Elements)
+        {
+            elementTypes.Add(element.Accept(this) ?? typeRegistry.Unknown);
+        }
+        
+        // Return a tuple type representation
+        var tupleTypeName = $"({string.Join(", ", elementTypes.Select(FormatType))})";
+        return new TypeNode(tupleTypeName);
+    }
+    
+    public TypeNode? VisitSpreadExpression(SpreadExpression expr)
+    {
+        var exprType = expr.Expression.Accept(this);
+        
+        // Spread expressions should work on iterable types
+        // For now, just return the element type of the collection
+        if (exprType is ArrayTypeNode arrayType)
+        {
+            return arrayType.ElementType;
+        }
+        else if (exprType?.IsArray == true)
+        {
+            return new TypeNode(exprType.Name.Replace("[]", ""));
+        }
+        
+        return exprType;
+    }
+    
+    public TypeNode? VisitRangeExpression(RangeExpression expr)
+    {
+        var startType = expr.Start.Accept(this);
+        var endType = expr.End.Accept(this);
+        
+        // Check that both start and end are numeric
+        if (!IsNumericType(startType ?? typeRegistry.Unknown))
+        {
+            AddErrorWithSuggestion(
+                $"Range start must be numeric, but was '{FormatType(startType ?? typeRegistry.Unknown)}'",
+                "Use a numeric expression for the range start",
+                expr.Start.Line, expr.Start.Column);
+        }
+        
+        if (!IsNumericType(endType ?? typeRegistry.Unknown))
+        {
+            AddErrorWithSuggestion(
+                $"Range end must be numeric, but was '{FormatType(endType ?? typeRegistry.Unknown)}'",
+                "Use a numeric expression for the range end",
+                expr.End.Line, expr.End.Column);
+        }
+        
+        // Return a Range<T> type where T is the common numeric type
+        var commonType = GetNumericResultType(startType ?? typeRegistry.Unknown, endType ?? typeRegistry.Unknown);
+        return new TypeNode($"Range<{FormatType(commonType ?? typeRegistry.Unknown)}>");
+    }
+
     // Contract verification methods
     private void VerifyContracts(FunctionDeclaration func)
     {
@@ -956,81 +1047,6 @@ namespace Ouro.Core.Compiler
     }
     
     // Unit type operations
-    private TypeNode HandleUnitOperation(BinaryExpression expr, TypeNode leftType, TypeNode rightType)
-    {
-        // Extract base types and units
-        var leftBase = leftType is UnitTypeNode leftUnit ? leftUnit.BaseType : leftType;
-        var rightBase = rightType is UnitTypeNode rightUnit ? rightUnit.BaseType : rightType;
-        
-        var leftUnitStr = leftType is UnitTypeNode lu ? lu.Unit : "";
-        var rightUnitStr = rightType is UnitTypeNode ru ? ru.Unit : "";
-        
-        // Check base types are compatible
-        if (!IsNumericType(leftBase) || !IsNumericType(rightBase))
-        {
-            AddError("Unit operations require numeric types", expr.Line, expr.Column);
-            return typeRegistry.Unknown;
-        }
-        
-        switch (expr.Operator.Type)
-        {
-            case TokenType.Multiply:
-                return MultiplyUnits(leftUnitStr, rightUnitStr, GetNumericResultType(leftBase, rightBase));
-                
-            case TokenType.Divide:
-                return DivideUnits(leftUnitStr, rightUnitStr, GetNumericResultType(leftBase, rightBase));
-                
-            case TokenType.Plus:
-            case TokenType.Minus:
-                if (leftUnitStr != rightUnitStr)
-                {
-                    AddError($"Cannot {expr.Operator.Lexeme} incompatible units: [{leftUnitStr}] and [{rightUnitStr}]", 
-                            expr.Line, expr.Column);
-                    return typeRegistry.Unknown;
-                }
-                return new UnitTypeNode(GetNumericResultType(leftBase, rightBase), leftUnitStr);
-                
-            default:
-                return GetNumericResultType(leftBase, rightBase);
-        }
-    }
-    
-    private TypeNode MultiplyUnits(string left, string right, TypeNode baseType)
-    {
-        if (string.IsNullOrEmpty(left) && string.IsNullOrEmpty(right))
-            return baseType;
-            
-        if (string.IsNullOrEmpty(left))
-            return new UnitTypeNode(baseType, right);
-            
-        if (string.IsNullOrEmpty(right))
-            return new UnitTypeNode(baseType, left);
-            
-        // Simplify common patterns
-        if (left == right)
-            return new UnitTypeNode(baseType, $"{left}²");
-            
-        return new UnitTypeNode(baseType, $"{left}·{right}");
-    }
-    
-    private TypeNode DivideUnits(string left, string right, TypeNode baseType)
-    {
-        if (string.IsNullOrEmpty(left) && string.IsNullOrEmpty(right))
-            return baseType;
-            
-        if (string.IsNullOrEmpty(right))
-            return new UnitTypeNode(baseType, left);
-            
-        if (string.IsNullOrEmpty(left))
-            return new UnitTypeNode(baseType, $"1/{right}");
-            
-        // Cancel out same units
-        if (left == right)
-            return baseType;
-            
-        return new UnitTypeNode(baseType, $"{left}/{right}");
-    }
-    
     private bool AreTypesComparable(TypeNode left, TypeNode right)
     {
         if (left == null || right == null) return true;
@@ -1111,7 +1127,7 @@ namespace Ouro.Core.Compiler
         public TypeNode ReturnType { get; }
         
         public FunctionTypeNode(List<TypeNode> paramTypes, TypeNode returnType) 
-            : base($"({string.Join(", ", paramTypes.Select(p => p.Name))}) => {returnType.Name}")
+            : base($"({string.Join(", ", paramTypes.Select(static p => p.Name))}) => {returnType.Name}")
         {
             ParameterTypes = paramTypes;
             ReturnType = returnType;
@@ -1164,7 +1180,7 @@ namespace Ouro.Core.Compiler
     /// </summary>
     public class GenericTypeConstraints
     {
-        public string TypeParameterName { get; set; }
+        public string TypeParameterName { get; set; } = string.Empty;
         public List<TypeNode> Constraints { get; set; } = new List<TypeNode>();
         public bool IsCovariant { get; set; }
         public bool IsContravariant { get; set; }
@@ -1199,7 +1215,7 @@ namespace Ouro.Core.Compiler
                     return InferCallType(call);
                     
                 default:
-                    return expr.Accept(typeChecker);
+                    return expr.Accept(typeChecker) ?? typeChecker.typeRegistry.Unknown;
             }
         }
         
@@ -1251,7 +1267,7 @@ namespace Ouro.Core.Compiler
                 }
             }
             
-            return typeChecker.VisitBinaryExpression(bin);
+            return typeChecker.VisitBinaryExpression(bin) ?? typeChecker.typeRegistry.Unknown;
         }
         
         private TypeNode InferCallType(CallExpression call)
@@ -1272,10 +1288,10 @@ namespace Ouro.Core.Compiler
                 }
             }
             
-            return call.Accept(typeChecker);
+            return call.Accept(typeChecker) ?? typeChecker.typeRegistry.Unknown;
         }
         
-        private List<TypeNode> InferGenericArguments(GenericFunctionTypeNode funcType, List<Expression> arguments)
+        private List<TypeNode>? InferGenericArguments(GenericFunctionTypeNode funcType, List<Expression> arguments)
         {
             // Simple unification-based type inference
             var typeVars = new Dictionary<string, TypeNode>();
@@ -1386,7 +1402,7 @@ namespace Ouro.Core.Compiler
         public new List<TypeNode> TypeArguments { get; }
         
         public GenericTypeNode(string name, List<TypeNode> typeArgs)
-            : base($"{name}<{string.Join(", ", typeArgs.Select(t => t.Name))}>")
+            : base($"{name}<{string.Join(", ", typeArgs.Select(static t => t.Name))}>")
         {
             TypeArguments = typeArgs;
         }

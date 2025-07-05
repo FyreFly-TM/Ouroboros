@@ -1,7 +1,7 @@
 ﻿using Ouro.src.tools;
 using System.Drawing.Imaging;
 
-namespace Ouro.src.tools
+namespace Ouro.Tools
 {
     public enum LogColors
     {

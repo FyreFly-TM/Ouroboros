@@ -56,7 +56,7 @@ namespace Ouro.StdLib.UI
             double rowHeight = 0;
             double availableWidth = containerSize.X - Padding.Left - Padding.Right;
             
-            foreach (var widget in widgets.Where(w => w.IsVisible))
+            foreach (var widget in widgets.Where(static w => w.IsVisible))
             {
                 var widgetWidth = widget.Size.X + widget.Margin.Left + widget.Margin.Right;
                 var widgetHeight = widget.Size.Y + widget.Margin.Top + widget.Margin.Bottom;
@@ -139,7 +139,7 @@ namespace Ouro.StdLib.UI
             var rowHeights = CalculateRowHeights(containerSize);
             
             // Position widgets
-            foreach (var widget in widgets.Where(w => w.IsVisible))
+            foreach (var widget in widgets.Where(static w => w.IsVisible))
             {
                 if (widgetPositions.TryGetValue(widget, out var pos))
                 {
@@ -219,7 +219,7 @@ namespace Ouro.StdLib.UI
             else
             {
                 // Calculate based on widget requirements
-                int maxRow = widgetPositions.Values.Max(p => p.Row + p.RowSpan - 1) + 1;
+                int maxRow = widgetPositions.Values.Max(static p => p.Row + p.RowSpan - 1) + 1;
                 for (int i = 0; i < maxRow; i++)
                 {
                     double maxHeight = 0;
@@ -275,7 +275,7 @@ namespace Ouro.StdLib.UI
             double availableWidth = containerSize.X - Padding.Left - Padding.Right;
             double availableHeight = containerSize.Y - Padding.Top - Padding.Bottom;
             
-            foreach (var widget in widgets.Where(w => w.IsVisible))
+            foreach (var widget in widgets.Where(static w => w.IsVisible))
             {
                 if (Orientation == Orientation.Vertical)
                 {

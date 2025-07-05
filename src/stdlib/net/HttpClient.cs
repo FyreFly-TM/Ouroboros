@@ -246,7 +246,7 @@ namespace Ouro.StdLib.Net
             {
                 StatusCode = (int)response.StatusCode,
                 StatusText = response.ReasonPhrase ?? "",
-                Headers = response.Headers.ToDictionary(h => h.Key, h => string.Join(", ", h.Value)),
+                Headers = response.Headers.ToDictionary(static h => h.Key, static h => string.Join(", ", h.Value)),
                 Body = await response.Content.ReadAsStringAsync()
             };
         }

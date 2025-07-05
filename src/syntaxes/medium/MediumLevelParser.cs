@@ -26,7 +26,7 @@ namespace Ouro.Syntaxes.Medium
         private List<Core.AST.TypeParameter>? ConvertTypeParameters(List<TypeParameter>? localParams)
         {
             if (localParams == null || localParams.Count == 0) return null;
-            return localParams.Select(p => new Core.AST.TypeParameter(
+            return localParams.Select(static p => new Core.AST.TypeParameter(
                 p.Name,
                 p.Constraints,
                 p.Variance == Variance.Covariant,
@@ -48,11 +48,11 @@ namespace Ouro.Syntaxes.Medium
                         statements.Add(stmt);
                     }
                 }
-                catch (ParseException ex)
+                catch (ParseException)
                 {
-                    // Synchronize to next statement
+                    // Synchronize to next statement and rethrow preserving stack trace
                     Synchronize();
-                    throw ex;
+                    throw;
                 }
             }
             
@@ -128,7 +128,7 @@ namespace Ouro.Syntaxes.Medium
                     var name = Advance();
                     
                     // Variable declaration
-                    Expression initializer = null;
+                    Expression? initializer = null;
                     if (Match(TokenType.Assign))
                     {
                         initializer = ParseExpression();
@@ -154,7 +154,7 @@ namespace Ouro.Syntaxes.Medium
             Consume(TokenType.RightParen, "Expected ')' after if condition");
             
             Statement thenBranch = ParseStatement();
-            Statement elseBranch = null;
+            Statement? elseBranch = null;
             
             if (Match(TokenType.Else))
             {
@@ -194,16 +194,13 @@ namespace Ouro.Syntaxes.Medium
             // Expect semicolon
             Consume(TokenType.Semicolon, "Expected ';' after do-while statement");
             
-            // Convert to a while loop with the body executed at least once
-            // do { body } while (condition) => { body; while (condition) { body } }
-            var statements = new List<Statement>();
-            
-            // Add the body once
-            statements.Add(body);
-            
-            // Add the while loop
-            statements.Add(new WhileStatement(doToken, condition, body));
-            
+            // Build combined block with collection initializer for clarity
+            var statements = new List<Statement>
+            {
+                body,
+                new WhileStatement(doToken, condition, body)
+            };
+
             return new BlockStatement(statements);
         }
 
@@ -213,7 +210,7 @@ namespace Ouro.Syntaxes.Medium
             Consume(TokenType.LeftParen, "Expected '(' after 'for'");
             
             // Initializer
-            Statement initializer = null;
+            Statement? initializer = null;
             if (Match(TokenType.Semicolon))
             {
                 initializer = null;
@@ -228,7 +225,7 @@ namespace Ouro.Syntaxes.Medium
             }
             
             // Condition
-            Expression condition = null;
+            Expression? condition = null;
             if (!Match(TokenType.Semicolon))
             {
                 condition = ParseExpression();
@@ -236,7 +233,7 @@ namespace Ouro.Syntaxes.Medium
             Consume(TokenType.Semicolon, "Expected ';' after for condition");
             
             // Increment
-            Expression increment = null;
+            Expression? increment = null;
             if (!Match(TokenType.RightParen))
             {
                 increment = ParseExpression();
@@ -256,7 +253,7 @@ namespace Ouro.Syntaxes.Medium
             Consume(TokenType.LeftBrace, "Expected '{' after switch expression");
             
             List<CaseClause> cases = new List<CaseClause>();
-            List<Statement> defaultStatements = null;
+            List<Statement>? defaultStatements = null;
             
             while (!Match(TokenType.RightBrace) && !IsAtEnd())
             {
@@ -310,12 +307,12 @@ namespace Ouro.Syntaxes.Medium
             Statement tryBlock = ParseBlockStatement();
             
             List<CatchClause> catchClauses = new List<CatchClause>();
-            Statement finallyBlock = null;
+            Statement? finallyBlock = null;
             
             while (Match(TokenType.Catch))
             {
-                string exceptionType = null;
-                string variableName = null;
+                string? exceptionType = null;
+                string? variableName = null;
                 
                 if (Match(TokenType.LeftParen))
                 {
@@ -345,7 +342,7 @@ namespace Ouro.Syntaxes.Medium
         private Statement ParseReturnStatement()
         {
             var returnToken = Previous(); // Get the 'return' token
-            Expression value = null;
+            Expression? value = null;
             if (!Match(TokenType.Semicolon))
             {
                 value = ParseExpression();
@@ -474,14 +471,16 @@ namespace Ouro.Syntaxes.Medium
             
             Consume(TokenType.Arrow, "Expected '=>' in lambda expression");
             
-            Expression body;
+            Expression? body;
             if (Match(TokenType.LeftBrace))
             {
                 // Block body - for now, just parse the block and use first expression
                 // In a real implementation, you'd need to handle this properly
                 var blockBody = ParseBlockStatement();
                 // Create a dummy expression for the block
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 body = new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, 0, 0, 0, 0, "", SyntaxLevel.Medium));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
             else
             {
@@ -490,7 +489,7 @@ namespace Ouro.Syntaxes.Medium
             }
             
             // Convert string parameter names to Parameter objects
-            var parameterObjects = parameters.Select(name => new Parameter(
+            var parameterObjects = parameters.Select(static name => new Parameter(
                 new TypeNode("var"), // Infer type
                 name,
                 null,
@@ -509,14 +508,14 @@ namespace Ouro.Syntaxes.Medium
             Consume(TokenType.LeftBrace, "Expected '{' after switch");
             
             List<PatternCase> cases = new List<PatternCase>();
-            Expression defaultCase = null;
+            Expression? defaultCase = null;
             
             while (!Match(TokenType.RightBrace) && !IsAtEnd())
             {
                 if (Match(TokenType.Case))
                 {
                     Pattern pattern = ParsePattern();
-                    Expression guard = null;
+                    Expression? guard = null;
                     
                     if (Match(TokenType.When))
                     {
@@ -680,8 +679,10 @@ namespace Ouro.Syntaxes.Medium
 
         private Token Current()
         {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return current < tokens.Count ? tokens[current] : 
                 new Token(TokenType.EndOfFile, "", null, 0, 0, 0, 0, "", SyntaxLevel.Medium);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
 
         private Token Previous()
@@ -780,7 +781,7 @@ namespace Ouro.Syntaxes.Medium
             }
             
             // Parse base class and interfaces
-            TypeNode baseClass = null;
+            TypeNode? baseClass = null;
             var interfaces = new List<TypeNode>();
             
             if (Match(TokenType.Colon))
@@ -897,7 +898,7 @@ namespace Ouro.Syntaxes.Medium
             var name = Consume(TokenType.Identifier, "Expected enum name");
             
             // Parse underlying type
-            TypeNode underlyingType = null;
+            TypeNode? underlyingType = null;
             if (Match(TokenType.Colon))
             {
                 underlyingType = ParseType();
@@ -910,7 +911,7 @@ namespace Ouro.Syntaxes.Medium
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
                 var memberName = Consume(TokenType.Identifier, "Expected enum member name");
-                Expression value = null;
+                Expression? value = null;
                 
                 if (Match(TokenType.Assign))
                 {
@@ -976,8 +977,8 @@ namespace Ouro.Syntaxes.Medium
             // Property
             if (Match(TokenType.LeftBrace))
             {
-                BlockStatement getter = null;
-                BlockStatement setter = null;
+                BlockStatement? getter = null;
+                BlockStatement? setter = null;
                 
                 while (!Check(TokenType.RightBrace) && !IsAtEnd())
                 {
@@ -1024,7 +1025,7 @@ namespace Ouro.Syntaxes.Medium
                     {
                         var paramType = ParseType();
                         var paramName = Consume(TokenType.Identifier, "Expected parameter name");
-                        Expression defaultValue = null;
+                        Expression? defaultValue = null;
                         
                         if (Match(TokenType.Assign))
                         {
@@ -1037,7 +1038,7 @@ namespace Ouro.Syntaxes.Medium
                 
                 Consume(TokenType.RightParen, "Expected ')' after parameters");
                 
-                BlockStatement body;
+                BlockStatement? body;
                 if (Match(TokenType.Semicolon))
                 {
                     // Abstract method
@@ -1047,13 +1048,15 @@ namespace Ouro.Syntaxes.Medium
                 {
                     body = ParseBlockStatement() as BlockStatement;
                 }
-                
+
+#pragma warning disable CS8604 // Possible null reference argument.
                 return new FunctionDeclaration(name, type, parameters, body, null, false, modifiers);
+#pragma warning restore CS8604 // Possible null reference argument.
             }
             // Field
             else
             {
-                Expression initializer = null;
+                Expression? initializer = null;
                 if (Match(TokenType.Assign))
                 {
                     initializer = ParseExpression();
@@ -1116,7 +1119,9 @@ namespace Ouro.Syntaxes.Medium
                 Consume(TokenType.RightParen, "Expected ')' after parameters");
                 Consume(TokenType.Semicolon, "Expected ';' after interface method");
                 
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 return new FunctionDeclaration(name, type, parameters, null);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
             
             throw Error(Current(), "Invalid interface member");
@@ -1215,11 +1220,12 @@ namespace Ouro.Syntaxes.Medium
             
             if (Match(TokenType.Question))
             {
+                var questionToken = Previous();
                 var thenExpr = ParseExpression();
-                Consume(TokenType.Colon, "Expected ':' in conditional expression");
-                var elseExpr = ParseExpression();
-                
-                return new ConditionalExpression(expr, thenExpr, elseExpr);
+                Consume(TokenType.Colon, "Expected ':' after ternary then expression");
+                var colonToken = Previous();
+                var elseExpr = ParseConditional();
+                return new ConditionalExpression(expr, questionToken, thenExpr, colonToken, elseExpr);
             }
             
             return expr;
@@ -1514,7 +1520,7 @@ namespace Ouro.Syntaxes.Medium
                     Consume(TokenType.RightParen, "Expected ')' after arguments");
                     
                     // Object initializer
-                    Dictionary<string, Expression> initializers = null;
+                    Dictionary<string, Expression>? initializers = null;
                     if (Match(TokenType.LeftBrace))
                     {
                         initializers = new Dictionary<string, Expression>();
@@ -1540,7 +1546,7 @@ namespace Ouro.Syntaxes.Medium
                     Consume(TokenType.RightBracket, "Expected ']' after array size");
                     
                     // Array initializer
-                    List<Expression> elements = null;
+                    List<Expression>? elements = null;
                     if (Match(TokenType.LeftBrace))
                     {
                         elements = new List<Expression>();
@@ -1899,8 +1905,10 @@ namespace Ouro.Syntaxes.Medium
         
         public override T Accept<T>(IAstVisitor<T> visitor)
         {
+#pragma warning disable CS8604 // Possible null reference argument.
             return visitor.VisitMatchExpression(new MatchExpression(Target, 
-                Cases.Select(c => new MatchArm(c.Pattern, c.Guard, c.Result)).ToList()));
+                Cases.Select(static c => new MatchArm(c.Pattern, c.Guard, c.Result)).ToList()));
+#pragma warning restore CS8604 // Possible null reference argument.
         }
     }
 
@@ -1909,7 +1917,9 @@ namespace Ouro.Syntaxes.Medium
         public List<(string name, Expression value)> Properties { get; }
         
         public AnonymousObjectExpression(List<(string name, Expression value)> properties)
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             : base(new Token(TokenType.LeftBrace, "{", null, 0, 0, 0, 0, "", SyntaxLevel.Medium))
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             Properties = properties;
         }
@@ -1917,8 +1927,10 @@ namespace Ouro.Syntaxes.Medium
         public override T Accept<T>(IAstVisitor<T> visitor)
         {
             // Convert to struct literal for visitor
-            var fields = Properties.ToDictionary(p => p.name, p => p.value);
+            var fields = Properties.ToDictionary(static p => p.name, static p => p.value);
+#pragma warning disable CS8604 // Possible null reference argument.
             return visitor.VisitStructLiteral(new StructLiteral(Token, fields));
+#pragma warning restore CS8604 // Possible null reference argument.
         }
     }
 
@@ -1948,15 +1960,31 @@ namespace Ouro.Syntaxes.Medium
         public override T Accept<T>(IAstVisitor<T> visitor)
         {
             // Convert to conditional expression for visitor
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+            var questionToken = new Token(TokenType.Question, "?", null, Line, Column, 0, 0, "", SyntaxLevel.Medium);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+            var colonToken = new Token(TokenType.Colon, ":", null, Line, Column, 0, 0, "", SyntaxLevel.Medium);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return visitor.VisitConditionalExpression(
                 new ConditionalExpression(
                     new BinaryExpression(Object, 
                         new Token(TokenType.NotEqual, "!=", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
                         new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))),
+                    questionToken,
                     new MemberExpression(Object, 
                         new Token(TokenType.Dot, ".", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
                         new Token(TokenType.Identifier, MemberName, MemberName, Line, Column, 0, 0, "", SyntaxLevel.Medium)),
+                    colonToken,
                     new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
     }
 
@@ -1975,13 +2003,25 @@ namespace Ouro.Syntaxes.Medium
         public override T Accept<T>(IAstVisitor<T> visitor)
         {
             // Convert to conditional expression for visitor
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+            var questionToken = new Token(TokenType.Question, "?", null, Line, Column, 0, 0, "", SyntaxLevel.Medium);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+            var colonToken = new Token(TokenType.Colon, ":", null, Line, Column, 0, 0, "", SyntaxLevel.Medium);
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return visitor.VisitConditionalExpression(
                 new ConditionalExpression(
                     new BinaryExpression(Left,
                         new Token(TokenType.NotEqual, "!=", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
                         new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, Line, Column, 0, 0, "", SyntaxLevel.Medium))),
+                    questionToken,
                     Left,
+                    colonToken,
                     Right));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
     }
 
@@ -1992,7 +2032,9 @@ namespace Ouro.Syntaxes.Medium
         public bool IsInclusive { get; }
         
         public RangeExpression(Expression? start, Expression? end, bool isInclusive)
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             : base(new Token(TokenType.Range, "..", null, 0, 0, 0, 0, "", SyntaxLevel.Medium))
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             Start = start;
             End = end;
@@ -2004,7 +2046,9 @@ namespace Ouro.Syntaxes.Medium
             // For now, treat as a binary expression
             var startExpr = Start ?? new LiteralExpression(new Token(TokenType.IntegerLiteral, "0", 0, Line, Column, 0, 0, "", SyntaxLevel.Medium));
             var endExpr = End ?? new LiteralExpression(new Token(TokenType.IntegerLiteral, "int.MaxValue", int.MaxValue, Line, Column, 0, 0, "", SyntaxLevel.Medium));
+#pragma warning disable CS8604 // Possible null reference argument.
             return visitor.VisitBinaryExpression(new BinaryExpression(startExpr, Token, endExpr));
+#pragma warning restore CS8604 // Possible null reference argument.
         }
     }
 
@@ -2035,9 +2079,11 @@ namespace Ouro.Syntaxes.Medium
         public override T Accept<T>(IAstVisitor<T> visitor)
         {
             // Convert to member access with computed property
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return visitor.VisitMemberExpression(new MemberExpression(Array, 
                 new Token(TokenType.LeftBracket, "[", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
                 new Token(TokenType.Identifier, $"[{Index}]", Index, Line, Column, 0, 0, "", SyntaxLevel.Medium)));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
     }
     
@@ -2056,9 +2102,11 @@ namespace Ouro.Syntaxes.Medium
         public override T Accept<T>(IAstVisitor<T> visitor)
         {
             // Convert to regular member expression with arrow operator
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return visitor.VisitMemberExpression(new MemberExpression(Pointer,
                 new Token(TokenType.Arrow, "->", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
                 new Token(TokenType.Identifier, MemberName, MemberName, Line, Column, 0, 0, "", SyntaxLevel.Medium)));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
     }
     
@@ -2088,7 +2136,9 @@ namespace Ouro.Syntaxes.Medium
         public List<Expression>? Initializer { get; }
         
         public ArrayCreationExpression(TypeNode elementType, Expression size, List<Expression>? initializer)
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             : base(new Token(TokenType.New, "new", null, 0, 0, 0, 0, "", SyntaxLevel.Medium))
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             ElementType = elementType;
             Size = size;
@@ -2099,8 +2149,10 @@ namespace Ouro.Syntaxes.Medium
         {
             // Convert to NewExpression with array type
             var arrayType = new TypeNode(ElementType.Name, ElementType.TypeArguments, true, 1);
+#pragma warning disable CS8604 // Possible null reference argument.
             return visitor.VisitNewExpression(new NewExpression(Token, arrayType, 
                 new List<Expression> { Size }, Initializer));
+#pragma warning restore CS8604 // Possible null reference argument.
         }
     }
     
@@ -2118,9 +2170,11 @@ namespace Ouro.Syntaxes.Medium
         
         public override T Accept<T>(IAstVisitor<T> visitor)
         {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return visitor.VisitMemberExpression(new MemberExpression(Object,
                 new Token(TokenType.Dot, ".", null, Line, Column, 0, 0, "", SyntaxLevel.Medium),
                 new Token(TokenType.Identifier, MemberName, MemberName, Line, Column, 0, 0, "", SyntaxLevel.Medium)));
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
     }
 

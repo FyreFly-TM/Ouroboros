@@ -134,7 +134,7 @@ namespace Ouro.Core.Macros
             Parameters = parameters;
             Body = body;
             Type = MacroType.Expression;
-            IsVariadic = parameters.Any(p => p.IsVariadic);
+            IsVariadic = parameters.Any(static p => p.IsVariadic);
         }
     }
 
@@ -318,7 +318,7 @@ namespace Ouro.Core.Macros
             {
                 if (macroSystem.IsMacroDefined(id.Name))
                 {
-                    var invocation = new MacroInvocation(call.Token, id.Name, call.Arguments.Cast<AstNode>().ToList());
+                    var invocation = new MacroInvocation(call.Token ?? new Token(TokenType.Identifier, id.Name, id.Name, 0, 0, 0, 0, "", SyntaxLevel.High), id.Name, call.Arguments.Cast<AstNode>().ToList());
                     return macroSystem.ExpandMacro(invocation);
                 }
             }
@@ -463,6 +463,10 @@ namespace Ouro.Core.Macros
         public virtual T VisitThrowExpression(ThrowExpression expr) => DefaultVisit(expr);
         public virtual T VisitMatchArm(MatchArm arm) => DefaultVisit(arm);
         public virtual T VisitStructLiteral(StructLiteral expr) => DefaultVisit(expr);
+        public virtual T VisitIndexExpression(IndexExpression expr) => DefaultVisit(expr);
+        public virtual T VisitTupleExpression(TupleExpression expr) => DefaultVisit(expr);
+        public virtual T VisitSpreadExpression(SpreadExpression expr) => DefaultVisit(expr);
+        public virtual T VisitRangeExpression(RangeExpression expr) => DefaultVisit(expr);
 
         public virtual T VisitBlockStatement(BlockStatement stmt) => DefaultVisit(stmt);
         public virtual T VisitExpressionStatement(ExpressionStatement stmt) => DefaultVisit(stmt);
@@ -554,9 +558,11 @@ namespace Ouro.Core.Macros
         private static void RegisterAssertMacro(MacroSystem macroSystem)
         {
             // assert!(condition) => if (!condition) throw new AssertionException("Assertion failed: condition");
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             var macro = new MacroDefinition("assert", 
                 new List<MacroParameter> { new MacroParameter("condition", MacroParameterType.Expression) },
                 null); // Body will be created dynamically
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             macro.Type = MacroType.Statement;
             macroSystem.DefineMacro("assert", macro);
@@ -565,9 +571,11 @@ namespace Ouro.Core.Macros
         private static void RegisterDebugMacro(MacroSystem macroSystem)
         {
             // debug!(expr) => Console.WriteLine($"Debug: {nameof(expr)} = {expr}");
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             var macro = new MacroDefinition("debug",
                 new List<MacroParameter> { new MacroParameter("expr", MacroParameterType.Expression) },
                 null); // Body will be created dynamically
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             macro.Type = MacroType.Statement;
             macroSystem.DefineMacro("debug", macro);
@@ -577,9 +585,11 @@ namespace Ouro.Core.Macros
         {
             // todo!() => throw new NotImplementedException("TODO: Not implemented");
             // todo!(message) => throw new NotImplementedException($"TODO: {message}");
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             var macro = new MacroDefinition("todo",
                 new List<MacroParameter> { new MacroParameter("message", MacroParameterType.Expression) { IsVariadic = true } },
                 null); // Body will be created dynamically
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             macro.Type = MacroType.Expression;
             macroSystem.DefineMacro("todo", macro);
@@ -588,9 +598,11 @@ namespace Ouro.Core.Macros
         private static void RegisterUnreachableMacro(MacroSystem macroSystem)
         {
             // unreachable!() => throw new UnreachableException("This code should be unreachable");
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             var macro = new MacroDefinition("unreachable",
                 new List<MacroParameter>(),
                 null); // Body will be created dynamically
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             macro.Type = MacroType.Expression;
             macroSystem.DefineMacro("unreachable", macro);
@@ -599,9 +611,11 @@ namespace Ouro.Core.Macros
         private static void RegisterStringifyMacro(MacroSystem macroSystem)
         {
             // stringify!(expr) => "expr" (converts expression to string literal)
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             var macro = new MacroDefinition("stringify",
                 new List<MacroParameter> { new MacroParameter("expr", MacroParameterType.Expression) },
                 null); // Body will be created dynamically
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             macro.Type = MacroType.Expression;
             macroSystem.DefineMacro("stringify", macro);
@@ -611,9 +625,11 @@ namespace Ouro.Core.Macros
         {
             // vec![1, 2, 3] => new Vector3(1, 2, 3)
             // vec![x; n] => Vector.Repeat(x, n)
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             var macro = new MacroDefinition("vec",
                 new List<MacroParameter> { new MacroParameter("elements", MacroParameterType.Expression) { IsVariadic = true } },
                 null); // Body will be created dynamically
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             macro.Type = MacroType.Expression;
             macroSystem.DefineMacro("vec", macro);
@@ -622,9 +638,11 @@ namespace Ouro.Core.Macros
         private static void RegisterTryMacro(MacroSystem macroSystem)
         {
             // try!(expr) => expr.IsError ? return expr.Error : expr.Value
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             var macro = new MacroDefinition("try",
                 new List<MacroParameter> { new MacroParameter("expr", MacroParameterType.Expression) },
                 null); // Body will be created dynamically
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             
             macro.Type = MacroType.Expression;
             macroSystem.DefineMacro("try", macro);

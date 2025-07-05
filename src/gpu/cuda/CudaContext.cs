@@ -13,7 +13,7 @@ namespace Ouro.GPU.CUDA
         private bool disposed;
 
         public int DeviceId { get; private set; }
-        public CudaDeviceProperties Properties { get; private set; }
+        public CudaDeviceProperties? Properties { get; private set; }
 
         public CudaContext(int deviceId = 0)
         {
@@ -103,7 +103,7 @@ namespace Ouro.GPU.CUDA
 
     public class CudaDeviceProperties
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public int Major { get; set; }
         public int Minor { get; set; }
         public long TotalMemory { get; set; }

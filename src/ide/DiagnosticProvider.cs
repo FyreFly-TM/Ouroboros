@@ -16,11 +16,11 @@ namespace Ouro.IDE
     /// </summary>
     public class DiagnosticProvider
     {
-        private readonly TypeChecker typeChecker;
-        private readonly DiagnosticEngine diagnosticEngine;
+        private readonly TypeChecker? typeChecker;
+        private readonly DiagnosticEngine? diagnosticEngine;
         private readonly Dictionary<string, List<Diagnostic>> fileDiagnostics = new();
 
-        public DiagnosticProvider(TypeChecker typeChecker, DiagnosticEngine diagnosticEngine)
+        public DiagnosticProvider(TypeChecker? typeChecker, DiagnosticEngine? diagnosticEngine)
         {
             this.typeChecker = typeChecker;
             this.diagnosticEngine = diagnosticEngine;
@@ -42,7 +42,7 @@ namespace Ouro.IDE
                 // Collect lexer errors
                 diagnostics.AddRange(ConvertLexerErrors(lexer));
 
-                if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+                if (diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error))
                 {
                     // Don't continue if there are lexer errors
                     UpdateFileDiagnostics(filePath, diagnostics);
@@ -56,7 +56,7 @@ namespace Ouro.IDE
                 // Collect parser errors
                 diagnostics.AddRange(ConvertParserErrors(parser));
 
-                if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+                if (diagnostics.Any(static d => d.Severity == DiagnosticSeverity.Error))
                 {
                     // Don't continue if there are parser errors
                     UpdateFileDiagnostics(filePath, diagnostics);
@@ -66,7 +66,7 @@ namespace Ouro.IDE
                 // Semantic analysis
                 try
                 {
-                    typeChecker.Check(ast);
+                    typeChecker?.Check(ast);
                 }
                 catch (TypeCheckException tcEx)
                 {
@@ -181,7 +181,7 @@ namespace Ouro.IDE
             return new List<Diagnostic>();
         }
 
-        private async Task<List<Diagnostic>> GenerateWarningsAsync(Core.AST.Program ast, string content)
+        private Task<List<Diagnostic>> GenerateWarningsAsync(Core.AST.Program ast, string content)
         {
             var warnings = new List<Diagnostic>();
 
@@ -206,7 +206,7 @@ namespace Ouro.IDE
             {
                 warnings.Add(new Diagnostic
                 {
-                    Range = GetNodeRange(deprecated.Node),
+                    Range = GetNodeRange(deprecated.Node!),
                     Message = deprecated.Message,
                     Severity = DiagnosticSeverity.Warning,
                     Code = "deprecated",
@@ -216,7 +216,7 @@ namespace Ouro.IDE
                 });
             }
 
-            return warnings;
+            return Task.FromResult(warnings);
         }
 
         private List<Diagnostic> GenerateHints(Core.AST.Program ast, string content)
@@ -243,7 +243,7 @@ namespace Ouro.IDE
             {
                 hints.Add(new Diagnostic
                 {
-                    Range = GetNodeRange(issue.Node),
+                    Range = GetNodeRange(issue.Node!),
                     Message = issue.Message,
                     Severity = DiagnosticSeverity.Hint,
                     Code = issue.Code,
@@ -406,7 +406,7 @@ namespace Ouro.IDE
             return node switch
             {
                 Core.AST.IdentifierExpression id => id.Name.Length,
-                Core.AST.LiteralExpression lit => lit.Value?.ToString().Length ?? 1,
+                Core.AST.LiteralExpression lit => lit.Value?.ToString()?.Length ?? 1,
                 Core.AST.BinaryExpression => 3, // operator length estimate
                 Core.AST.UnaryExpression => 1,
                 _ => 10 // default estimate
@@ -429,7 +429,7 @@ namespace Ouro.IDE
                             new TextEdit
                             {
                                 Range = new Range { Start = new Position(0, 0), End = new Position(0, 0) },
-                                NewText = $"import {{ {diagnostic.Data["symbol"]} }} from \"{diagnostic.Data["module"]}\";\n"
+                                NewText = $"import {{ {diagnostic.Data?["symbol"]} }} from \"{diagnostic.Data?["module"]}\";\n"
                             }
                         }
                     }
@@ -452,7 +452,7 @@ namespace Ouro.IDE
                         {
                             new TextEdit
                             {
-                                Range = diagnostic.Range,
+                                Range = diagnostic.Range!,
                                 NewText = ""
                             }
                         }
@@ -476,8 +476,8 @@ namespace Ouro.IDE
                         {
                             new TextEdit
                             {
-                                Range = diagnostic.Range,
-                                NewText = "_" + diagnostic.Data["variableName"]
+                                Range = diagnostic.Range!,
+                                NewText = "_" + diagnostic.Data!["variableName"]
                             }
                         }
                     }
@@ -501,7 +501,7 @@ namespace Ouro.IDE
                         {
                             new TextEdit
                             {
-                                Range = diagnostic.Range,
+                                Range = diagnostic.Range!,
                                 NewText = $": {inferredType}"
                             }
                         }
@@ -514,7 +514,7 @@ namespace Ouro.IDE
         {
             return new CodeAction
             {
-                Title = $"Replace with {diagnostic.Data["replacement"]}",
+                Title = $"Replace with {diagnostic.Data!["replacement"]}",
                 Kind = CodeActionKind.QuickFix,
                 Diagnostics = new[] { diagnostic },
                 Edit = new WorkspaceEdit
@@ -525,7 +525,7 @@ namespace Ouro.IDE
                         {
                             new TextEdit
                             {
-                                Range = diagnostic.Range,
+                                Range = diagnostic.Range!,
                                 NewText = diagnostic.Data["replacement"]
                             }
                         }
@@ -534,18 +534,18 @@ namespace Ouro.IDE
             };
         }
 
-        public event Action<string, List<Diagnostic>> DiagnosticsChanged;
+        public event Action<string, List<Diagnostic>>? DiagnosticsChanged;
     }
 
     public class Diagnostic
     {
-        public Range Range { get; set; }
+        public Range? Range { get; set; }
         public DiagnosticSeverity Severity { get; set; }
-        public string Code { get; set; }
-        public string Source { get; set; }
-        public string Message { get; set; }
-        public DiagnosticTag[] Tags { get; set; }
-        public Dictionary<string, string> Data { get; set; }
+        public string? Code { get; set; }
+        public string? Source { get; set; }
+        public string? Message { get; set; }
+        public DiagnosticTag[]? Tags { get; set; }
+        public Dictionary<string, string>? Data { get; set; }
     }
 
     public enum DiagnosticSeverity
@@ -564,8 +564,8 @@ namespace Ouro.IDE
 
     public class Range
     {
-        public Position Start { get; set; }
-        public Position End { get; set; }
+        public Position? Start { get; set; }
+        public Position? End { get; set; }
     }
 
     public class Position
@@ -582,11 +582,11 @@ namespace Ouro.IDE
 
     public class CodeAction
     {
-        public string Title { get; set; }
+        public string? Title { get; set; }
         public CodeActionKind Kind { get; set; }
-        public Diagnostic[] Diagnostics { get; set; }
-        public WorkspaceEdit Edit { get; set; }
-        public Command Command { get; set; }
+        public Diagnostic[]? Diagnostics { get; set; }
+        public WorkspaceEdit? Edit { get; set; }
+        public Command? Command { get; set; }
     }
 
     public enum CodeActionKind
@@ -602,37 +602,37 @@ namespace Ouro.IDE
 
     public class WorkspaceEdit
     {
-        public Dictionary<string, List<TextEdit>> Changes { get; set; }
+        public Dictionary<string, List<TextEdit>>? Changes { get; set; }
     }
 
     public class TextEdit
     {
-        public Range Range { get; set; }
-        public string NewText { get; set; }
+        public Range? Range { get; set; }
+        public string? NewText { get; set; }
     }
 
     public class Command
     {
-        public string Title { get; set; }
-        public string CommandId { get; set; }
-        public object[] Arguments { get; set; }
+        public string? Title { get; set; }
+        public string? CommandId { get; set; }
+        public object[]? Arguments { get; set; }
     }
 
     internal class DeprecatedUsage
     {
-        public Core.AST.AstNode Node { get; set; }
-        public string Message { get; set; }
+        public Core.AST.AstNode? Node { get; set; }
+        public string? Message { get; set; }
         public int Line { get; set; }
         public int Column { get; set; }
-        public Dictionary<string, string> Data { get; set; }
+        public Dictionary<string, string>? Data { get; set; }
     }
 
     internal class StyleIssue
     {
-        public Core.AST.AstNode Node { get; set; }
-        public string Message { get; set; }
-        public string Suggestion { get; set; }
-        public string Code { get; set; }
+        public Core.AST.AstNode? Node { get; set; }
+        public string? Message { get; set; }
+        public string? Suggestion { get; set; }
+        public string? Code { get; set; }
         public int Line { get; set; }
         public int Column { get; set; }
     }
@@ -642,8 +642,8 @@ namespace Ouro.IDE
         public int Line { get; set; }
         public int Column { get; set; }
         public int Length { get; set; }
-        public string Message { get; set; }
-        public string Code { get; set; }
+        public string? Message { get; set; }
+        public string? Code { get; set; }
     }
 
     internal class TypeCheckException : Exception

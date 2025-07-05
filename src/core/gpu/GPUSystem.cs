@@ -913,7 +913,7 @@ namespace Ouro.Core.GPU
                     var cudaRuntimePath = System.IO.Path.Combine(cudaPath, "bin", 
                         RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "cudart64_*.dll" : "libcudart.so");
                     
-                    if (System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(cudaRuntimePath), 
+                    if (System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(cudaRuntimePath) ?? string.Empty, 
                         System.IO.Path.GetFileName(cudaRuntimePath)).Any())
                     {
                         return true;
@@ -933,7 +933,7 @@ namespace Ouro.Core.GPU
                         if (System.IO.Directory.Exists(cudaDir))
                         {
                             var cudartPath = System.IO.Path.Combine(cudaDir, "bin", "cudart64_*.dll");
-                            if (System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(cudartPath),
+                            if (System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(cudartPath) ?? string.Empty,
                                 System.IO.Path.GetFileName(cudartPath)).Any())
                             {
                                 return true;
