@@ -137,8 +137,8 @@ namespace Ouro.Tools.DocGen
 
             // Generate pages for each namespace
             var namespaces = documentedItems.Values
-                .GroupBy(static i => i.Namespace)
-                .OrderBy(static g => g.Key);
+                .GroupBy(i => i.Namespace)
+                .OrderBy(g => g.Key);
 
             foreach (var ns in namespaces)
             {
@@ -181,9 +181,9 @@ namespace Ouro.Tools.DocGen
             html.AppendLine("        <ul>");
 
             var namespaces = documentedItems.Values
-                .Select(static i => i.Namespace)
+                .Select(i => i.Namespace)
                 .Distinct()
-                .OrderBy(static n => n);
+                .OrderBy(n => n);
 
             foreach (var ns in namespaces)
             {
@@ -229,14 +229,14 @@ namespace Ouro.Tools.DocGen
             html.AppendLine($"    <h1>Namespace: {namespaceName}</h1>");
             
             // Group by type
-            var groups = items.GroupBy(static i => i.ItemType).OrderBy(static g => g.Key);
+            var groups = items.GroupBy(i => i.ItemType).OrderBy(g => g.Key);
             
             foreach (var group in groups)
             {
                 html.AppendLine($"    <h2>{group.Key}s</h2>");
                 html.AppendLine("    <ul>");
                 
-                foreach (var item in group.OrderBy(static i => i.Name))
+                foreach (var item in group.OrderBy(i => i.Name))
                 {
                     html.AppendLine($"        <li>");
                     html.AppendLine($"            <a href=\"{item.Name}.html\">{item.Name}</a>");
@@ -394,8 +394,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Generate namespace files
             var namespaces = documentedItems.Values
-                .GroupBy(static i => i.Namespace)
-                .OrderBy(static g => g.Key);
+                .GroupBy(i => i.Namespace)
+                .OrderBy(g => g.Key);
 
             foreach (var ns in namespaces)
             {
@@ -447,14 +447,14 @@ document.addEventListener('DOMContentLoaded', function() {
             md.AppendLine($"# Namespace: {namespaceName}");
             md.AppendLine();
             
-            var groups = items.GroupBy(static i => i.ItemType).OrderBy(static g => g.Key);
+            var groups = items.GroupBy(i => i.ItemType).OrderBy(g => g.Key);
             
             foreach (var group in groups)
             {
                 md.AppendLine($"## {group.Key}s");
                 md.AppendLine();
                 
-                foreach (var item in group.OrderBy(static i => i.Name))
+                foreach (var item in group.OrderBy(i => i.Name))
                 {
                     md.AppendLine($"### {item.Name}");
                     md.AppendLine();
@@ -652,12 +652,12 @@ document.head.appendChild(style);
             var stats = new Dictionary<string, int>
             {
                 ["Total Items"] = documentedItems.Count,
-                ["Namespaces"] = documentedItems.Values.Select(static i => i.Namespace).Distinct().Count(),
-                ["Classes"] = documentedItems.Values.Count(static i => i.ItemType == ItemType.Class),
-                ["Interfaces"] = documentedItems.Values.Count(static i => i.ItemType == ItemType.Interface),
-                ["Functions"] = documentedItems.Values.Count(static i => i.ItemType == ItemType.Function),
-                ["Enums"] = documentedItems.Values.Count(static i => i.ItemType == ItemType.Enum),
-                ["Properties"] = documentedItems.Values.Count(static i => i.ItemType == ItemType.Property)
+                ["Namespaces"] = documentedItems.Values.Select(i => i.Namespace).Distinct().Count(),
+                ["Classes"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Class),
+                ["Interfaces"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Interface),
+                ["Functions"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Function),
+                ["Enums"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Enum),
+                ["Properties"] = documentedItems.Values.Count(i => i.ItemType == ItemType.Property)
             };
 
             return stats;
@@ -876,7 +876,7 @@ document.head.appendChild(style);
             if (decl.TypeParameters.Any())
             {
                 sb.Append("<");
-                sb.Append(string.Join(", ", decl.TypeParameters.Select(static tp => tp.Name)));
+                sb.Append(string.Join(", ", decl.TypeParameters.Select(tp => tp.Name)));
                 sb.Append(">");
             }
             
@@ -891,7 +891,7 @@ document.head.appendChild(style);
                     sb.Append(" : ");
                 else
                     sb.Append(", ");
-                sb.Append(string.Join(", ", decl.Interfaces.Select(static i => i.Name)));
+                sb.Append(string.Join(", ", decl.Interfaces.Select(i => i.Name)));
             }
             
             return sb.ToString();
@@ -915,12 +915,12 @@ document.head.appendChild(style);
             if (decl.TypeParameters.Any())
             {
                 sb.Append("<");
-                sb.Append(string.Join(", ", decl.TypeParameters.Select(static tp => tp.Name)));
+                sb.Append(string.Join(", ", decl.TypeParameters.Select(tp => tp.Name)));
                 sb.Append(">");
             }
             
             sb.Append("(");
-            sb.Append(string.Join(", ", decl.Parameters.Select(static p => $"{p.Type.Name} {p.Name}")));
+            sb.Append(string.Join(", ", decl.Parameters.Select(p => $"{p.Type.Name} {p.Name}")));
             sb.Append(")");
             
             return sb.ToString();
@@ -954,40 +954,7 @@ document.head.appendChild(style);
         public object? VisitMatchExpression(MatchExpression expr) => null;
         public object? VisitThrowExpression(ThrowExpression expr) => null;
         public object? VisitMatchArm(MatchArm arm) => null;
-        public object? VisitStructLiteral(StructLiteral expr)
-        {
-            return null;
-        }
-        
-        public object? VisitIndexExpression(IndexExpression expr)
-        {
-            expr.Object.Accept(this);
-            expr.Index.Accept(this);
-            return null;
-        }
-        
-        public object? VisitTupleExpression(TupleExpression expr)
-        {
-            foreach (var element in expr.Elements)
-            {
-                element.Accept(this);
-            }
-            return null;
-        }
-        
-        public object? VisitSpreadExpression(SpreadExpression expr)
-        {
-            expr.Expression.Accept(this);
-            return null;
-        }
-        
-        public object? VisitRangeExpression(RangeExpression expr)
-        {
-            expr.Start.Accept(this);
-            expr.End.Accept(this);
-            return null;
-        }
-
+        public object? VisitStructLiteral(StructLiteral expr) => null;
         public object? VisitBlockStatement(BlockStatement stmt) => null;
         public object? VisitExpressionStatement(ExpressionStatement stmt) => null;
         public object? VisitVariableDeclaration(VariableDeclaration stmt) => null;
@@ -1027,9 +994,374 @@ document.head.appendChild(style);
         public object? VisitTraitDeclaration(TraitDeclaration decl) => null;
         public object? VisitImplementDeclaration(ImplementDeclaration decl) => null;
 
-        private void ExtractTypesFromExpression(Expression expr)
+        object? IAstVisitor<object?>.VisitBinaryExpression(BinaryExpression expr)
         {
-            // Implementation of ExtractTypesFromExpression method
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitUnaryExpression(UnaryExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitLiteralExpression(LiteralExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitIdentifierExpression(IdentifierExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitGenericIdentifierExpression(GenericIdentifierExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitAssignmentExpression(AssignmentExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitCallExpression(CallExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitMemberExpression(MemberExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitArrayExpression(ArrayExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitLambdaExpression(LambdaExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitConditionalExpression(ConditionalExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitNewExpression(NewExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitThisExpression(ThisExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitBaseExpression(BaseExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitTypeofExpression(TypeofExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitSizeofExpression(SizeofExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitNameofExpression(NameofExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitInterpolatedStringExpression(InterpolatedStringExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitMathExpression(MathExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitVectorExpression(VectorExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitMatrixExpression(MatrixExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitQuaternionExpression(QuaternionExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitIsExpression(IsExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitCastExpression(CastExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitMatchExpression(MatchExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitThrowExpression(ThrowExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitMatchArm(MatchArm arm)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitStructLiteral(StructLiteral expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitIndexExpression(IndexExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitTupleExpression(TupleExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitSpreadExpression(SpreadExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitRangeExpression(RangeExpression expr)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitBlockStatement(BlockStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitExpressionStatement(ExpressionStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitVariableDeclaration(VariableDeclaration stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitIfStatement(IfStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitWhileStatement(WhileStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitForStatement(ForStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitForEachStatement(ForEachStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitRepeatStatement(RepeatStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitIterateStatement(IterateStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitParallelForStatement(ParallelForStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitDoWhileStatement(DoWhileStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitSwitchStatement(SwitchStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitReturnStatement(ReturnStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitBreakStatement(BreakStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitContinueStatement(ContinueStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitThrowStatement(ThrowStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitTryStatement(TryStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitUsingStatement(UsingStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitLockStatement(LockStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitUnsafeStatement(UnsafeStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitFixedStatement(FixedStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitYieldStatement(YieldStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitMatchStatement(MatchStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitAssemblyStatement(AssemblyStatement stmt)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitClassDeclaration(ClassDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitInterfaceDeclaration(InterfaceDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitStructDeclaration(StructDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitEnumDeclaration(EnumDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitFunctionDeclaration(FunctionDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitPropertyDeclaration(PropertyDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitFieldDeclaration(FieldDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitNamespaceDeclaration(NamespaceDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitImportDeclaration(ImportDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitTypeAliasDeclaration(TypeAliasDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitComponentDeclaration(ComponentDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitSystemDeclaration(SystemDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitEntityDeclaration(EntityDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitDomainDeclaration(DomainDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitMacroDeclaration(MacroDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitTraitDeclaration(TraitDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitImplementDeclaration(ImplementDeclaration decl)
+        {
+            throw new NotImplementedException();
+        }
+
+        object? IAstVisitor<object?>.VisitProgram(Core.AST.Program program)
+        {
+            throw new NotImplementedException();
         }
     }
 } 

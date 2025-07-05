@@ -43,7 +43,7 @@ namespace Ouro.Core.Parser
                 
                 System.IO.File.WriteAllText(debugFile, debugInfo.ToString());
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
                 // Log the error but don't fail the parsing process
                 // Warning: Failed to write debug file
@@ -520,9 +520,9 @@ namespace Ouro.Core.Parser
                     // In a full implementation, you might want a specific AssemblyDeclaration type
                     return new ExpressionStatement(new LiteralExpression(
                         new Token(TokenType.StringLiteral, "assembly_block", "assembly_block", 
-                                assemblyStatement.Token?.Line ?? 0, assemblyStatement.Token?.Column ?? 0, 
-                                assemblyStatement.Token?.StartPosition ?? 0, assemblyStatement.Token?.EndPosition ?? 0,
-                                assemblyStatement.Token?.FileName ?? "", assemblyStatement.Token?.SyntaxLevel ?? SyntaxLevel.High)));
+                                assemblyStatement.Token.Line, assemblyStatement.Token.Column, 
+                                assemblyStatement.Token.StartPosition, assemblyStatement.Token.EndPosition,
+                                assemblyStatement.Token.FileName, assemblyStatement.Token.SyntaxLevel)));
                 }
 
                 throw Error(Current(), "Expected declaration.");
@@ -756,10 +756,12 @@ namespace Ouro.Core.Parser
         private List<Declaration> ParseCompactFieldDeclaration()
         {
             var declarations = new List<Declaration>();
-            var fieldNames = new List<Token> { ConsumeFieldName("Expected field name") };
+            var fieldNames = new List<Token>();
             
             // Parse comma-separated field names: x, y, z OR single field name: magic, length, etc.
             // Accept identifiers and certain keywords as field names
+            fieldNames.Add(ConsumeFieldName("Expected field name"));
+            
             while (Match(TokenType.Comma))
             {
                 fieldNames.Add(ConsumeFieldName("Expected field name after comma"));
@@ -798,7 +800,7 @@ namespace Ouro.Core.Parser
         {
             var name = Consume(TokenType.Identifier, "Expected enum name.");
 
-            TypeNode underlyingType = null!;
+            TypeNode underlyingType = null;
             if (Match(TokenType.Colon))
             {
                 underlyingType = ParseType();
@@ -810,7 +812,7 @@ namespace Ouro.Core.Parser
             do
             {
                 var memberName = Consume(TokenType.Identifier, "Expected enum member name.");
-                Expression? value = null;
+                Expression value = null;
 
                 if (Match(TokenType.Assign))
                 {
@@ -949,7 +951,7 @@ namespace Ouro.Core.Parser
             var type = ParseType();
             Logger.Debug($"ParseRustStyleVariableDeclaration() - type: {type.Name}");
             
-            Expression? initializer = null;
+            Expression initializer = null;
             if (Match(TokenType.Assign))
             {
                 Logger.Debug($"ParseRustStyleVariableDeclaration() - parsing initializer");
@@ -1057,7 +1059,7 @@ namespace Ouro.Core.Parser
             
             // Create a field declaration with const modifier
             // Infer type from the initializer expression
-            var constType = InferTypeFromExpression(initializer ?? new LiteralExpression(new Token(TokenType.NullLiteral, "null", null!, 0, 0, 0, 0, "", _currentSyntaxLevel)));
+            var constType = InferTypeFromExpression(initializer);
             var modifiers = new List<Modifier> { Modifier.Const };
             return new FieldDeclaration(name, constType, initializer, modifiers);
         }
@@ -1166,7 +1168,6 @@ namespace Ouro.Core.Parser
                         Consume(TokenType.Semicolon, "Expected ';' after trait method signature.");
                         
                         // Create a function declaration without body for trait
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                         var methodDecl = new FunctionDeclaration(
                             methodName,
                             returnType,
@@ -1176,7 +1177,6 @@ namespace Ouro.Core.Parser
                             false,
                             new List<Modifier> { Modifier.Abstract }
                         );
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                         members.Add(methodDecl);
                     }
                     else
@@ -1340,7 +1340,6 @@ namespace Ouro.Core.Parser
             Logger.Debug($"ParseDestructorDeclaration - Finished at line {Current().Line}");
             
             // Create a function declaration with a special destructor name
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
             return new FunctionDeclaration(
                 new Token(TokenType.Identifier, "~destructor", null, destructorToken.Line, destructorToken.Column, 0, 0, "", _currentSyntaxLevel),
                 returnType,
@@ -1348,7 +1347,6 @@ namespace Ouro.Core.Parser
                 body,
                 modifiers: new List<Modifier> { Modifier.Public }
             );
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         }
 
         private NamespaceDeclaration ParseExternBlock()
@@ -1458,9 +1456,7 @@ namespace Ouro.Core.Parser
             return new ExpressionStatement(mappingExpr);
         }
 
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         private FunctionDeclaration ParseFunction(TypeNode returnType, Token name, List<Modifier> modifiers, List<TypeParameter> typeParameters = null)
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             // Consume the opening parenthesis
             Consume(TokenType.LeftParen, "Expected '(' before parameters.");
@@ -1472,7 +1468,7 @@ namespace Ouro.Core.Parser
                 typeParameters = new List<TypeParameter>();
             }
 
-            BlockStatement body = null!;
+            BlockStatement body = null;
             if (Match(TokenType.DoubleArrow))
             {
                 // Expression-bodied function
@@ -1494,9 +1490,7 @@ namespace Ouro.Core.Parser
             return new FunctionDeclaration(name, returnType, parameters, body, typeParameters, isAsync, modifiers);
         }
 
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         private FunctionDeclaration ParseFunctionWithSyntaxLevel(TypeNode returnType, Token name, List<Modifier> modifiers, SyntaxLevel? scopedSyntaxLevel, List<TypeParameter> typeParameters = null)
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
         {
             // Store the current syntax level to restore later
             var previousLevel = _currentSyntaxLevel;
@@ -1519,7 +1513,7 @@ namespace Ouro.Core.Parser
                     typeParameters = new List<TypeParameter>();
                 }
 
-                BlockStatement body = null!;
+                BlockStatement body = null;
                 if (Match(TokenType.DoubleArrow))
                 {
                     // Expression-bodied function
@@ -1606,7 +1600,7 @@ namespace Ouro.Core.Parser
                     var highLevelReturnType = new TypeNode("void");
                     
                     // Parse function body for high-level syntax
-                    BlockStatement highLevelBody = null!;
+                    BlockStatement highLevelBody = null;
                     if (Match(TokenType.LeftBrace))
                     {
                         highLevelBody = ParseBlock();
@@ -1724,7 +1718,7 @@ namespace Ouro.Core.Parser
                 var typeParameters = new List<TypeParameter>();
                 
                 // Parse function body - this will maintain the current syntax level
-                BlockStatement body = null!;
+                BlockStatement body = null;
                 if (Match(TokenType.DoubleArrow))
                 {
                     // Expression-bodied function
@@ -1754,7 +1748,7 @@ namespace Ouro.Core.Parser
 
         private FieldDeclaration ParseField(TypeNode type, Token name, List<Modifier> modifiers)
         {
-            Expression? initializer = null;
+            Expression initializer = null;
             if (Match(TokenType.Assign))
             {
                 initializer = ParseExpression();
@@ -1847,12 +1841,10 @@ namespace Ouro.Core.Parser
                 }
                 
                 // Create a synthetic name token for the operator
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 var nameToken = new Token(TokenType.Identifier, operatorName, null, 
                                         operatorToken.Line, operatorToken.Column, 
                                         operatorToken.StartPosition, operatorToken.EndPosition,
                                         operatorToken.FileName, operatorToken.SyntaxLevel);
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                 
                 // Parse parameters (Ouroboros style: name: type)
                 Consume(TokenType.LeftParen, "Expected '(' after operator symbol.");
@@ -1937,7 +1929,7 @@ namespace Ouro.Core.Parser
                         // Parse parameter type
                         var type = ParseType();
 
-                        Expression? defaultValue = null!;
+                        Expression defaultValue = null;
                         if (Match(TokenType.Assign))
                         {
                             defaultValue = ParseAssignment();
@@ -1964,7 +1956,7 @@ namespace Ouro.Core.Parser
                 var fieldModifiers = ParseModifiers();
                 var type = ParseType();
                 var fieldName = Consume(TokenType.Identifier, "Expected field name.");
-                Expression? initializer = null;
+                Expression initializer = null;
                 
                 if (Match(TokenType.Assign))
                 {
@@ -2003,9 +1995,7 @@ namespace Ouro.Core.Parser
                 var methodModifiers = ParseModifiers();
                 var returnType = ParseType();
                 var methodName = Consume(TokenType.Identifier, "Expected method name.");
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 methods.Add(ParseFunction(returnType, methodName, methodModifiers, null));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
 
             Consume(TokenType.RightBrace, "Expected '}' after system body.");
@@ -2055,12 +2045,10 @@ namespace Ouro.Core.Parser
                 var expr = ParseExpression();
                 
                 // Convert print to Console.WriteLine
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 var printCall = new CallExpression(
                     new IdentifierExpression(
                         new Token(TokenType.Identifier, "Console.WriteLine", null, 0, 0, 0, 0, "", _currentSyntaxLevel)),
-                    new List<Expression> { expr! });
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+                    new List<Expression> { expr });
                 
                 // Semicolon is optional in high-level syntax
                 Match(TokenType.Semicolon);
@@ -2148,14 +2136,12 @@ namespace Ouro.Core.Parser
                         Logger.Debug($"Successfully parsed expression after print: {expr?.GetType().Name}");
                     
                     // Convert print to Console.WriteLine call
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                     var printCall = new CallExpression(
                         new IdentifierExpression(
                             new Token(TokenType.Identifier, "Console.WriteLine", null, printToken.Line, 
                                      printToken.Column, printToken.StartPosition, printToken.EndPosition, 
                                      printToken.FileName, _currentSyntaxLevel)),
-                        new List<Expression> { expr! });
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+                        new List<Expression> { expr });
                     
                         // Semicolon is optional for print statements in medium level
                         bool hasSemicolon = Match(TokenType.Semicolon); // Just consume if present, don't require
@@ -2173,14 +2159,12 @@ namespace Ouro.Core.Parser
                                      printToken.Column, printToken.StartPosition, printToken.EndPosition, 
                                      printToken.FileName, _currentSyntaxLevel));
                         
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                         var printCall = new CallExpression(
                             new IdentifierExpression(
                                 new Token(TokenType.Identifier, "Console.WriteLine", null, printToken.Line, 
                                          printToken.Column, printToken.StartPosition, printToken.EndPosition, 
                                          printToken.FileName, _currentSyntaxLevel)),
                             new List<Expression> { fallbackExpr });
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                         
                         // Skip to next statement by advancing past the problematic tokens
                         while (!IsAtEnd() && !Check(TokenType.Semicolon) && !Check(TokenType.RightBrace) && Current().Line == printToken.Line)
@@ -2509,9 +2493,7 @@ namespace Ouro.Core.Parser
                     Logger.Debug($"Found right brace - likely end of block, returning null statement to signal end");
                     // Don't consume the right brace here - let the block parser handle it
                     // Return a null statement to signal that we've reached the end of statements in this context
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                     return new ExpressionStatement(new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, 0, 0, 0, 0, "", _currentSyntaxLevel)));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                 }
 
                 // Parse as expression statement using enhanced parsing
@@ -2528,7 +2510,7 @@ namespace Ouro.Core.Parser
                 Logger.Debug($"Successfully parsed expression, optional semicolon");
                 // Make semicolon optional - common in modern languages
                 Match(TokenType.Semicolon);
-                return new ExpressionStatement(expr!);
+                return new ExpressionStatement(expr);
             }
             catch (Exception ex)
             {
@@ -2542,7 +2524,7 @@ namespace Ouro.Core.Parser
                 if (Check(TokenType.RightBrace))
                 {
                     Logger.Info($"Found right brace in error recovery, returning null statement");
-                    return new ExpressionStatement(new LiteralExpression(new Token(TokenType.NullLiteral, "null", "null", 0, 0, 0, 0, "", _currentSyntaxLevel)));
+                    return new ExpressionStatement(new LiteralExpression(new Token(TokenType.NullLiteral, "null", null, 0, 0, 0, 0, "", _currentSyntaxLevel)));
                 }
                 
                 // Fall back to medium-level fallback parser on error
@@ -2633,7 +2615,7 @@ namespace Ouro.Core.Parser
             Logger.Debug($"Parsed function name: {nameToken.Lexeme}");
             
             // Parse generic type parameters if present
-            List<TypeParameter> typeParameters = null!;
+            List<TypeParameter> typeParameters = null;
             if (Match(TokenType.Less))
             {
                 Logger.Debug($"Parsing generic type parameters");
@@ -2685,7 +2667,7 @@ namespace Ouro.Core.Parser
                 {
                     var expr = ParseAssignment();
                     Consume(TokenType.Semicolon, "Expected ';' after expression body.");
-                    body = new ExpressionStatement(expr!);
+                    body = new ExpressionStatement(expr);
                 }
             }
 
@@ -2846,7 +2828,7 @@ namespace Ouro.Core.Parser
                     var body = ParseAssignment(); // Parse the function body expression
                     
                     // Create a lambda expression as the initializer
-                    var lambdaExpr = new LambdaExpression(parameters, body!);
+                    var lambdaExpr = new LambdaExpression(parameters, body);
                     type = new TypeNode("Function");
                     
                     Consume(TokenType.Semicolon, "Expected ';' after mathematical function definition.");
@@ -2902,7 +2884,7 @@ namespace Ouro.Core.Parser
             Logger.Debug($" Finished parsing initializer");
             
             // Parse memory-mapped I/O 'at' clause for embedded systems
-            Expression? memoryAddress = null!;
+            Expression memoryAddress = null;
             if (Match(TokenType.At))
             {
                 memoryAddress = ParseAssignment(); // Parse the address expression
@@ -2938,12 +2920,12 @@ namespace Ouro.Core.Parser
                         var value = ParseAssignment();
                         
                         // Create a binary expression to represent key = value
-                        elements.Add(new BinaryExpression(key!, new Token(TokenType.Assign, "=", "=", 0, 0, 0, 0, "", _currentSyntaxLevel), value!));
+                        elements.Add(new BinaryExpression(key, new Token(TokenType.Assign, "=", "=", 0, 0, 0, 0, "", _currentSyntaxLevel), value));
                     }
                     else
                     {
                         // Regular array element
-                        elements.Add(ParseAssignment()!);
+                        elements.Add(ParseAssignment());
                     }
                 } while (Match(TokenType.Comma));
             }
@@ -3027,7 +3009,7 @@ namespace Ouro.Core.Parser
                 var pattern = ParseMatchPattern();
                 
                 // Check for guard clause (when condition)
-                Expression? guard = null;
+                Expression guard = null;
                 if (Match(TokenType.When))
                 {
                     guard = ParseAssignment();
@@ -3036,7 +3018,7 @@ namespace Ouro.Core.Parser
                 Consume(TokenType.DoubleArrow, "Expected '=>' after pattern.");
                 var expression = ParseAssignment();
                 
-                arms.Add(new MatchArm(pattern, guard!, expression!));
+                arms.Add(new MatchArm(pattern, guard, expression));
                 
                 // Optional comma between arms
                 if (Check(TokenType.Comma))
@@ -3287,12 +3269,10 @@ namespace Ouro.Core.Parser
                 var expr = ParseExpression();
                 
                 // Convert print to Console.WriteLine
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 var printCall = new CallExpression(
                     new IdentifierExpression(
                         new Token(TokenType.Identifier, "Console.WriteLine", null, 0, 0, 0, 0, "", _currentSyntaxLevel)),
-                    new List<Expression> { expr! });
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+                    new List<Expression> { expr });
                 
                 // Semicolon is optional in low-level syntax  
                 Match(TokenType.Semicolon);
@@ -3421,14 +3401,14 @@ namespace Ouro.Core.Parser
                 }
 
                 var thenBranch = ParseStatement();
-                Statement elseBranch = null!;
+                Statement elseBranch = null;
 
                 if (Match(TokenType.Else))
                 {
                     elseBranch = ParseStatement();
                 }
 
-                return new IfStatement(Previous(), condition!, thenBranch, elseBranch);
+                return new IfStatement(Previous(), condition, thenBranch, elseBranch);
             }
             catch (ParseException ex)
             {
@@ -3471,7 +3451,7 @@ namespace Ouro.Core.Parser
                 
                 // For now, treat as regular while with the expression
                 // Full implementation would support pattern matching
-                return new WhileStatement(whileToken, letCondition!, letBody);
+                return new WhileStatement(whileToken, letCondition, letBody);
             }
             
             // Traditional while loop
@@ -3481,7 +3461,7 @@ namespace Ouro.Core.Parser
 
             var body = ParseStatement();
 
-            return new WhileStatement(whileToken, condition!, body);
+            return new WhileStatement(whileToken, condition, body);
         }
 
         private WhileStatement ParseLoopStatement()
@@ -3547,7 +3527,7 @@ namespace Ouro.Core.Parser
                 
                 // Convert range-based for loop to foreach statement
                     var iteratorType = new TypeNode("var"); // Use var for type inference
-                var forEach = new ForEachStatement(forToken, iteratorType, iteratorName, rangeExpression!, rangeBody);
+                var forEach = new ForEachStatement(forToken, iteratorType, iteratorName, rangeExpression, rangeBody);
                 
                 // For now, return a ForStatement that wraps the ForEach behavior
                 // In a full implementation, we'd have proper range iteration support
@@ -3559,7 +3539,7 @@ namespace Ouro.Core.Parser
             // Traditional C-style for loop
             Consume(TokenType.LeftParen, "Expected '(' after 'for'.");
 
-            Statement initializer = null!;
+            Statement initializer = null;
             if (!Check(TokenType.Semicolon))
             {
                 if (PeekType() != null)
@@ -3570,7 +3550,7 @@ namespace Ouro.Core.Parser
                 }
                 else
                 {
-                    initializer = new ExpressionStatement(ParseExpression()!);
+                    initializer = new ExpressionStatement(ParseExpression());
                     Consume(TokenType.Semicolon, "Expected ';' after loop initializer.");
                 }
             }
@@ -3579,17 +3559,17 @@ namespace Ouro.Core.Parser
                 Consume(TokenType.Semicolon, "Expected ';'.");
             }
 
-            Expression condition = null!;
+            Expression condition = null;
             if (!Check(TokenType.Semicolon))
             {
-                condition = ParseExpression()!;
+                condition = ParseExpression();
             }
             Consume(TokenType.Semicolon, "Expected ';' after loop condition.");
 
-            Expression update = null!;
+            Expression update = null;
             if (!Check(TokenType.RightParen))
             {
-                update = ParseExpression()!;
+                update = ParseExpression();
             }
             Consume(TokenType.RightParen, "Expected ')' after for clauses.");
 
@@ -3612,17 +3592,17 @@ namespace Ouro.Core.Parser
 
             var body = ParseStatement();
 
-            return new ForEachStatement(forEachToken, elementType, elementName, collection!, body);
+            return new ForEachStatement(forEachToken, elementType, elementName, collection, body);
         }
 
         private RepeatStatement ParseRepeatStatement()
         {
             var repeatToken = Previous();
 
-            Expression count = null!;
+            Expression count = null;
             if (Match(TokenType.LeftParen))
             {
-                count = ParseExpression()!;
+                count = ParseExpression();
                 Consume(TokenType.RightParen, "Expected ')' after repeat count.");
             }
 
@@ -3646,14 +3626,14 @@ namespace Ouro.Core.Parser
             Expression step = new LiteralExpression(new Token(TokenType.IntegerLiteral, "1", 1, 0, 0, 0, 0, "", _currentSyntaxLevel));
             if (Match(TokenType.Colon))
             {
-                step = ParseExpression()!;
+                step = ParseExpression();
             }
 
             Consume(TokenType.RightParen, "Expected ')' after iterate header.");
 
             var body = ParseStatement();
 
-            return new IterateStatement(iterateToken, iteratorName, start!, end!, step, body);
+            return new IterateStatement(iterateToken, iteratorName, start, end, step, body);
         }
 
         private Statement ParseForeverStatement()
@@ -3698,14 +3678,14 @@ namespace Ouro.Core.Parser
 
             Consume(TokenType.RightBrace, "Expected '}' after match cases.");
 
-            return new MatchStatement(matchToken, expression!, cases);
+            return new MatchStatement(matchToken, expression, cases);
         }
 
         private MatchCase ParseMatchCase()
         {
             var pattern = ParsePattern();
             
-            Expression? guard = null;
+            Expression guard = null;
             if (Match(TokenType.When))
             {
                 guard = ParseExpression();
@@ -3720,7 +3700,7 @@ namespace Ouro.Core.Parser
         private Pattern ParsePattern()
         {
             // Simplified pattern parsing - in a real implementation this would be more complex
-            return new ConstantPattern(ParseExpression()!);
+            return new ConstantPattern(ParseExpression());
         }
 
         private AssemblyStatement ParseAssemblyStatement()
@@ -3779,15 +3759,15 @@ namespace Ouro.Core.Parser
 
         private VariableDeclaration ParseVariableDeclaration(TypeNode type, Token name)
         {
-            Expression memoryAddress = null!;
+            Expression memoryAddress = null;
             
             // Handle memory-mapped I/O with 'at' clause for embedded systems
             if (Match(TokenType.At))
             {
-                memoryAddress = ParseExpression()!; // Parse the memory address (e.g., 0x4000_0000)
+                memoryAddress = ParseExpression(); // Parse the memory address (e.g., 0x4000_0000)
             }
             
-            Expression? initializer = null;
+            Expression initializer = null;
             if (Match(TokenType.Assign))
             {
                 // Array initializers can use braces regardless of whether explicitly new int[] or just {}
@@ -3800,7 +3780,7 @@ namespace Ouro.Core.Parser
                     {
                         do
                         {
-                            elements.Add(ParseExpression()!);
+                            elements.Add(ParseExpression());
                         } while (Match(TokenType.Comma));
                     }
                     
@@ -3837,17 +3817,17 @@ namespace Ouro.Core.Parser
             var expr = ParseExpression();
             // Make semicolon optional in all syntax levels for better error recovery
             Match(TokenType.Semicolon); // Consume if present but don't require
-            return new ExpressionStatement(expr!);
+            return new ExpressionStatement(expr);
         }
 
         private ReturnStatement ParseReturnStatement()
         {
             var returnToken = Previous();
-            Expression value = null!;
+            Expression value = null;
 
             if (!Check(TokenType.Semicolon) && !Check(TokenType.RightBrace) && !IsAtEnd())
             {
-                value = ParseExpression()!;
+                value = ParseExpression();
             }
 
             // Make semicolon optional - common in modern languages
@@ -3875,7 +3855,7 @@ namespace Ouro.Core.Parser
             var throwToken = Previous();
             var exception = ParseExpression();
             Consume(TokenType.Semicolon, "Expected ';' after throw expression.");
-            return new ThrowStatement(throwToken, exception!);
+            return new ThrowStatement(throwToken, exception);
         }
 
         private YieldStatement ParseYieldStatement()
@@ -3902,8 +3882,8 @@ namespace Ouro.Core.Parser
             var catchClauses = new List<CatchClause>();
             while (Match(TokenType.Catch))
             {
-                TypeNode exceptionType = null!;
-                string exceptionName = null!;
+                TypeNode exceptionType = null;
+                string exceptionName = null;
 
                 if (Match(TokenType.LeftParen))
                 {
@@ -3913,11 +3893,11 @@ namespace Ouro.Core.Parser
                 }
 
                 // Check for optional when clause (exception filters)
-                Expression whenCondition = null!;
+                Expression whenCondition = null;
                 if (Match(TokenType.When))
                 {
                     Consume(TokenType.LeftParen, "Expected '(' after 'when'.");
-                    whenCondition = ParseExpression()!;
+                    whenCondition = ParseExpression();
                     Consume(TokenType.RightParen, "Expected ')' after when condition.");
                 }
 
@@ -3926,7 +3906,7 @@ namespace Ouro.Core.Parser
                 catchClauses.Add(new CatchClause(exceptionType, exceptionName, catchBody, whenCondition));
             }
 
-            Statement finallyBlock = null!;
+            Statement finallyBlock = null;
             if (Match(TokenType.Finally))
             {
                 Consume(TokenType.LeftBrace, "Expected '{' after 'finally'.");
@@ -3998,7 +3978,7 @@ namespace Ouro.Core.Parser
             // Convert range-based for loop to foreach statement
             // This treats the range as a collection to iterate over
             var iteratorType = new TypeNode("var"); // Use var for type inference
-            return new ForEachStatement(forToken, iteratorType, iteratorName, rangeExpression!, body);
+            return new ForEachStatement(forToken, iteratorType, iteratorName, rangeExpression, body);
         }
         
         private FixedStatement ParseFixedStatement()
@@ -4022,7 +4002,7 @@ namespace Ouro.Core.Parser
             // Parse the body statement or block
             var body = ParseStatement();
             
-            return new FixedStatement(fixedToken, type, name, target!, body);
+            return new FixedStatement(fixedToken, type, name, target, body);
         }
 
         private UsingStatement ParseUsingStatement()
@@ -4050,7 +4030,7 @@ namespace Ouro.Core.Parser
 
             var body = ParseStatement();
 
-            return new LockStatement(lockToken, lockObject!, body);
+            return new LockStatement(lockToken, lockObject, body);
         }
 
         private DoWhileStatement ParseDoWhileStatement()
@@ -4063,7 +4043,7 @@ namespace Ouro.Core.Parser
             Consume(TokenType.RightParen, "Expected ')' after condition.");
             Consume(TokenType.Semicolon, "Expected ';' after do-while.");
 
-            return new DoWhileStatement(doToken, body, condition!);
+            return new DoWhileStatement(doToken, body, condition);
         }
 
         private SwitchStatement ParseSwitchStatement()
@@ -4075,7 +4055,7 @@ namespace Ouro.Core.Parser
             Consume(TokenType.LeftBrace, "Expected '{' before switch body.");
 
             var cases = new List<CaseClause>();
-            Statement defaultCase = null!;
+            Statement defaultCase = null;
 
             while (!Check(TokenType.RightBrace) && !IsAtEnd())
             {
@@ -4091,7 +4071,7 @@ namespace Ouro.Core.Parser
                         statements.Add(ParseStatement());
                     }
 
-                    cases.Add(new CaseClause(value!, statements));
+                    cases.Add(new CaseClause(value, statements));
                 }
                 else if (Match(TokenType.Default))
                 {
@@ -4114,7 +4094,7 @@ namespace Ouro.Core.Parser
 
             Consume(TokenType.RightBrace, "Expected '}' after switch body.");
 
-            return new SwitchStatement(switchToken, expression!, cases, defaultCase);
+            return new SwitchStatement(switchToken, expression, cases, defaultCase);
         }
 
         private NamespaceDeclaration ParseNamespace()
@@ -4166,7 +4146,7 @@ namespace Ouro.Core.Parser
                 }
             } while (true);
 
-            string alias = null!;
+            string alias = null;
             if (Match(TokenType.As))
             {
                 alias = Consume(TokenType.Identifier, "Expected alias name.").Lexeme;
@@ -4245,12 +4225,12 @@ namespace Ouro.Core.Parser
 
         #region Expression Parsing
 
-        private Expression? ParseExpression()
+        private Expression ParseExpression()
         {
             return ParseAssignment(); // Fixed: assignments have lowest precedence, should be parsed first
         }
         
-        private Expression? ParseAssignment()
+        private Expression ParseAssignment()
         {
             // Check for lambda expressions first before parsing other expressions
             // This is needed because lambda expressions have lower precedence than most operators
@@ -4280,7 +4260,7 @@ namespace Ouro.Core.Parser
                 // Valid assignment targets: identifier, member access, indexed access, or pointer dereference
                 if (expr is IdentifierExpression || expr is MemberExpression || expr is BinaryExpression || expr is UnaryExpression)
                 {
-                    return new AssignmentExpression(expr!, op, value!);
+                    return new AssignmentExpression(expr, op, value);
                 }
 
                 throw Error(op, "Invalid assignment target.");
@@ -4289,7 +4269,7 @@ namespace Ouro.Core.Parser
             return expr;
         }
 
-        private Expression? ParseTernary()
+        private Expression ParseTernary()
         {
             Logger.Debug($"ENTERING ParseTernary()");
             var expr = ParseNullCoalescing();
@@ -4298,17 +4278,10 @@ namespace Ouro.Core.Parser
             if (Match(TokenType.Question))
             {
                 var questionToken = Previous();
-                var thenExpr = ParseExpression();
-                Consume(TokenType.Colon, "Expected ':' after ternary then expression");
-                var colonToken = Previous();
-                var elseExpr = ParseExpression();
-                return new ConditionalExpression(
-                    expr ?? new LiteralExpression(new Token(TokenType.NullLiteral, "null", null!, 0, 0, 0, 0, "", _currentSyntaxLevel)),
-                    questionToken,
-                    thenExpr ?? new LiteralExpression(new Token(TokenType.NullLiteral, "null", null!, 0, 0, 0, 0, "", _currentSyntaxLevel)),
-                    colonToken,
-                    elseExpr ?? new LiteralExpression(new Token(TokenType.NullLiteral, "null", null!, 0, 0, 0, 0, "", _currentSyntaxLevel))
-                );
+                var trueExpr = ParseExpression();
+                var colonToken = Consume(TokenType.Colon, "Expected ':' in ternary expression.");
+                var falseExpr = ParseExpression();
+                return new ConditionalExpression(expr, questionToken, trueExpr, colonToken, falseExpr);
             }
 
             Logger.Debug($"ParseTernary() returning expression: {expr?.GetType().Name}");
@@ -4325,12 +4298,11 @@ namespace Ouro.Core.Parser
             {
                 var op = Previous();
                 var right = ParseConditionalAccess();
-                expr = new BinaryExpression(expr!, op, right!);
+                expr = new BinaryExpression(expr, op, right);
             }
 
             Logger.Debug($"ParseNullCoalescing() returning expression: {expr?.GetType().Name}");
             return expr;
-
         }
 
         private Expression ParseConditionalAccess()
@@ -4348,7 +4320,7 @@ namespace Ouro.Core.Parser
                 if (Check(TokenType.Identifier))
                 {
                     var name = ConsumeIdentifierOrGreekLetter("Expected property name after '?.'.");
-                    expr = new MemberExpression(expr!, op, name);
+                    expr = new MemberExpression(expr, op, name);
                     
                     // Handle method calls like obj?.Method()
                     if (Match(TokenType.LeftParen))
@@ -4364,7 +4336,6 @@ namespace Ouro.Core.Parser
 
             Logger.Debug($"ParseConditionalAccess() returning expression: {expr?.GetType().Name}");
             return expr;
-
         }
 
         private Expression ParseLogicalOr()
@@ -4377,10 +4348,10 @@ namespace Ouro.Core.Parser
             {
                 var op = Previous();
                 var right = ParseLogicalAnd();
-                expr = new BinaryExpression(expr!, op, right!);
+                expr = new BinaryExpression(expr, op, right);
             }
 
-            return expr!;
+            return expr;
         }
 
         private Expression ParseLogicalAnd()
@@ -4393,10 +4364,10 @@ namespace Ouro.Core.Parser
             {
                 var op = Previous();
                 var right = ParseBitwiseOr();
-                expr = new BinaryExpression(expr!, op, right!);
+                expr = new BinaryExpression(expr, op, right);
             }
 
-            return expr!;
+            return expr;
         }
 
         private Expression ParseBitwiseOr()
@@ -4409,10 +4380,10 @@ namespace Ouro.Core.Parser
             {
                 var op = Previous();
                 var right = ParseBitwiseXor();
-                expr = new BinaryExpression(expr!, op, right!);
+                expr = new BinaryExpression(expr, op, right);
             }
 
-            return expr!;
+            return expr;
         }
 
         private Expression ParseBitwiseXor()
@@ -4426,13 +4397,12 @@ namespace Ouro.Core.Parser
                 Logger.Debug($"ParseBitwiseXor() - Found XOR operator, parsing right operand");
                 var op = Previous();
                 var right = ParseBitwiseAnd();
-                expr = new BinaryExpression(expr!, op, right!);
+                expr = new BinaryExpression(expr, op, right);
             }
 
             Logger.Debug($"ParseBitwiseXor() - About to return expression: {expr?.GetType().Name}");
             Logger.Debug($"ParseBitwiseXor() returning: {expr?.GetType().Name}");
             return expr;
-
         }
 
         private Expression ParseBitwiseAnd()
@@ -4446,13 +4416,12 @@ namespace Ouro.Core.Parser
                 Logger.Debug($"ParseBitwiseAnd() - Found bitwise AND operator");
                 var op = Previous();
                 var right = ParseEquality();
-                expr = new BinaryExpression(expr!, op, right!);
+                expr = new BinaryExpression(expr, op, right);
             }
 
             Logger.Debug($"ParseBitwiseAnd() - About to return expression: {expr?.GetType().Name}");
             Logger.Debug($"ParseBitwiseAnd() returning: {expr?.GetType().Name}");
             return expr;
-
         }
 
         private Expression ParseEquality()
@@ -4467,12 +4436,11 @@ namespace Ouro.Core.Parser
             {
                 var op = Previous();
                 var right = ParseComparison();
-                expr = new BinaryExpression(expr!, op, right!);
+                expr = new BinaryExpression(expr, op, right);
             }
 
             Logger.Debug($"ParseEquality() returning: {expr?.GetType().Name}");
             return expr;
-
         }
 
         private Expression ParseComparison()
@@ -4511,32 +4479,31 @@ namespace Ouro.Core.Parser
                         var type = ParseType();
                         
                         // Check if there's a variable declaration after the type
-                        Token? variable = null;
+                        Token variable = null;
                         if (Check(TokenType.Identifier))
                         {
                             variable = Advance();
                         }
                         
-                        expr = new IsExpression(expr!, op, type, variable);
+                        expr = new IsExpression(expr, op, type, variable);
                     }
                     else
                     {
                         // Not pattern matching, treat as regular comparison
                         _current = savedPosition;
                 var right = ParseRange();
-                expr = new BinaryExpression(expr!, op, right!);
+                expr = new BinaryExpression(expr, op, right);
                     }
                 }
                 else
                 {
                     var right = ParseRange();
-                    expr = new BinaryExpression(expr!, op, right!);
+                    expr = new BinaryExpression(expr, op, right);
                 }
             }
 
             Logger.Debug($"ParseComparison() returning: {expr?.GetType().Name}");
             return expr;
-
         }
 
         private Expression ParseRange()
@@ -4556,7 +4523,6 @@ namespace Ouro.Core.Parser
                 Logger.Debug($"ParseRange() - ParseShift returned: {right?.GetType().Name}");
                 var rangeExpr = new BinaryExpression(expr, op, right);
                 Logger.Debug($"ParseRange() - Created BinaryExpression with operator: {op.Type} '{op.Lexeme}'");
-
                 return rangeExpr;
             }
             
@@ -4574,7 +4540,6 @@ namespace Ouro.Core.Parser
 
             Logger.Debug($"ParseRange() - No range operators found, returning: {expr?.GetType().Name}");
             return expr;
-
         }
 
         private Expression ParseShift()
@@ -4601,12 +4566,11 @@ namespace Ouro.Core.Parser
             {
                 var op = Previous();
                 var right = ParseMultiplication();
-                expr = new BinaryExpression(expr!, op, right!);
+                expr = new BinaryExpression(expr, op, right);
             }
 
             Logger.Debug($"ParseAddition() returning: {expr?.GetType().Name}");
             return expr;
-
         }
 
         private Expression ParseMultiplication()
@@ -4628,7 +4592,6 @@ namespace Ouro.Core.Parser
 
             Logger.Debug($"ParseMultiplication() returning: {expr?.GetType().Name}");
             return expr;
-
         }
 
         private Expression ParsePower()
@@ -4641,12 +4604,11 @@ namespace Ouro.Core.Parser
             {
                 var op = Previous();
                 var right = ParsePower(); // Right associative
-                expr = new BinaryExpression(expr!, op, right!);
+                expr = new BinaryExpression(expr, op, right);
             }
 
             Logger.Debug($"ParsePower() returning: {expr?.GetType().Name}");
             return expr;
-
         }
 
         private Expression ParseUnary()
@@ -4672,7 +4634,7 @@ namespace Ouro.Core.Parser
                 else if (op.Type == TokenType.Nameof)
                 {
                     var expr = ParseExpression();
-                    return new NameofExpression(op, expr!);
+                    return new NameofExpression(op, expr);
                 }
                 else if (op.Type == TokenType.New)
                 {
@@ -4682,9 +4644,11 @@ namespace Ouro.Core.Parser
                 {
                     // Special handling for reference expressions: &expr and &mut expr
                     // Check if this is &mut pattern
+                    bool isMutable = false;
                     if (Check(TokenType.Identifier) && Current().Lexeme == "mut")
                     {
                         Advance(); // consume 'mut'
+                        isMutable = true;
                     }
                     
                     // Parse the expression after & or &mut
@@ -4737,8 +4701,8 @@ namespace Ouro.Core.Parser
                 var limitFunc = new IdentifierExpression(limitToken);
                 var args = new List<Expression> { 
                     new IdentifierExpression(variable), 
-                    approachValue!, 
-                    expr! 
+                    approachValue, 
+                    expr 
                 };
                 return new CallExpression(limitFunc, args);
             }
@@ -4761,7 +4725,7 @@ namespace Ouro.Core.Parser
                 var expr = ParseUnary();
                 
                 // Look for optional dx, dy, etc.
-                Token integrationVar = null!;
+                Token integrationVar = null;
                 if (Check(TokenType.Identifier) && Current().Lexeme.StartsWith("d") && Current().Lexeme.Length == 2)
                 {
                     integrationVar = Advance();
@@ -4771,9 +4735,9 @@ namespace Ouro.Core.Parser
                 // In a full implementation, you'd want an IntegralExpression AST node
                 var integralFunc = new IdentifierExpression(integralToken);
                 var args = new List<Expression> { 
-                    lowerBound!, 
-                    upperBound!, 
-                    expr! 
+                    lowerBound, 
+                    upperBound, 
+                    expr 
                 };
                 if (integrationVar != null)
                 {
@@ -4786,7 +4750,6 @@ namespace Ouro.Core.Parser
             var result = ParsePostfix();
             Logger.Debug($"ParseUnary() - got result from ParsePostfix(): {result?.GetType().Name}");
             return result;
-
         }
 
         private bool IsPrefixMathematicalOperator(Token token)
@@ -4818,7 +4781,6 @@ namespace Ouro.Core.Parser
                 Consume(TokenType.RightBrace, "Expected '}' after unsafe expression.");
                 Logger.Debug($"ParsePostfix - completed unsafe expression");
                 return expression;
-
             }
             
             var expr = ParseCall();
@@ -4856,17 +4818,15 @@ namespace Ouro.Core.Parser
                     else
                     {
                         // Parse a full expression for the macro argument
-                        macroArg = ParseExpression()!;
+                        macroArg = ParseExpression();
                     }
                     
                     // Create a macro invocation expression - use CallExpression with the ! as part of function name
                     var macroName = idExpr.Name + "!";
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
-                    var macroIdentifier = new IdentifierExpression(new Token(TokenType.Identifier, macroName, null!,
-                                                                            idExpr.Token!.Line, idExpr.Token!.Column,
-                                                                            idExpr.Token!.StartPosition, bangToken.EndPosition,
-                                                                            idExpr.Token!.FileName, _currentSyntaxLevel));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+                    var macroIdentifier = new IdentifierExpression(new Token(TokenType.Identifier, macroName, null,
+                                                                            idExpr.Token.Line, idExpr.Token.Column,
+                                                                            idExpr.Token.StartPosition, bangToken.EndPosition,
+                                                                            idExpr.Token.FileName, _currentSyntaxLevel));
                     
                     var args = new List<Expression> { macroArg };
                     expr = new CallExpression(macroIdentifier, args);
@@ -4903,41 +4863,41 @@ namespace Ouro.Core.Parser
                     
                     // Create a special expression to hold the generic info until we see parentheses
                     var identExpr = (IdentifierExpression)expr;
-                    expr = new GenericIdentifierExpression(identExpr.Token!, identExpr.Name, genericTypes);
+                    expr = new GenericIdentifierExpression(identExpr.Token, identExpr.Name, genericTypes);
                 }
                 else if (Match(TokenType.LeftParen))
                 {
-                    expr = FinishCall(expr!);
+                    expr = FinishCall(expr);
                 }
                 else if (Match(TokenType.Dot, TokenType.Arrow))
                 {
                     var op = Previous();
                     var name = ConsumeIdentifierOrGreekLetter("Expected property name after '.'.");
-                    expr = new MemberExpression(expr!, op, name);
+                    expr = new MemberExpression(expr, op, name);
                 }
                 else if (Match(TokenType.DoubleColon))
                 {
                     var op = Previous();
                     var name = ConsumeIdentifierOrGreekLetter("Expected name after '::'.");
-                    expr = new MemberExpression(expr!, op, name);
+                    expr = new MemberExpression(expr, op, name);
                 }
                 else if (Match(TokenType.LeftBracket))
                 {
                     var index = ParseExpression();
                     Consume(TokenType.RightBracket, "Expected ']' after index.");
                     // Create array access expression
-                    expr = new BinaryExpression(expr!, Previous(), index!);
+                    expr = new BinaryExpression(expr, Previous(), index);
                 }
                 else if (Match(TokenType.Match))
                 {
                     Logger.Debug($"ParseCall() - Found match expression");
                     // Handle match expressions: expr match { ... }
-                    expr = ParseMatchExpression(expr!);
+                    expr = ParseMatchExpression(expr);
                 }
                 else if (Check(TokenType.LeftBrace) && expr is IdentifierExpression id && IsStructLiteralContext())
                 {
                     // Parse struct literal: StructName { field: value, ... }
-                    expr = ParseStructLiteral(id.Token!);
+                    expr = ParseStructLiteral(id.Token);
                 }
                 else
                 {
@@ -4948,7 +4908,6 @@ namespace Ouro.Core.Parser
 
             Logger.Debug($"ParseCall() - About to return expression: {expr?.GetType().Name}");
             return expr;
-
         }
 
         private bool IsStructLiteralContext()
@@ -5161,7 +5120,7 @@ namespace Ouro.Core.Parser
                     else
                     {
                         // Parse regular expression
-                        arguments.Add(ParseAssignment()!);
+                        arguments.Add(ParseAssignment());
                     }
                 } while (Match(TokenType.Comma));
             }
@@ -5172,7 +5131,7 @@ namespace Ouro.Core.Parser
             if (callee is GenericIdentifierExpression genericIdExpr)
             {
                 // Create an identifier expression for the function name
-                var identExpr = new IdentifierExpression(genericIdExpr.Token!);
+                var identExpr = new IdentifierExpression(genericIdExpr.Token);
                 return new CallExpression(identExpr, arguments, false, genericIdExpr.GenericTypeArguments);
             }
 
@@ -5231,7 +5190,6 @@ namespace Ouro.Core.Parser
                         string name;
                         
                         // Check if this looks like a typed parameter (Type Identifier)
-                        // We need to distinguish between "int x" and just "x"
                         if (IsKnownTypeName(Current()) && PeekNext()?.Type == TokenType.Identifier)
                         {
                             // Typed parameter: int x, string y, etc.
@@ -5241,7 +5199,6 @@ namespace Ouro.Core.Parser
                         else
                         {
                             // Just an identifier, assume var type: x, y, etc.
-                            // Also accept Greek letters as parameter names
                             var nameToken = ConsumeIdentifierOrGreekLetter("Expected parameter name.");
                             name = nameToken.Lexeme;
                             type = new TypeNode("var");
@@ -5270,10 +5227,10 @@ namespace Ouro.Core.Parser
             else
             {
                 // Parse the full expression for lambda body, ensuring we get complete expressions
-                body = ParseAssignment()!; // Use assignment level to get full expression precedence
+                body = ParseAssignment(); // Use assignment level to get full expression precedence
             }
             
-            return new LambdaExpression(parameters, body!);
+            return new LambdaExpression(parameters, body);
         }
 
         private Expression ParseNewExpression(Token newToken)
@@ -5309,7 +5266,7 @@ namespace Ouro.Core.Parser
             }
 
             // Handle generic type arguments
-            List<TypeNode> typeArguments = null!;
+            List<TypeNode> typeArguments = null;
             if (Match(TokenType.Less))
             {
                 typeArguments = new List<TypeNode>();
@@ -5327,13 +5284,13 @@ namespace Ouro.Core.Parser
                 // Array creation: new int[5] or new int[] { ... }
                 Match(TokenType.LeftBracket);
                 
-                Expression size = null!;
+                Expression size = null;
                 List<Expression> arguments = new List<Expression>();
                 
                 // Check if brackets are empty (for array initializer syntax)
                 if (!Check(TokenType.RightBracket))
                 {
-                    size = ParseAssignment()!;
+                    size = ParseAssignment();
                     arguments.Add(size);
                 }
                 
@@ -5343,7 +5300,7 @@ namespace Ouro.Core.Parser
                 var arrayType = new TypeNode(typeName, typeArguments, true, 1, false);
                 
                 // Check for array initializer
-                List<Expression> initializer = null!;
+                List<Expression> initializer = null;
                 if (Match(TokenType.LeftBrace))
                 {
                     initializer = new List<Expression>();
@@ -5352,7 +5309,7 @@ namespace Ouro.Core.Parser
                     {
                         do
                         {
-                            initializer.Add(ParseExpression()!);
+                            initializer.Add(ParseExpression());
                         } while (Match(TokenType.Comma));
                     }
                     
@@ -5401,13 +5358,13 @@ namespace Ouro.Core.Parser
                             
                             // Create member assignment
                             var memberExpr = new IdentifierExpression(memberName);
-                            var assignment = new AssignmentExpression(memberExpr, Previous(), value!);
+                            var assignment = new AssignmentExpression(memberExpr, Previous(), value);
                             initializer.Add(assignment);
                         }
                         else
                         {
                                                             // Collection initializer: just values
-                                initializer.Add(ParseAssignment()!);
+                                initializer.Add(ParseAssignment());
                         }
                         
                         if (!Match(TokenType.Comma)) break;
@@ -5429,14 +5386,14 @@ namespace Ouro.Core.Parser
                     {
                         do
                         {
-                            arguments.Add(ParseAssignment()!);
+                            arguments.Add(ParseAssignment());
                         } while (Match(TokenType.Comma));
                     }
                     
                     Consume(TokenType.RightParen, "Expected ')' after constructor arguments.");
                     
                     // Object or collection initializer
-                    List<Expression> initializer = null!;
+                    List<Expression> initializer = null;
                     if (Match(TokenType.LeftBrace))
                     {
                         initializer = new List<Expression>();
@@ -5453,13 +5410,13 @@ namespace Ouro.Core.Parser
                                 
                                 // Create member assignment
                                 var memberExpr = new IdentifierExpression(memberName);
-                                var assignment = new AssignmentExpression(memberExpr, Previous(), value!);
+                                var assignment = new AssignmentExpression(memberExpr, Previous(), value);
                                 initializer.Add(assignment);
                             }
                             else
                             {
                                 // Collection initializer: just values
-                                initializer.Add(ParseAssignment()!);
+                                initializer.Add(ParseAssignment());
                             }
                             
                             if (!Match(TokenType.Comma)) break;
@@ -5500,10 +5457,8 @@ namespace Ouro.Core.Parser
                      TokenType.Chi, TokenType.Psi, TokenType.Zeta, TokenType.Iota))
             {
                 var symbol = Previous();
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 return new IdentifierExpression(new Token(TokenType.Identifier, symbol.Lexeme, null,
                                                          symbol.Line, symbol.Column, 0, 0, "", _currentSyntaxLevel));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
 
             // Mathematical operators as identifiers
@@ -5512,10 +5467,8 @@ namespace Ouro.Core.Parser
                      TokenType.PartialDerivative, TokenType.Nabla))
             {
                 var symbol = Previous();
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 return new IdentifierExpression(new Token(TokenType.Identifier, symbol.Lexeme, null,
                                                          symbol.Line, symbol.Column, 0, 0, "", _currentSyntaxLevel));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
 
             // Macro parameter expansion: $identifier
@@ -5526,12 +5479,10 @@ namespace Ouro.Core.Parser
                 
                 // Create a special identifier expression for macro parameter expansion
                 var macroParamName = "$" + paramName.Lexeme;
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 return new IdentifierExpression(new Token(TokenType.Identifier, macroParamName, null,
                                                          dollarToken.Line, dollarToken.Column, 
                                                          dollarToken.StartPosition, paramName.EndPosition,
                                                          dollarToken.FileName, _currentSyntaxLevel));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
 
             // Literals
@@ -5642,10 +5593,8 @@ namespace Ouro.Core.Parser
                      TokenType.Channel, TokenType.Thread, TokenType.Lock, TokenType.Atomic))
             {
                 var token = Previous();
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 return new IdentifierExpression(new Token(TokenType.Identifier, token.Lexeme, null,
                                                          token.Line, token.Column, 0, 0, "", _currentSyntaxLevel));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
 
             // Grouping
@@ -5681,12 +5630,12 @@ namespace Ouro.Core.Parser
                 // Check if this is a tuple literal by looking for comma after first expression
                 if (Match(TokenType.Comma))
                 {
-                    var tupleElements = new List<Expression> { innerExpr! };
+                    var tupleElements = new List<Expression> { innerExpr };
                     
                     // Parse additional tuple elements
                     do
                     {
-                        tupleElements.Add(ParseExpression()!);
+                        tupleElements.Add(ParseExpression());
                     } while (Match(TokenType.Comma));
                     
                     Consume(TokenType.RightParen, "Expected ')' after tuple elements.");
@@ -5699,7 +5648,7 @@ namespace Ouro.Core.Parser
                 {
                     // This is a regular grouping expression
                     Consume(TokenType.RightParen, "Expected ')' after expression.");
-                    return innerExpr!; // Return the inner expression directly
+                    return innerExpr; // Return the inner expression directly
                 }
             }
 
@@ -5718,7 +5667,7 @@ namespace Ouro.Core.Parser
                 {
                     do
                     {
-                        elements.Add(ParseExpression()!);
+                        elements.Add(ParseExpression());
                     } while (Match(TokenType.Comma));
                 }
                 
@@ -5771,21 +5720,17 @@ namespace Ouro.Core.Parser
                 // These type keywords can appear as identifiers in some contexts
                 // For example, when they're type suffixes that got tokenized separately
                 var typeToken = Previous();
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 return new IdentifierExpression(new Token(TokenType.Identifier, typeToken.Lexeme, null,
                                                          typeToken.Line, typeToken.Column, typeToken.StartPosition, 
                                                          typeToken.EndPosition, typeToken.FileName, _currentSyntaxLevel));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
 
             // Handle unknown tokens gracefully - treat them as identifiers
             if (Current().Type == TokenType.Unknown)
             {
                 var token = Advance();
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 return new IdentifierExpression(new Token(TokenType.Identifier, token.Lexeme, null,
                                                          token.Line, token.Column, 0, 0, token.FileName, _currentSyntaxLevel));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
             
             // Only convert non-keywords to identifiers in expression context  
@@ -5823,10 +5768,8 @@ namespace Ouro.Core.Parser
             if (!string.IsNullOrEmpty(Current().Lexeme) && !excludedKeywords.Contains(Current().Type))
             {
                 var token = Advance();
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                 return new IdentifierExpression(new Token(TokenType.Identifier, token.Lexeme, null,
                                                          token.Line, token.Column, 0, 0, token.FileName, _currentSyntaxLevel));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
             }
             
             throw Error(Current(), "Expected expression.");
@@ -5877,7 +5820,7 @@ namespace Ouro.Core.Parser
                     var exprCode = content.Substring(exprStart, i - exprStart);
                     
                     // Handle format specifiers: {variable:format}
-                    string formatSpec = null!;
+                    string formatSpec = null;
                     var colonIndex = exprCode.IndexOf(':');
                     if (colonIndex >= 0)
                     {
@@ -5899,18 +5842,14 @@ namespace Ouro.Core.Parser
                         if (memberName.EndsWith("()"))
                         {
                             memberName = memberName.Substring(0, memberName.Length - 2);
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                             var dotToken = new Token(TokenType.Dot, ".", null, stringToken.Line, stringToken.Column, 0, 0, stringToken.FileName, stringToken.SyntaxLevel);
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                             var memberToken = new Token(TokenType.Identifier, memberName, memberName, stringToken.Line, stringToken.Column, 0, 0, stringToken.FileName, stringToken.SyntaxLevel);
                             expr = new MemberExpression(expr, dotToken, memberToken);
                             expr = new CallExpression(expr, new List<Expression>());
                         }
                         else
                         {
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                             var dotToken = new Token(TokenType.Dot, ".", null, stringToken.Line, stringToken.Column, 0, 0, stringToken.FileName, stringToken.SyntaxLevel);
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                             var memberToken = new Token(TokenType.Identifier, memberName, memberName, stringToken.Line, stringToken.Column, 0, 0, stringToken.FileName, stringToken.SyntaxLevel);
                             expr = new MemberExpression(expr, dotToken, memberToken);
                         }
@@ -5921,9 +5860,7 @@ namespace Ouro.Core.Parser
                     {
                         // Create a call to ToString with the format specifier
                         var toStringToken = new Token(TokenType.Identifier, "ToString", "ToString", stringToken.Line, stringToken.Column, 0, 0, stringToken.FileName, stringToken.SyntaxLevel);
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
                         var dotToken = new Token(TokenType.Dot, ".", null, stringToken.Line, stringToken.Column, 0, 0, stringToken.FileName, stringToken.SyntaxLevel);
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
                         var formatArg = new LiteralExpression(new Token(TokenType.StringLiteral, formatSpec, formatSpec, stringToken.Line, stringToken.Column, 0, 0, stringToken.FileName, stringToken.SyntaxLevel));
                         expr = new CallExpression(
                             new MemberExpression(expr, dotToken, toStringToken),
@@ -5985,21 +5922,21 @@ namespace Ouro.Core.Parser
                     {
                         for (int i = 0; i < countValue; i++)
                         {
-                            elements.Add(firstElement!);
+                            elements.Add(firstElement);
                         }
                     }
                     else
                     {
                         // If count is not a literal, we'll need special handling in the compiler
                         // For now, just add the first element
-                        elements.Add(firstElement!);
+                        elements.Add(firstElement);
                     }
                     
                     return new ArrayExpression(Previous(), elements);
                 }
                 
                 // Regular array literal: [elem1, elem2, ...]
-                elements.Add(firstElement!);
+                elements.Add(firstElement);
                 
                 while (Match(TokenType.Comma))
                 {
@@ -6011,13 +5948,11 @@ namespace Ouro.Core.Parser
                         
                         // Create a spread expression - use a special spread expression type
                         // For now, we'll use a binary expression with the spread token
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
-                        elements.Add(new BinaryExpression(null, spreadToken, spreadExpression!));
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+                        elements.Add(new BinaryExpression(null, spreadToken, spreadExpression));
                     }
                     else
                     {
-                        elements.Add(ParseExpression()!);
+                        elements.Add(ParseExpression());
                     }
                 }
             }
@@ -6035,7 +5970,7 @@ namespace Ouro.Core.Parser
             var components = new List<Expression>();
             do
             {
-                components.Add(ParseAssignment()!);
+                components.Add(ParseAssignment());
             } while (Match(TokenType.Comma));
             
             Consume(TokenType.RightParen, "Expected ')' after vector components.");
@@ -6057,7 +5992,7 @@ namespace Ouro.Core.Parser
                 
                 do
                 {
-                                            row.Add(ParseAssignment()!);
+                                            row.Add(ParseAssignment());
                 } while (Match(TokenType.Comma));
                 
                 Consume(TokenType.RightBracket, "Expected ']' after matrix row.");
@@ -6085,7 +6020,7 @@ namespace Ouro.Core.Parser
             
             Consume(TokenType.RightParen, "Expected ')' after quaternion components.");
             
-            return new QuaternionExpression(quaternionToken, w!, x!, y!, z!);
+            return new QuaternionExpression(quaternionToken, w, x, y, z);
         }
 
         private bool CheckLambda()
@@ -6171,7 +6106,7 @@ namespace Ouro.Core.Parser
             }
             else
             {
-                body = ParseAssignment()!;
+                body = ParseAssignment();
             }
             
             return new LambdaExpression(parameters, body);
@@ -6212,7 +6147,7 @@ namespace Ouro.Core.Parser
             // We'll use a special "stackalloc" type name to distinguish it
             var stackallocType = new TypeNode("stackalloc_" + type.Name, null, true, 1);
             
-            return new NewExpression(stackallocToken, stackallocType, new List<Expression> { size! });
+            return new NewExpression(stackallocToken, stackallocType, new List<Expression> { size });
         }
 
         #endregion
@@ -6568,7 +6503,7 @@ namespace Ouro.Core.Parser
             var returnType = ParseType();
             
             // Create a function type representation as a string
-            var functionTypeName = $"({string.Join(", ", paramTypes.Select(static p => p.Name))}) -> {returnType.Name}";
+            var functionTypeName = $"({string.Join(", ", paramTypes.Select(p => p.Name))}) -> {returnType.Name}";
             return new TypeNode(functionTypeName);
         }
 
@@ -6763,7 +6698,7 @@ namespace Ouro.Core.Parser
             }
 
             // Generic type arguments
-            List<TypeNode> typeArguments = null!;
+            List<TypeNode> typeArguments = null;
             if (Match(TokenType.Less))
             {
                 typeArguments = new List<TypeNode>();
@@ -6807,6 +6742,31 @@ namespace Ouro.Core.Parser
             var allQualifiers = new List<string>();
             allQualifiers.AddRange(typeQualifiers);
             
+            // For pointer types, also check for qualifiers after the pointer
+            // REMOVED DUPLICATE: var postPointerQualifiers = new List<string>();
+            if (false) // isPointer - DISABLED DUPLICATE
+            {
+                while (true)
+                {
+                    if (Match(TokenType.Volatile))
+                    {
+                        postPointerQualifiers.Add("volatile");
+                    }
+                    else if (Check(TokenType.Identifier) && 
+                            (Current().Lexeme == "const" || Current().Lexeme == "static" || 
+                             Current().Lexeme == "extern" || Current().Lexeme == "inline" ||
+                             Current().Lexeme == "restrict" || Current().Lexeme == "atomic"))
+                    {
+                        postPointerQualifiers.Add(Current().Lexeme);
+                        Advance(); // consume the identifier qualifier
+                    }
+                    else
+                    {
+                        break; // no more qualifiers
+                    }
+                }
+            }
+            
             if (allQualifiers.Count > 0)
             {
                 finalTypeName = string.Join(" ", allQualifiers) + " " + typeName;
@@ -6847,7 +6807,7 @@ namespace Ouro.Core.Parser
                 return new TypeNode(Current().Lexeme);
             }
 
-            return null!;
+            return null;
         }
 
         private List<Parameter> ParseParameters()
@@ -6889,10 +6849,10 @@ namespace Ouro.Core.Parser
                             if (isMutable) _current--; // back up mut too
                             var type = ParseType();
                             var name = Consume(TokenType.Identifier, "Expected parameter name.");
-                            Expression defaultValue = null!;
+                            Expression defaultValue = null;
                             if (Match(TokenType.Assign))
                             {
-                                defaultValue = ParseAssignment()!;
+                                defaultValue = ParseAssignment();
                             }
                             parameters.Add(new Parameter(type, name.Lexeme, defaultValue, modifier));
                         }
@@ -6902,10 +6862,10 @@ namespace Ouro.Core.Parser
                     var type = ParseType();
                     var name = Consume(TokenType.Identifier, "Expected parameter name.");
 
-                    Expression defaultValue = null!;
+                    Expression defaultValue = null;
                     if (Match(TokenType.Assign))
                     {
-                        defaultValue = ParseAssignment()!;
+                        defaultValue = ParseAssignment();
                     }
 
                     parameters.Add(new Parameter(type, name.Lexeme, defaultValue, modifier));
@@ -6992,13 +6952,13 @@ namespace Ouro.Core.Parser
 
         private Token PeekNext()
         {
-            if (_current + 1 >= _tokens.Count) return null!;
+            if (_current + 1 >= _tokens.Count) return null;
             return _tokens[_current + 1];
         }
 
         private Token PeekPrevious()
         {
-            if (_current - 1 < 0) return null!;
+            if (_current - 1 < 0) return null;
             return _tokens[_current - 1];
         }
 
@@ -7244,8 +7204,8 @@ namespace Ouro.Core.Parser
         public Token PublicCurrent() => Current();
         public Token PublicPrevious() => Previous();
         public Token PublicConsume(TokenType type, string message) => Consume(type, message);
-        public Expression PublicParseExpression() => ParseExpression()!;
-        public Expression PublicParseAssignment() => ParseAssignment()!;
+        public Expression PublicParseExpression() => ParseExpression();
+        public Expression PublicParseAssignment() => ParseAssignment();
 
         #endregion
 
@@ -7300,7 +7260,7 @@ namespace Ouro.Core.Parser
                 
                 // Parse field value
                 var value = ParseExpression();
-                fields[fieldName.Lexeme] = value!;
+                fields[fieldName.Lexeme] = value;
                 
                 // Check for comma or end of struct
                 if (!Check(TokenType.RightBrace))
@@ -7320,19 +7280,19 @@ namespace Ouro.Core.Parser
             switch (expr)
             {
                 case LiteralExpression literal:
-                    if (literal.Token!.Type == TokenType.IntegerLiteral)
+                    if (literal.Token.Type == TokenType.IntegerLiteral)
                         return new TypeNode("int");
-                    if (literal.Token!.Type == TokenType.FloatLiteral)
+                    if (literal.Token.Type == TokenType.FloatLiteral)
                         return new TypeNode("float");
-                    if (literal.Token!.Type == TokenType.DoubleLiteral)
+                    if (literal.Token.Type == TokenType.DoubleLiteral)
                         return new TypeNode("double");
-                    if (literal.Token!.Type == TokenType.StringLiteral || literal.Token!.Type == TokenType.InterpolatedString)
+                    if (literal.Token.Type == TokenType.StringLiteral || literal.Token.Type == TokenType.InterpolatedString)
                         return new TypeNode("string");
-                    if (literal.Token!.Type == TokenType.BooleanLiteral)
+                    if (literal.Token.Type == TokenType.BooleanLiteral)
                         return new TypeNode("bool");
-                    if (literal.Token!.Type == TokenType.NullLiteral)
+                    if (literal.Token.Type == TokenType.NullLiteral)
                         return new TypeNode("object");
-                    if (literal.Token!.Type == TokenType.UnitLiteral)
+                    if (literal.Token.Type == TokenType.UnitLiteral)
                         return new TypeNode("Unit");
                     break;
                     
