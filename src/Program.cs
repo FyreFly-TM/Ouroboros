@@ -12,6 +12,7 @@ namespace Ouro
     /// <summary>
     /// Main entry point for the Ouro programming language
     /// </summary>
+
     public class Program
     {
         private static Runtime.Runtime runtime;
@@ -28,7 +29,7 @@ namespace Ouro
                 args = args.Length > 1 ? args[1..] : Array.Empty<string>();
             }
 
-            Logger.Init(true);
+            Logger.SetDebugMode(debugMode);
 
             Logger.Debug("Ouro compiler starting...");
             

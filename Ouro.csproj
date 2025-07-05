@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -27,6 +27,7 @@
   <ItemGroup>
     <!-- Core -->
     <Compile Include="src/Program.cs" />
+    <Compile Include="src\tools\Logger.cs" />
     <Compile Include="src/core/**/*.cs" />
     <Compile Include="src/syntaxes/**/*.cs" />
     <Compile Include="src/tokens/**/*.cs" />

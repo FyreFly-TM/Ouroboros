@@ -255,7 +255,7 @@ namespace Ouro.Core.Parser
             if (!IsAtEnd())
             {
                 Consume(TokenType.RightBrace, "Expected '}' to close method body.");
-                Logger.Debug($"DEBUG: Completed parsing C# method with Ouroboros body");
+                Logger.Debug($"Completed parsing C# method with Ouroboros body");
             }
             
             // Return a block statement containing all the Ouroboros statements
@@ -292,7 +292,7 @@ namespace Ouro.Core.Parser
 
         private Statement ParseUsingDomainBlock()
         {
-            Logger.Debug($"DEBUG: ParseUsingDomainBlock starting");
+            Logger.Debug($"ParseUsingDomainBlock starting");
             
             // Parse: using DomainName { ... }
             Consume(TokenType.Using, "Expected 'using' keyword.");
@@ -2232,7 +2232,7 @@ namespace Ouro.Core.Parser
             catch (Exception ex)
             {
                 Logger.Error($"Medium-level fallback parsing failed: {ex.Message}");
-                Logger.Error($"DEBUG: Exception in fallback method: {ex.GetType().Name}: {ex.Message}"); // TODO
+                Logger.Error($"Exception in fallback method: {ex.GetType().Name}: {ex.Message}"); // TODO
                 throw new ParseException($"Unable to parse medium-level statement at line {Current().Line}");
             }
         }
@@ -2518,7 +2518,7 @@ namespace Ouro.Core.Parser
                 Logger.Error($"Exception stack trace: {ex.StackTrace}");
 
                 // Improved error recovery - try to skip to next statement
-                Logger.Info($"Attempting error recovery, current token: {Current().Type} '{Current().Lexeme}'");
+                Logger.Warn($"Attempting error recovery, current token: {Current().Type} '{Current().Lexeme}'");
                 
                 // If we hit a right brace, return a null statement to let the block parser handle it
                 if (Check(TokenType.RightBrace))
